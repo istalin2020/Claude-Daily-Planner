@@ -71,7 +71,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		/* Root group — UUID is DIFFERENT from the PBXProject UUID below */
 		AA3C0000000000000000001A = {
 			isa = PBXGroup;
 			children = (
