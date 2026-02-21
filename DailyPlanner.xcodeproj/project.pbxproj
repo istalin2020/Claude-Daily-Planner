@@ -71,14 +71,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		AA3C0000000000000000001A = {
-			isa = PBXGroup;
-			children = (
-				AA020000000000000000001A /* DailyPlanner */,
-				AA030000000000000000001A /* Products */,
-			);
-			sourceTree = "<group>";
-		};
 		AA020000000000000000001A /* DailyPlanner */ = {
 			isa = PBXGroup;
 			children = (
@@ -148,6 +140,14 @@
 				AA190000000000000000001A /* SharedComponents.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		AA3C0000000000000000001A = {
+			isa = PBXGroup;
+			children = (
+				AA020000000000000000001A /* DailyPlanner */,
+				AA030000000000000000001A /* Products */,
+			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
