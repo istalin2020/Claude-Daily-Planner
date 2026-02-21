@@ -280,8 +280,8 @@ struct OverviewCard<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Button(action: action) {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: section.icon)
                         .font(.system(size: 14, weight: .semibold))
@@ -291,20 +291,21 @@ struct OverviewCard<Content: View>: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     Text(section.rawValue)
                         .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.primary)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary.opacity(0.5))
                 }
+                content
             }
-            .buttonStyle(PlainButtonStyle())
-            content
+            .padding(14)
+            .background(Color(.systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+            .padding(.horizontal, 12)
         }
-        .padding(14)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
-        .padding(.horizontal, 12)
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

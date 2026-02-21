@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Section Header
 struct SectionHeader: View {
+    @EnvironmentObject var vm: PlannerViewModel
     let section: AppSection
     let subtitle: String
     let completedCount: Int
@@ -38,6 +39,16 @@ struct SectionHeader: View {
                                 .foregroundColor(.white.opacity(0.8))
                         }
                     }
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            vm.selectedSection = .overview
+                        }
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 26))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
                 .padding(.horizontal, 16)
             )
