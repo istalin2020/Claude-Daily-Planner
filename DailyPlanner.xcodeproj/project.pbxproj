@@ -65,6 +65,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		/* Root group — UUID is DIFFERENT from the PBXProject UUID below */
+		AA3C0000000000000000001A = {
+			isa = PBXGroup;
+			children = (
+				AA020000000000000000001A /* DailyPlanner */,
+				AA030000000000000000001A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
 		AA020000000000000000001A /* DailyPlanner */ = {
 			isa = PBXGroup;
 			children = (
@@ -84,14 +93,6 @@
 				AA0E0000000000000000001A /* DailyPlanner.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		AA010000000000000000001A = {
-			isa = PBXGroup;
-			children = (
-				AA020000000000000000001A /* DailyPlanner */,
-				AA030000000000000000001A /* Products */,
-			);
 			sourceTree = "<group>";
 		};
 		AA380000000000000000001A /* Models */ = {
@@ -164,15 +165,15 @@
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		AA010000000000000000001A /* Project object */ = {
+		AA000000000000000000001A /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
 				TargetAttributes = {
 					AA040000000000000000001A = {
-						CreatedOnToolsVersion = 15.0;
+						CreatedOnToolsVersion = 16.2;
 					};
 				};
 			};
@@ -184,7 +185,7 @@
 				en,
 				Base,
 			);
-			mainGroup = AA010000000000000000001A;
+			mainGroup = AA3C0000000000000000001A;
 			productRefGroup = AA030000000000000000001A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -424,5 +425,5 @@
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = AA010000000000000000001A /* Project object */;
+	rootObject = AA000000000000000000001A /* Project object */;
 }
