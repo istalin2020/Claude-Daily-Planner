@@ -15,7 +15,6 @@
 		AA1A0000000000000000001A /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA190000000000000000001A /* SharedComponents.swift */; };
 		AA1C0000000000000000001A /* OverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B0000000000000000001A /* OverviewView.swift */; };
 		AA1E0000000000000000001A /* TopPrioritiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1D0000000000000000001A /* TopPrioritiesView.swift */; };
-		AA3E0000000000000000001A /* ToDoListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3D0000000000000000001A /* ToDoListsView.swift */; };
 		AA200000000000000000001A /* CallsEmailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0000000000000000001A /* CallsEmailsView.swift */; };
 		AA220000000000000000001A /* PersonalTodoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA210000000000000000001A /* PersonalTodoView.swift */; };
 		AA240000000000000000001A /* HealthFitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA230000000000000000001A /* HealthFitnessView.swift */; };
@@ -28,8 +27,12 @@
 		AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA310000000000000000001A /* ExpenseTrackerView.swift */; };
 		AA340000000000000000001A /* RateYourDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA330000000000000000001A /* RateYourDayView.swift */; };
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
+<<<<<<< Updated upstream
 		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
 		AA420000000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA410000000000000000001A /* SettingsView.swift */; };
+=======
+		AA3E0000000000000000001A /* ToDoListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3D0000000000000000001A /* ToDoListsView.swift */; };
+>>>>>>> Stashed changes
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,7 +45,6 @@
 		AA190000000000000000001A /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
 		AA1B0000000000000000001A /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
 		AA1D0000000000000000001A /* TopPrioritiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopPrioritiesView.swift; sourceTree = "<group>"; };
-		AA3D0000000000000000001A /* ToDoListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToDoListsView.swift; sourceTree = "<group>"; };
 		AA1F0000000000000000001A /* CallsEmailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsEmailsView.swift; sourceTree = "<group>"; };
 		AA210000000000000000001A /* PersonalTodoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalTodoView.swift; sourceTree = "<group>"; };
 		AA230000000000000000001A /* HealthFitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthFitnessView.swift; sourceTree = "<group>"; };
@@ -56,8 +58,12 @@
 		AA330000000000000000001A /* RateYourDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateYourDayView.swift; sourceTree = "<group>"; };
 		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+<<<<<<< Updated upstream
 		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+=======
+		AA3D0000000000000000001A /* ToDoListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToDoListsView.swift; sourceTree = "<group>"; };
+>>>>>>> Stashed changes
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,15 +77,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		/* Root group — UUID is DIFFERENT from the PBXProject UUID below */
-		AA3C0000000000000000001A = {
-			isa = PBXGroup;
-			children = (
-				AA020000000000000000001A /* DailyPlanner */,
-				AA030000000000000000001A /* Products */,
-			);
-			sourceTree = "<group>";
-		};
 		AA020000000000000000001A /* DailyPlanner */ = {
 			isa = PBXGroup;
 			children = (
@@ -149,6 +146,14 @@
 				AA190000000000000000001A /* SharedComponents.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		AA3C0000000000000000001A = {
+			isa = PBXGroup;
+			children = (
+				AA020000000000000000001A /* DailyPlanner */,
+				AA030000000000000000001A /* Products */,
+			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -372,6 +377,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 3VU3B66P6J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyPlanner/Info.plist;
@@ -397,6 +403,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 3VU3B66P6J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyPlanner/Info.plist;
