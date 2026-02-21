@@ -48,7 +48,7 @@ struct FoodTrackerView: View {
                 ForEach(mealSections, id: \.key) { meal in
                     MealSection(
                         meal: meal,
-                        items: meal.items(from: entry),
+                        items: meal.items(entry),
                         canEdit: !vm.isFuture
                     ) {
                         selectedMeal = meal.key
