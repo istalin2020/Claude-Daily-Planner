@@ -1,0 +1,428 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA100000000000000000001A /* DailyPlannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0F0000000000000000001A /* DailyPlannerApp.swift */; };
+		AA120000000000000000001A /* PlannerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA110000000000000000001A /* PlannerModels.swift */; };
+		AA140000000000000000001A /* PlannerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA130000000000000000001A /* PlannerViewModel.swift */; };
+		AA160000000000000000001A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA150000000000000000001A /* ContentView.swift */; };
+		AA180000000000000000001A /* DateScrollerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA170000000000000000001A /* DateScrollerView.swift */; };
+		AA1A0000000000000000001A /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA190000000000000000001A /* SharedComponents.swift */; };
+		AA1C0000000000000000001A /* OverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B0000000000000000001A /* OverviewView.swift */; };
+		AA1E0000000000000000001A /* TopPrioritiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1D0000000000000000001A /* TopPrioritiesView.swift */; };
+		AA200000000000000000001A /* CallsEmailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0000000000000000001A /* CallsEmailsView.swift */; };
+		AA220000000000000000001A /* PersonalTodoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA210000000000000000001A /* PersonalTodoView.swift */; };
+		AA240000000000000000001A /* HealthFitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA230000000000000000001A /* HealthFitnessView.swift */; };
+		AA260000000000000000001A /* WaterTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA250000000000000000001A /* WaterTrackerView.swift */; };
+		AA280000000000000000001A /* FoodTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA270000000000000000001A /* FoodTrackerView.swift */; };
+		AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA290000000000000000001A /* DailyScheduleView.swift */; };
+		AA2C0000000000000000001A /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B0000000000000000001A /* AppointmentsView.swift */; };
+		AA2E0000000000000000001A /* NotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2D0000000000000000001A /* NotesView.swift */; };
+		AA300000000000000000001A /* NotesForTomorrowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2F0000000000000000001A /* NotesForTomorrowView.swift */; };
+		AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA310000000000000000001A /* ExpenseTrackerView.swift */; };
+		AA340000000000000000001A /* RateYourDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA330000000000000000001A /* RateYourDayView.swift */; };
+		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		AA0E0000000000000000001A /* DailyPlanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyPlanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0F0000000000000000001A /* DailyPlannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerApp.swift; sourceTree = "<group>"; };
+		AA110000000000000000001A /* PlannerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerModels.swift; sourceTree = "<group>"; };
+		AA130000000000000000001A /* PlannerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerViewModel.swift; sourceTree = "<group>"; };
+		AA150000000000000000001A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA170000000000000000001A /* DateScrollerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateScrollerView.swift; sourceTree = "<group>"; };
+		AA190000000000000000001A /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
+		AA1B0000000000000000001A /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
+		AA1D0000000000000000001A /* TopPrioritiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopPrioritiesView.swift; sourceTree = "<group>"; };
+		AA1F0000000000000000001A /* CallsEmailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsEmailsView.swift; sourceTree = "<group>"; };
+		AA210000000000000000001A /* PersonalTodoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalTodoView.swift; sourceTree = "<group>"; };
+		AA230000000000000000001A /* HealthFitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthFitnessView.swift; sourceTree = "<group>"; };
+		AA250000000000000000001A /* WaterTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterTrackerView.swift; sourceTree = "<group>"; };
+		AA270000000000000000001A /* FoodTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTrackerView.swift; sourceTree = "<group>"; };
+		AA290000000000000000001A /* DailyScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScheduleView.swift; sourceTree = "<group>"; };
+		AA2B0000000000000000001A /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
+		AA2D0000000000000000001A /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
+		AA2F0000000000000000001A /* NotesForTomorrowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesForTomorrowView.swift; sourceTree = "<group>"; };
+		AA310000000000000000001A /* ExpenseTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTrackerView.swift; sourceTree = "<group>"; };
+		AA330000000000000000001A /* RateYourDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateYourDayView.swift; sourceTree = "<group>"; };
+		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AA0D0000000000000000001A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AA020000000000000000001A /* DailyPlanner */ = {
+			isa = PBXGroup;
+			children = (
+				AA0F0000000000000000001A /* DailyPlannerApp.swift */,
+				AA380000000000000000001A /* Models */,
+				AA390000000000000000001A /* ViewModels */,
+				AA3A0000000000000000001A /* Views */,
+				AA350000000000000000001A /* Assets.xcassets */,
+				AA370000000000000000001A /* Info.plist */,
+			);
+			path = DailyPlanner;
+			sourceTree = "<group>";
+		};
+		AA030000000000000000001A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AA0E0000000000000000001A /* DailyPlanner.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AA010000000000000000001A = {
+			isa = PBXGroup;
+			children = (
+				AA020000000000000000001A /* DailyPlanner */,
+				AA030000000000000000001A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AA380000000000000000001A /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				AA110000000000000000001A /* PlannerModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		AA390000000000000000001A /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				AA130000000000000000001A /* PlannerViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		AA3A0000000000000000001A /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AA150000000000000000001A /* ContentView.swift */,
+				AA3B0000000000000000001A /* Components */,
+				AA1B0000000000000000001A /* OverviewView.swift */,
+				AA1D0000000000000000001A /* TopPrioritiesView.swift */,
+				AA1F0000000000000000001A /* CallsEmailsView.swift */,
+				AA210000000000000000001A /* PersonalTodoView.swift */,
+				AA230000000000000000001A /* HealthFitnessView.swift */,
+				AA250000000000000000001A /* WaterTrackerView.swift */,
+				AA270000000000000000001A /* FoodTrackerView.swift */,
+				AA290000000000000000001A /* DailyScheduleView.swift */,
+				AA2B0000000000000000001A /* AppointmentsView.swift */,
+				AA2D0000000000000000001A /* NotesView.swift */,
+				AA2F0000000000000000001A /* NotesForTomorrowView.swift */,
+				AA310000000000000000001A /* ExpenseTrackerView.swift */,
+				AA330000000000000000001A /* RateYourDayView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		AA3B0000000000000000001A /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				AA170000000000000000001A /* DateScrollerView.swift */,
+				AA190000000000000000001A /* SharedComponents.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AA040000000000000000001A /* DailyPlanner */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA060000000000000000001A /* Build configuration list for PBXNativeTarget "DailyPlanner" */;
+			buildPhases = (
+				AA0B0000000000000000001A /* Sources */,
+				AA0C0000000000000000001A /* Resources */,
+				AA0D0000000000000000001A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DailyPlanner;
+			productName = DailyPlanner;
+			productReference = AA0E0000000000000000001A /* DailyPlanner.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AA010000000000000000001A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					AA040000000000000000001A = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = AA050000000000000000001A /* Build configuration list for PBXProject "DailyPlanner" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AA010000000000000000001A;
+			productRefGroup = AA030000000000000000001A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AA040000000000000000001A /* DailyPlanner */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AA0C0000000000000000001A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA360000000000000000001A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AA0B0000000000000000001A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA100000000000000000001A /* DailyPlannerApp.swift in Sources */,
+				AA120000000000000000001A /* PlannerModels.swift in Sources */,
+				AA140000000000000000001A /* PlannerViewModel.swift in Sources */,
+				AA160000000000000000001A /* ContentView.swift in Sources */,
+				AA180000000000000000001A /* DateScrollerView.swift in Sources */,
+				AA1A0000000000000000001A /* SharedComponents.swift in Sources */,
+				AA1C0000000000000000001A /* OverviewView.swift in Sources */,
+				AA1E0000000000000000001A /* TopPrioritiesView.swift in Sources */,
+				AA200000000000000000001A /* CallsEmailsView.swift in Sources */,
+				AA220000000000000000001A /* PersonalTodoView.swift in Sources */,
+				AA240000000000000000001A /* HealthFitnessView.swift in Sources */,
+				AA260000000000000000001A /* WaterTrackerView.swift in Sources */,
+				AA280000000000000000001A /* FoodTrackerView.swift in Sources */,
+				AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */,
+				AA2C0000000000000000001A /* AppointmentsView.swift in Sources */,
+				AA2E0000000000000000001A /* NotesView.swift in Sources */,
+				AA300000000000000000001A /* NotesForTomorrowView.swift in Sources */,
+				AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */,
+				AA340000000000000000001A /* RateYourDayView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AA070000000000000000001A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AA080000000000000000001A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AA090000000000000000001A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DailyPlanner/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dailyplanner.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AA0A0000000000000000001A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DailyPlanner/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dailyplanner.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AA050000000000000000001A /* Build configuration list for PBXProject "DailyPlanner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA070000000000000000001A /* Debug */,
+				AA080000000000000000001A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA060000000000000000001A /* Build configuration list for PBXNativeTarget "DailyPlanner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA090000000000000000001A /* Debug */,
+				AA0A0000000000000000001A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AA010000000000000000001A /* Project object */;
+}
