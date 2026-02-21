@@ -2,12 +2,12 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var vm: PlannerViewModel
-    @State private var showRolloverSheet = false
+    @State private var showSettings = false
 
     var body: some View {
         VStack(spacing: 0) {
             // App Header
-            AppHeaderView()
+            AppHeaderView(showSettings: $showSettings)
 
             // Date Scroller
             DateScrollerView()
@@ -23,16 +23,8 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.25), value: vm.selectedSection)
         }
         .background(Color(.systemGroupedBackground))
-        .onAppear {
-            if vm.showRolloverAlert { showRolloverSheet = true }
-        }
-        .alert("Roll Over Tasks?", isPresented: $vm.showRolloverAlert) {
-            Button("Yes, Roll Over") {
-                vm.performRollover()
-            }
-            Button("No, Keep as Is", role: .cancel) {}
-        } message: {
-            Text("You have incomplete tasks from yesterday. Would you like to roll them over to today?")
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
     }
 
@@ -60,6 +52,7 @@ struct ContentView: View {
 // MARK: - App Header
 struct AppHeaderView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @Binding var showSettings: Bool
 
     private var greeting: String {
         let h = Calendar.current.component(.hour, from: Date())
@@ -86,6 +79,12 @@ struct AppHeaderView: View {
                     .background(Color.white.opacity(0.25))
                     .foregroundColor(.white)
                     .cornerRadius(12)
+            }
+            Button(action: { showSettings = true }) {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.leading, 8)
             }
         }
         .padding(.horizontal, 16)

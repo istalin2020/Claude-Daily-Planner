@@ -28,6 +28,8 @@
 		AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA310000000000000000001A /* ExpenseTrackerView.swift */; };
 		AA340000000000000000001A /* RateYourDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA330000000000000000001A /* RateYourDayView.swift */; };
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
+		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
+		AA420000000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA410000000000000000001A /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +56,8 @@
 		AA330000000000000000001A /* RateYourDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateYourDayView.swift; sourceTree = "<group>"; };
 		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				AA110000000000000000001A /* PlannerModels.swift */,
+				AA3F0000000000000000001A /* NotificationManager.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -132,6 +137,7 @@
 				AA2F0000000000000000001A /* NotesForTomorrowView.swift */,
 				AA310000000000000000001A /* ExpenseTrackerView.swift */,
 				AA330000000000000000001A /* RateYourDayView.swift */,
+				AA410000000000000000001A /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -216,6 +222,7 @@
 			files = (
 				AA100000000000000000001A /* DailyPlannerApp.swift in Sources */,
 				AA120000000000000000001A /* PlannerModels.swift in Sources */,
+				AA400000000000000000001A /* NotificationManager.swift in Sources */,
 				AA140000000000000000001A /* PlannerViewModel.swift in Sources */,
 				AA160000000000000000001A /* ContentView.swift in Sources */,
 				AA180000000000000000001A /* DateScrollerView.swift in Sources */,
@@ -234,6 +241,7 @@
 				AA300000000000000000001A /* NotesForTomorrowView.swift in Sources */,
 				AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */,
 				AA340000000000000000001A /* RateYourDayView.swift in Sources */,
+				AA420000000000000000001A /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

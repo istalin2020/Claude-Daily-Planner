@@ -5,16 +5,29 @@ import Combine
 class PlannerViewModel: ObservableObject {
     @Published var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     @Published var entries: [String: DailyEntry] = [:]
-    @Published var showRolloverAlert: Bool = false
     @Published var selectedSection: AppSection = .overview
+    @Published var settings: AppSettings = AppSettings()
 
-    private let storageKey = "DailyPlannerEntries_v1"
+    // Legacy UserDefaults key kept only for one-time migration
+    private let legacyStorageKey = "DailyPlannerEntries_v1"
     private var cancellables = Set<AnyCancellable>()
 
+    // MARK: - Documents URLs (data survives Xcode rebuilds on device)
+    private var docsDir: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+    private var entriesURL: URL { docsDir.appendingPathComponent("planner_entries.json") }
+    private var settingsURL: URL { docsDir.appendingPathComponent("planner_settings.json") }
+
     init() {
+        loadSettings()
         loadData()
         checkForRollover()
         setupAutoSave()
+        // Re-apply notifications on launch in case they were cleared
+        if settings.notificationsEnabled {
+            NotificationManager.shared.scheduleNotifications(times: settings.notificationTimes)
+        }
     }
 
     // MARK: - Date Key
@@ -40,7 +53,8 @@ class PlannerViewModel: ObservableObject {
     }
 
     var isToday: Bool { Calendar.current.isDateInToday(selectedDate) }
-    var isFuture: Bool { selectedDate > Calendar.current.startOfDay(for: Date()) }
+    // All dates are fully editable — users can plan up to 12 months ahead
+    var isFuture: Bool { false }
 
     // MARK: - Date Navigation
     func selectToday() {
@@ -165,9 +179,9 @@ class PlannerViewModel: ObservableObject {
         let trimmed = item.trimmingCharacters(in: .whitespaces)
         switch meal {
         case "breakfast": e.meals.breakfastItems.append(trimmed)
-        case "lunch": e.meals.lunchItems.append(trimmed)
-        case "dinner": e.meals.dinnerItems.append(trimmed)
-        default: e.meals.snackItems.append(trimmed)
+        case "lunch":     e.meals.lunchItems.append(trimmed)
+        case "dinner":    e.meals.dinnerItems.append(trimmed)
+        default:          e.meals.snackItems.append(trimmed)
         }
         currentEntry = e
     }
@@ -176,9 +190,9 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         switch meal {
         case "breakfast": e.meals.breakfastItems.removeAll { $0 == item }
-        case "lunch": e.meals.lunchItems.removeAll { $0 == item }
-        case "dinner": e.meals.dinnerItems.removeAll { $0 == item }
-        default: e.meals.snackItems.removeAll { $0 == item }
+        case "lunch":     e.meals.lunchItems.removeAll { $0 == item }
+        case "dinner":    e.meals.dinnerItems.removeAll { $0 == item }
+        default:          e.meals.snackItems.removeAll { $0 == item }
         }
         currentEntry = e
     }
@@ -305,47 +319,48 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Rollover
+    /// Automatically rolls over incomplete tasks from yesterday when
+    /// the user has enabled the setting. No alert is shown.
     func checkForRollover() {
-        let today = Calendar.current.startOfDay(for: Date())
+        guard settings.autoRollover else { return }
+
+        let today     = Calendar.current.startOfDay(for: Date())
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
-        let yKey = dateKey(for: yesterday)
-        let tKey = dateKey(for: today)
+        let yKey      = dateKey(for: yesterday)
+        let tKey      = dateKey(for: today)
 
         guard let ye = entries[yKey] else { return }
-        let hasIncomplete = ye.topPriorities.contains { !$0.isCompleted && !$0.isRolledOver }
-            || ye.toDoLists.contains { !$0.isCompleted && !$0.isRolledOver }
-            || ye.personalTodo.contains { !$0.isCompleted && !$0.isRolledOver }
+        let hasIncomplete =
+            ye.topPriorities.contains { !$0.isCompleted && !$0.isRolledOver } ||
+            ye.toDoLists.contains    { !$0.isCompleted && !$0.isRolledOver } ||
+            ye.personalTodo.contains { !$0.isCompleted && !$0.isRolledOver }
 
         if hasIncomplete && entries[tKey] == nil {
-            showRolloverAlert = true
+            performRollover()
         }
     }
 
     func performRollover() {
-        let today = Calendar.current.startOfDay(for: Date())
+        let today     = Calendar.current.startOfDay(for: Date())
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
-        let yKey = dateKey(for: yesterday)
-        let tKey = dateKey(for: today)
+        let yKey      = dateKey(for: yesterday)
+        let tKey      = dateKey(for: today)
 
         guard var ye = entries[yKey] else { return }
         var te = entries[tKey] ?? DailyEntry(date: today)
 
         for var task in ye.topPriorities where !task.isCompleted {
-            task.isRolledOver = true
-            task.originalDate = yesterday
+            task.isRolledOver = true; task.originalDate = yesterday
             te.topPriorities.insert(task, at: 0)
         }
         for var task in ye.toDoLists where !task.isCompleted {
-            task.isRolledOver = true
-            task.originalDate = yesterday
+            task.isRolledOver = true; task.originalDate = yesterday
             te.toDoLists.insert(task, at: 0)
         }
         for var task in ye.personalTodo where !task.isCompleted {
-            task.isRolledOver = true
-            task.originalDate = yesterday
+            task.isRolledOver = true; task.originalDate = yesterday
             te.personalTodo.insert(task, at: 0)
         }
-
         for i in ye.topPriorities.indices where !ye.topPriorities[i].isCompleted {
             ye.topPriorities[i].isRolledOver = true
         }
@@ -361,24 +376,57 @@ class PlannerViewModel: ObservableObject {
         saveData()
     }
 
-    // MARK: - Persistence
+    // MARK: - Persistence (Documents Directory)
+    // Stored in the app's Documents folder which persists across Xcode
+    // "Run" operations on a real device. One-time migration from UserDefaults.
     func saveData() {
-        if let encoded = try? JSONEncoder().encode(entries) {
-            UserDefaults.standard.set(encoded, forKey: storageKey)
-        }
+        guard let data = try? JSONEncoder().encode(entries) else { return }
+        try? data.write(to: entriesURL, options: .atomic)
     }
 
     func loadData() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data)
+        // Primary: Documents directory
+        if let data = try? Data(contentsOf: entriesURL),
+           let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
+            entries = decoded
+            return
+        }
+        // Fallback: one-time migration from UserDefaults
+        if let data = UserDefaults.standard.data(forKey: legacyStorageKey),
+           let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
+            entries = decoded
+            saveData()
+            UserDefaults.standard.removeObject(forKey: legacyStorageKey)
+        }
+    }
+
+    func saveSettings() {
+        guard let data = try? JSONEncoder().encode(settings) else { return }
+        try? data.write(to: settingsURL, options: .atomic)
+        // Sync notifications
+        if settings.notificationsEnabled {
+            NotificationManager.shared.scheduleNotifications(times: settings.notificationTimes)
+        } else {
+            NotificationManager.shared.cancelAll()
+        }
+    }
+
+    func loadSettings() {
+        guard let data = try? Data(contentsOf: settingsURL),
+              let decoded = try? JSONDecoder().decode(AppSettings.self, from: data)
         else { return }
-        entries = decoded
+        settings = decoded
     }
 
     private func setupAutoSave() {
         $entries
             .debounce(for: .seconds(1), scheduler: RunLoop.main)
             .sink { [weak self] _ in self?.saveData() }
+            .store(in: &cancellables)
+
+        $settings
+            .debounce(for: .seconds(0.5), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.saveSettings() }
             .store(in: &cancellables)
     }
 
@@ -404,8 +452,7 @@ class PlannerViewModel: ObservableObject {
         return range.compactMap { day -> Date? in
             var comps = cal.dateComponents([.year, .month], from: startOfMonth)
             comps.day = day
-            guard let d = cal.date(from: comps) else { return nil }
-            return d <= today ? d : nil
+            return cal.date(from: comps)
         }
     }
 }

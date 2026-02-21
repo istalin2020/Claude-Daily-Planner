@@ -8,7 +8,7 @@ struct DailyPlannerApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(viewModel)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(viewModel.settings.isDarkMode ? .dark : .light)
         }
     }
 }

@@ -110,6 +110,14 @@ struct ScheduleBlock: Identifiable, Codable {
     var isCompleted: Bool = false
 }
 
+// MARK: - App Settings
+struct AppSettings: Codable {
+    var isDarkMode: Bool = false
+    var autoRollover: Bool = true
+    var notificationsEnabled: Bool = false
+    var notificationTimes: [Date] = []
+}
+
 // MARK: - Daily Entry
 struct DailyEntry: Codable {
     var date: Date = Date()
