@@ -70,6 +70,21 @@ struct OverviewView: View {
                     }
                 }
 
+                // To-Do Lists Card
+                OverviewCard(section: .toDoLists, action: { vm.selectedSection = .toDoLists }) {
+                    if entry.toDoLists.isEmpty {
+                        EmptyOverviewRow(text: "No to-do items")
+                    } else {
+                        ForEach(entry.toDoLists.prefix(3)) { task in
+                            OverviewTaskRow(task: task)
+                        }
+                        if entry.toDoLists.count > 3 {
+                            Text("+\(entry.toDoLists.count - 3) more")
+                                .font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 // Calls & Emails Card
                 OverviewCard(section: .callsEmails, action: { vm.selectedSection = .callsEmails }) {
                     if entry.callsEmails.isEmpty {

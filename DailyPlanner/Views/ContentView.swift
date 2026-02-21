@@ -41,6 +41,7 @@ struct ContentView: View {
         switch vm.selectedSection {
         case .overview:         OverviewView()
         case .topPriorities:   TopPrioritiesView()
+        case .toDoLists:       ToDoListsView()
         case .callsEmails:     CallsEmailsView()
         case .personalTodo:    PersonalTodoView()
         case .healthFitness:   HealthFitnessView()

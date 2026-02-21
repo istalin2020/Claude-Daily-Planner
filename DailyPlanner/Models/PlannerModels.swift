@@ -115,6 +115,7 @@ struct DailyEntry: Codable {
     var date: Date = Date()
 
     var topPriorities: [PlannerTask] = []
+    var toDoLists: [PlannerTask] = []
     var callsEmails: [PlannerTask] = []
     var personalTodo: [PlannerTask] = []
 
@@ -136,9 +137,10 @@ struct DailyEntry: Codable {
 
     var totalExpenses: Double { expenses.filter { !$0.isDeposit }.reduce(0) { $0 + $1.amount } }
     var totalDeposits: Double { expenses.filter { $0.isDeposit }.reduce(0) { $0 + $1.amount } }
-    var allTasksCount: Int { topPriorities.count + callsEmails.count + personalTodo.count }
+    var allTasksCount: Int { topPriorities.count + toDoLists.count + callsEmails.count + personalTodo.count }
     var completedTasksCount: Int {
         topPriorities.filter(\.isCompleted).count +
+        toDoLists.filter(\.isCompleted).count +
         callsEmails.filter(\.isCompleted).count +
         personalTodo.filter(\.isCompleted).count
     }
@@ -152,6 +154,7 @@ struct DailyEntry: Codable {
 enum AppSection: String, CaseIterable, Identifiable {
     case overview = "Overview"
     case topPriorities = "Top Priorities"
+    case toDoLists = "To-Do Lists"
     case callsEmails = "Calls & Emails"
     case personalTodo = "Personal To-Do"
     case healthFitness = "Health & Fitness"
@@ -170,6 +173,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         switch self {
         case .overview: return "square.grid.2x2.fill"
         case .topPriorities: return "star.fill"
+        case .toDoLists: return "list.bullet.clipboard.fill"
         case .callsEmails: return "phone.fill"
         case .personalTodo: return "checkmark.circle.fill"
         case .healthFitness: return "figure.run"
@@ -188,6 +192,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         switch self {
         case .overview: return Color(red: 0.45, green: 0.25, blue: 0.85)
         case .topPriorities: return Color(red: 1.0, green: 0.55, blue: 0.0)
+        case .toDoLists: return Color(red: 0.0, green: 0.6, blue: 0.85)
         case .callsEmails: return Color(red: 0.15, green: 0.7, blue: 0.35)
         case .personalTodo: return Color(red: 0.2, green: 0.5, blue: 0.95)
         case .healthFitness: return Color(red: 0.9, green: 0.2, blue: 0.3)

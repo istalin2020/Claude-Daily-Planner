@@ -15,6 +15,7 @@
 		AA1A0000000000000000001A /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA190000000000000000001A /* SharedComponents.swift */; };
 		AA1C0000000000000000001A /* OverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B0000000000000000001A /* OverviewView.swift */; };
 		AA1E0000000000000000001A /* TopPrioritiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1D0000000000000000001A /* TopPrioritiesView.swift */; };
+		AA3E0000000000000000001A /* ToDoListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3D0000000000000000001A /* ToDoListsView.swift */; };
 		AA200000000000000000001A /* CallsEmailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0000000000000000001A /* CallsEmailsView.swift */; };
 		AA220000000000000000001A /* PersonalTodoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA210000000000000000001A /* PersonalTodoView.swift */; };
 		AA240000000000000000001A /* HealthFitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA230000000000000000001A /* HealthFitnessView.swift */; };
@@ -39,6 +40,7 @@
 		AA190000000000000000001A /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
 		AA1B0000000000000000001A /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
 		AA1D0000000000000000001A /* TopPrioritiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopPrioritiesView.swift; sourceTree = "<group>"; };
+		AA3D0000000000000000001A /* ToDoListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToDoListsView.swift; sourceTree = "<group>"; };
 		AA1F0000000000000000001A /* CallsEmailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsEmailsView.swift; sourceTree = "<group>"; };
 		AA210000000000000000001A /* PersonalTodoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalTodoView.swift; sourceTree = "<group>"; };
 		AA230000000000000000001A /* HealthFitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthFitnessView.swift; sourceTree = "<group>"; };
@@ -118,6 +120,7 @@
 				AA3B0000000000000000001A /* Components */,
 				AA1B0000000000000000001A /* OverviewView.swift */,
 				AA1D0000000000000000001A /* TopPrioritiesView.swift */,
+				AA3D0000000000000000001A /* ToDoListsView.swift */,
 				AA1F0000000000000000001A /* CallsEmailsView.swift */,
 				AA210000000000000000001A /* PersonalTodoView.swift */,
 				AA230000000000000000001A /* HealthFitnessView.swift */,
@@ -219,6 +222,7 @@
 				AA1A0000000000000000001A /* SharedComponents.swift in Sources */,
 				AA1C0000000000000000001A /* OverviewView.swift in Sources */,
 				AA1E0000000000000000001A /* TopPrioritiesView.swift in Sources */,
+				AA3E0000000000000000001A /* ToDoListsView.swift in Sources */,
 				AA200000000000000000001A /* CallsEmailsView.swift in Sources */,
 				AA220000000000000000001A /* PersonalTodoView.swift in Sources */,
 				AA240000000000000000001A /* HealthFitnessView.swift in Sources */,

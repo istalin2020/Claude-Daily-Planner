@@ -73,6 +73,28 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    // MARK: - To-Do Lists
+    func addToDoListItem(_ title: String) {
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        var e = currentEntry
+        e.toDoLists.append(PlannerTask(title: title.trimmingCharacters(in: .whitespaces)))
+        currentEntry = e
+    }
+
+    func toggleToDoListItem(_ task: PlannerTask) {
+        var e = currentEntry
+        if let i = e.toDoLists.firstIndex(where: { $0.id == task.id }) {
+            e.toDoLists[i].isCompleted.toggle()
+        }
+        currentEntry = e
+    }
+
+    func deleteToDoListItem(at offsets: IndexSet) {
+        var e = currentEntry
+        e.toDoLists.remove(atOffsets: offsets)
+        currentEntry = e
+    }
+
     // MARK: - Calls & Emails
     func addCallEmail(_ title: String) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -291,6 +313,7 @@ class PlannerViewModel: ObservableObject {
 
         guard let ye = entries[yKey] else { return }
         let hasIncomplete = ye.topPriorities.contains { !$0.isCompleted && !$0.isRolledOver }
+            || ye.toDoLists.contains { !$0.isCompleted && !$0.isRolledOver }
             || ye.personalTodo.contains { !$0.isCompleted && !$0.isRolledOver }
 
         if hasIncomplete && entries[tKey] == nil {
@@ -312,6 +335,11 @@ class PlannerViewModel: ObservableObject {
             task.originalDate = yesterday
             te.topPriorities.insert(task, at: 0)
         }
+        for var task in ye.toDoLists where !task.isCompleted {
+            task.isRolledOver = true
+            task.originalDate = yesterday
+            te.toDoLists.insert(task, at: 0)
+        }
         for var task in ye.personalTodo where !task.isCompleted {
             task.isRolledOver = true
             task.originalDate = yesterday
@@ -320,6 +348,9 @@ class PlannerViewModel: ObservableObject {
 
         for i in ye.topPriorities.indices where !ye.topPriorities[i].isCompleted {
             ye.topPriorities[i].isRolledOver = true
+        }
+        for i in ye.toDoLists.indices where !ye.toDoLists[i].isCompleted {
+            ye.toDoLists[i].isRolledOver = true
         }
         for i in ye.personalTodo.indices where !ye.personalTodo[i].isCompleted {
             ye.personalTodo[i].isRolledOver = true
