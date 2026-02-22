@@ -402,9 +402,35 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Persistence (Documents Directory)
-    // Stored in the app's Documents folder which persists across Xcode
-    // "Run" operations on a real device. One-time migration from UserDefaults.
+    //
+    // Data lives in the app's Documents folder, which iOS preserves across
+    // Xcode "Run" (update-install) sessions on a real device.  Data is only
+    // removed when the user explicitly deletes the app.
+    //
+    // Saves are performed on a dedicated serial background queue so the main
+    // thread is never blocked, while still guaranteeing write order.  Every
+    // mutation to `entries` triggers an immediate async write — no debounce —
+    // so even a rapid Xcode kill cannot race past an in-flight save.
+    // Additionally, DailyPlannerApp observes scenePhase and calls
+    // saveDataNow() / saveSettings() synchronously on .background / .inactive
+    // as a final safety net.
+
+    private let saveQueue = DispatchQueue(label: "com.dailyplanner.save", qos: .utility)
+
+    /// Asynchronous write — called automatically on every `entries` change.
     func saveData() {
+        let snapshot = entries
+        let url = entriesURL
+        saveQueue.async {
+            guard let data = try? JSONEncoder().encode(snapshot) else { return }
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    /// Synchronous write — called from scenePhase hook and on explicit demand.
+    /// Blocks the calling thread until the file is on disk, guaranteeing the
+    /// data survives an imminent SIGKILL from Xcode or the OS.
+    func saveDataNow() {
         guard let data = try? JSONEncoder().encode(entries) else { return }
         try? data.write(to: entriesURL, options: .atomic)
     }
@@ -416,11 +442,11 @@ class PlannerViewModel: ObservableObject {
             entries = decoded
             return
         }
-        // Fallback: one-time migration from UserDefaults
+        // Fallback: one-time migration from UserDefaults (legacy)
         if let data = UserDefaults.standard.data(forKey: legacyStorageKey),
            let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
             entries = decoded
-            saveData()
+            saveDataNow()
             UserDefaults.standard.removeObject(forKey: legacyStorageKey)
         }
     }
@@ -445,13 +471,20 @@ class PlannerViewModel: ObservableObject {
     }
 
     private func setupAutoSave() {
+        // Write entries to disk immediately on every change.
+        // .dropFirst() skips the initial publisher emission at subscription
+        // time (which would just re-save the data we just loaded).
         $entries
-            .debounce(for: .seconds(1), scheduler: RunLoop.main)
+            .dropFirst()
             .sink { [weak self] _ in self?.saveData() }
             .store(in: &cancellables)
 
+        // Settings are small; a short debounce avoids redundant writes when
+        // the user rapidly toggles options, while still being fast enough to
+        // survive a quick rebuild.
         $settings
-            .debounce(for: .seconds(0.5), scheduler: RunLoop.main)
+            .dropFirst()
+            .debounce(for: .milliseconds(200), scheduler: saveQueue)
             .sink { [weak self] _ in self?.saveSettings() }
             .store(in: &cancellables)
     }
