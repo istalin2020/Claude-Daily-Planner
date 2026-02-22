@@ -26,7 +26,8 @@ class PlannerViewModel: ObservableObject {
         setupAutoSave()
         // Re-apply notifications on launch in case they were cleared
         if settings.notificationsEnabled {
-            NotificationManager.shared.scheduleNotifications(times: settings.notificationTimes)
+            NotificationManager.shared.scheduleNotifications(
+                times: settings.notificationTimes, tone: settings.notificationTone)
         }
     }
 
@@ -241,18 +242,30 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         e.dailySchedule.append(block)
         currentEntry = e
+        // Schedule notification if reminder is set
+        if block.reminderOffset != .none {
+            NotificationManager.shared.scheduleBlockReminder(
+                block: block, date: selectedDate, tone: settings.notificationTone)
+        }
     }
 
     func toggleScheduleBlock(_ block: ScheduleBlock) {
         var e = currentEntry
         if let i = e.dailySchedule.firstIndex(where: { $0.id == block.id }) {
             e.dailySchedule[i].isCompleted.toggle()
+            // Cancel reminder when completed
+            if e.dailySchedule[i].isCompleted {
+                NotificationManager.shared.cancelItemReminder(id: block.id.uuidString)
+            }
         }
         currentEntry = e
     }
 
     func deleteScheduleBlock(at offsets: IndexSet) {
         var e = currentEntry
+        for idx in offsets {
+            NotificationManager.shared.cancelItemReminder(id: e.dailySchedule[idx].id.uuidString)
+        }
         e.dailySchedule.remove(atOffsets: offsets)
         currentEntry = e
     }
@@ -263,18 +276,30 @@ class PlannerViewModel: ObservableObject {
         e.appointments.append(appointment)
         e.appointments.sort { $0.time < $1.time }
         currentEntry = e
+        // Schedule notification if reminder is set
+        if appointment.reminderOffset != .none {
+            NotificationManager.shared.scheduleAppointmentReminder(
+                appointment: appointment, date: selectedDate, tone: settings.notificationTone)
+        }
     }
 
     func toggleAppointment(_ appointment: Appointment) {
         var e = currentEntry
         if let i = e.appointments.firstIndex(where: { $0.id == appointment.id }) {
             e.appointments[i].isCompleted.toggle()
+            // Cancel reminder when completed
+            if e.appointments[i].isCompleted {
+                NotificationManager.shared.cancelItemReminder(id: appointment.id.uuidString)
+            }
         }
         currentEntry = e
     }
 
     func deleteAppointment(at offsets: IndexSet) {
         var e = currentEntry
+        for idx in offsets {
+            NotificationManager.shared.cancelItemReminder(id: e.appointments[idx].id.uuidString)
+        }
         e.appointments.remove(atOffsets: offsets)
         currentEntry = e
     }
@@ -405,7 +430,8 @@ class PlannerViewModel: ObservableObject {
         try? data.write(to: settingsURL, options: .atomic)
         // Sync notifications
         if settings.notificationsEnabled {
-            NotificationManager.shared.scheduleNotifications(times: settings.notificationTimes)
+            NotificationManager.shared.scheduleNotifications(
+                times: settings.notificationTimes, tone: settings.notificationTone)
         } else {
             NotificationManager.shared.cancelAll()
         }

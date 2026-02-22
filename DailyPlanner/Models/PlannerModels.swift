@@ -54,6 +54,7 @@ struct Appointment: Identifiable, Codable {
     var location: String = ""
     var notes: String = ""
     var isCompleted: Bool = false
+    var reminderOffset: ReminderOffset = .none
 }
 
 // MARK: - Expense
@@ -101,6 +102,62 @@ struct DayRating: Codable {
     var notes: String = ""
 }
 
+// MARK: - Reminder Offset
+enum ReminderOffset: String, Codable, CaseIterable, Identifiable {
+    case none       = "None"
+    case atTime     = "At time"
+    case min5       = "5 min before"
+    case min10      = "10 min before"
+    case min15      = "15 min before"
+    case min30      = "30 min before"
+    case hour1      = "1 hour before"
+    case hour2      = "2 hours before"
+
+    var id: String { rawValue }
+
+    /// Negative offset in minutes (0 = at exact time, nil = no reminder)
+    var minutesBefore: Int? {
+        switch self {
+        case .none:   return nil
+        case .atTime: return 0
+        case .min5:   return 5
+        case .min10:  return 10
+        case .min15:  return 15
+        case .min30:  return 30
+        case .hour1:  return 60
+        case .hour2:  return 120
+        }
+    }
+}
+
+// MARK: - Notification Tone
+enum NotificationTone: String, Codable, CaseIterable, Identifiable {
+    case defaultTone = "Default"
+    case triTone     = "Tri-tone"
+    case chime       = "Chime"
+    case glass       = "Glass"
+    case beacon      = "Beacon"
+    case bulletin    = "Bulletin"
+    case bamboo      = "Bamboo"
+    case chord       = "Chord"
+
+    var id: String { rawValue }
+
+    /// UNNotificationSound filename or nil for .default
+    var soundFileName: String? {
+        switch self {
+        case .defaultTone: return nil
+        case .triTone:     return "tri-tone.caf"
+        case .chime:       return "chime.caf"
+        case .glass:       return "glass.caf"
+        case .beacon:      return "beacon.caf"
+        case .bulletin:    return "bulletin.caf"
+        case .bamboo:      return "bamboo.caf"
+        case .chord:       return "chord.caf"
+        }
+    }
+}
+
 // MARK: - Schedule Block
 struct ScheduleBlock: Identifiable, Codable {
     var id = UUID()
@@ -108,6 +165,7 @@ struct ScheduleBlock: Identifiable, Codable {
     var endTime: String = "10:00 AM"
     var activity: String
     var isCompleted: Bool = false
+    var reminderOffset: ReminderOffset = .none
 }
 
 // MARK: - App Settings
@@ -116,6 +174,7 @@ struct AppSettings: Codable {
     var autoRollover: Bool = true
     var notificationsEnabled: Bool = false
     var notificationTimes: [Date] = []
+    var notificationTone: NotificationTone = .defaultTone
 }
 
 // MARK: - Daily Entry

@@ -89,6 +89,11 @@ struct AppointmentCard: View {
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
+                if appointment.reminderOffset != .none {
+                    Label(appointment.reminderOffset.rawValue, systemImage: "bell.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                }
             }
 
             Spacer()
@@ -117,6 +122,7 @@ struct AddAppointmentSheet: View {
     @State private var location = ""
     @State private var notes = ""
     @State private var time = Date()
+    @State private var reminderOffset: ReminderOffset = .none
 
     let onSave: (Appointment) -> Void
 
@@ -135,6 +141,21 @@ struct AddAppointmentSheet: View {
                         .datePickerStyle(.wheel)
                         .frame(maxHeight: 150)
                 }
+                Section {
+                    Picker(selection: $reminderOffset) {
+                        ForEach(ReminderOffset.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
+                    } label: {
+                        Label("Reminder", systemImage: "bell.badge")
+                    }
+                } header: {
+                    Text("Reminder")
+                } footer: {
+                    if reminderOffset != .none {
+                        Text("You will receive a notification \(reminderOffset.rawValue.lowercased()) the appointment time.")
+                    }
+                }
                 Section("Notes (optional)") {
                     TextEditor(text: $notes)
                         .frame(height: 80)
@@ -147,7 +168,8 @@ struct AddAppointmentSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
                         guard !title.isEmpty else { return }
-                        onSave(Appointment(time: time, title: title, location: location, notes: notes))
+                        onSave(Appointment(time: time, title: title, location: location,
+                                           notes: notes, reminderOffset: reminderOffset))
                         dismiss()
                     }
                     .disabled(title.isEmpty)

@@ -102,6 +102,12 @@ struct ScheduleBlockRow: View {
                         .font(.system(size: 14, weight: .semibold))
                         .strikethrough(block.isCompleted)
                         .foregroundColor(block.isCompleted ? .secondary : .primary)
+
+                    if block.reminderOffset != .none {
+                        Label(block.reminderOffset.rawValue, systemImage: "bell.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                    }
                 }
                 Spacer()
 
@@ -128,6 +134,7 @@ struct AddScheduleBlockSheet: View {
     @State private var activity = ""
     @State private var startTime = "9:00 AM"
     @State private var endTime = "10:00 AM"
+    @State private var reminderOffset: ReminderOffset = .none
 
     let onSave: (ScheduleBlock) -> Void
 
@@ -159,6 +166,21 @@ struct AddScheduleBlockSheet: View {
                     .pickerStyle(.wheel)
                     .frame(height: 100)
                 }
+                Section {
+                    Picker(selection: $reminderOffset) {
+                        ForEach(ReminderOffset.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
+                    } label: {
+                        Label("Reminder", systemImage: "bell.badge")
+                    }
+                } header: {
+                    Text("Reminder")
+                } footer: {
+                    if reminderOffset != .none {
+                        Text("You will receive a notification \(reminderOffset.rawValue.lowercased()) the scheduled start time.")
+                    }
+                }
             }
             .navigationTitle("Add Schedule Block")
             .navigationBarTitleDisplayMode(.inline)
@@ -167,7 +189,8 @@ struct AddScheduleBlockSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
                         guard !activity.isEmpty else { return }
-                        onSave(ScheduleBlock(startTime: startTime, endTime: endTime, activity: activity))
+                        onSave(ScheduleBlock(startTime: startTime, endTime: endTime,
+                                             activity: activity, reminderOffset: reminderOffset))
                         dismiss()
                     }
                     .disabled(activity.isEmpty)

@@ -50,7 +50,8 @@ struct SettingsView: View {
                             .onDelete { offsets in
                                 vm.settings.notificationTimes.remove(atOffsets: offsets)
                                 NotificationManager.shared.scheduleNotifications(
-                                    times: vm.settings.notificationTimes)
+                                    times: vm.settings.notificationTimes,
+                                    tone: vm.settings.notificationTone)
                             }
                         }
 
@@ -69,11 +70,27 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundColor(.orange)
                     }
+                    if vm.settings.notificationsEnabled {
+                        Picker(selection: $vm.settings.notificationTone) {
+                            ForEach(NotificationTone.allCases) { tone in
+                                Text(tone.rawValue).tag(tone)
+                            }
+                        } label: {
+                            Label("Notification Tone", systemImage: "speaker.wave.2.fill")
+                        }
+                        .onChange(of: vm.settings.notificationTone) { _ in
+                            if !vm.settings.notificationTimes.isEmpty {
+                                NotificationManager.shared.scheduleNotifications(
+                                    times: vm.settings.notificationTimes,
+                                    tone: vm.settings.notificationTone)
+                            }
+                        }
+                    }
                 } header: {
                     Text("Reminders")
                 } footer: {
                     if vm.settings.notificationsEnabled {
-                        Text("Add up to 7 times. Each reminder carries a unique motivating message.")
+                        Text("Add up to 7 times. Each reminder carries a unique motivating message. The selected tone applies to daily reminders, schedule blocks, and appointment reminders.")
                     }
                 }
 
@@ -181,7 +198,8 @@ struct SettingsView: View {
                 permissionDenied = false
                 if !vm.settings.notificationTimes.isEmpty {
                     NotificationManager.shared.scheduleNotifications(
-                        times: vm.settings.notificationTimes)
+                        times: vm.settings.notificationTimes,
+                        tone: vm.settings.notificationTone)
                 }
             } else {
                 permissionDenied = true
