@@ -66,6 +66,15 @@ class PlannerViewModel: ObservableObject {
         selectedDate = Calendar.current.startOfDay(for: date)
     }
 
+    // MARK: - Reorder helper
+    /// Stable-sorts an array so incomplete items stay on top and completed
+    /// items sink to the bottom, preserving relative order within each group.
+    private func sortedByCompletion<T>(_ items: [T], isCompleted: (T) -> Bool) -> [T] {
+        let incomplete = items.filter { !isCompleted($0) }
+        let completed  = items.filter { isCompleted($0) }
+        return incomplete + completed
+    }
+
     // MARK: - Top Priorities
     func addTopPriority(_ title: String) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -79,6 +88,7 @@ class PlannerViewModel: ObservableObject {
         if let i = e.topPriorities.firstIndex(where: { $0.id == task.id }) {
             e.topPriorities[i].isCompleted.toggle()
         }
+        e.topPriorities = sortedByCompletion(e.topPriorities) { $0.isCompleted }
         currentEntry = e
     }
 
@@ -101,6 +111,7 @@ class PlannerViewModel: ObservableObject {
         if let i = e.toDoLists.firstIndex(where: { $0.id == task.id }) {
             e.toDoLists[i].isCompleted.toggle()
         }
+        e.toDoLists = sortedByCompletion(e.toDoLists) { $0.isCompleted }
         currentEntry = e
     }
 
@@ -123,6 +134,7 @@ class PlannerViewModel: ObservableObject {
         if let i = e.callsEmails.firstIndex(where: { $0.id == task.id }) {
             e.callsEmails[i].isCompleted.toggle()
         }
+        e.callsEmails = sortedByCompletion(e.callsEmails) { $0.isCompleted }
         currentEntry = e
     }
 
@@ -145,6 +157,7 @@ class PlannerViewModel: ObservableObject {
         if let i = e.personalTodo.firstIndex(where: { $0.id == task.id }) {
             e.personalTodo[i].isCompleted.toggle()
         }
+        e.personalTodo = sortedByCompletion(e.personalTodo) { $0.isCompleted }
         currentEntry = e
     }
 
@@ -216,6 +229,7 @@ class PlannerViewModel: ObservableObject {
         if let i = e.fitness.activities.firstIndex(where: { $0.id == activity.id }) {
             e.fitness.activities[i].isCompleted.toggle()
         }
+        e.fitness.activities = sortedByCompletion(e.fitness.activities) { $0.isCompleted }
         currentEntry = e
     }
 
@@ -258,6 +272,7 @@ class PlannerViewModel: ObservableObject {
                 NotificationManager.shared.cancelItemReminder(id: block.id.uuidString)
             }
         }
+        e.dailySchedule = sortedByCompletion(e.dailySchedule) { $0.isCompleted }
         currentEntry = e
     }
 
@@ -292,6 +307,7 @@ class PlannerViewModel: ObservableObject {
                 NotificationManager.shared.cancelItemReminder(id: appointment.id.uuidString)
             }
         }
+        e.appointments = sortedByCompletion(e.appointments) { $0.isCompleted }
         currentEntry = e
     }
 
