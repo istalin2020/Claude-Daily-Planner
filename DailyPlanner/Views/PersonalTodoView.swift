@@ -75,7 +75,7 @@ struct PersonalTodoView: View {
             }
 
             if showConfetti {
-                ConfettiOverlay(isVisible: $showConfetti)
+                PartyPopperOverlay(isVisible: $showConfetti)
                     .ignoresSafeArea()
             }
         }

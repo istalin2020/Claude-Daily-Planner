@@ -152,25 +152,25 @@ struct SectionTabButton: View {
     }
 }
 
-// MARK: - Confetti
+// MARK: - Party Popper
 
-// Shapes a confetti piece can take
-private enum ConfettiShape: CaseIterable {
-    case dot, square, diamond, ribbon
+// ── Particle shapes ───────────────────────────────────────────────────────────
+private enum PPShape: CaseIterable {
+    case dot, square, diamond, ribbon, triangle
 }
 
-// Data for one falling confetti piece
-private struct ConfettiPiece: Identifiable {
-    let id    = UUID()
-    let xFrac:    CGFloat   // 0…1 fraction of screen width (starting x)
-    let xDrift:   CGFloat   // horizontal displacement added while falling
-    let startY:   CGFloat   // starting y (negative = above screen)
-    let color:    Color
-    let shape:    ConfettiShape
-    let size:     CGFloat   // base dimension; views derive w/h from this
-    let duration: Double    // fall animation duration
-    let delay:    Double    // fall start delay
-    let spin:     Double    // total rotation in degrees over the fall
+// ── Data for a single burst particle ─────────────────────────────────────────
+private struct PPParticle: Identifiable {
+    let id          = UUID()
+    let angle:       Double    // launch angle in radians (0=right, -π/2=up)
+    let burstDist:   CGFloat   // distance from centre reached during burst
+    let fallDrop:    CGFloat   // additional downward travel during fall
+    let fallDrift:   CGFloat   // extra horizontal drift during fall
+    let color:       Color
+    let shape:       PPShape
+    let size:        CGFloat
+    let spin:        Double    // total rotation over full animation (degrees)
+    let fallDuration: Double
 
     // 10-colour rainbow palette
     static let palette: [Color] = [
@@ -186,167 +186,226 @@ private struct ConfettiPiece: Identifiable {
         Color(red: 0.95, green: 1.00, blue: 0.15),  // lime
     ]
 
-    /// Generate a fresh batch of 95 randomised pieces.
-    static func makeAll() -> [ConfettiPiece] {
-        (0..<95).map { _ in
-            ConfettiPiece(
-                xFrac:    .random(in: 0.02...0.98),
-                xDrift:   .random(in: -32...32),
-                startY:   .random(in: -140 ... -6),
-                color:    palette.randomElement()!,
-                shape:    ConfettiShape.allCases.randomElement()!,
-                size:     .random(in: 7...16),
-                duration: .random(in: 2.4...4.8),
-                delay:    .random(in: 0...1.6),
-                spin:     .random(in: 200...560) * (Bool.random() ? 1 : -1)
+    /// 90 freshly-randomised particles per burst.
+    /// Angles biased toward upper half (-210° … +30°) so most confetti
+    /// shoots upward, exactly like a real party popper.
+    static func makeAll() -> [PPParticle] {
+        (0..<90).map { _ in
+            let deg = Double.random(in: -210...30)
+            return PPParticle(
+                angle:        deg * .pi / 180,
+                burstDist:    .random(in: 65...185),
+                fallDrop:     .random(in: 480...920),
+                fallDrift:    .random(in: -45...45),
+                color:        palette.randomElement()!,
+                shape:        PPShape.allCases.randomElement()!,
+                size:         .random(in: 7...16),
+                spin:         .random(in: 200...540) * (Bool.random() ? 1 : -1),
+                fallDuration: .random(in: 1.4...2.8)
             )
         }
     }
 }
 
-// One animating confetti piece
-private struct ConfettiPieceView: View {
-    let piece: ConfettiPiece
-    let screenW: CGFloat
-    let screenH: CGFloat
+// ── Three-phase animation state ───────────────────────────────────────────────
+private enum PPPhase: Equatable { case hidden, bursting, falling }
 
-    @State private var fallen = false
+// ── One animated particle view ────────────────────────────────────────────────
+private struct PPParticleView: View {
+    let particle: PPParticle
+    let centre:   CGPoint
+    let phase:    PPPhase
+
+    // Pre-computed burst landing point
+    private var bx: CGFloat { CGFloat(cos(particle.angle)) * particle.burstDist }
+    private var by: CGFloat { CGFloat(sin(particle.angle)) * particle.burstDist }
 
     var body: some View {
-        pieceShape
-            // Rotation animates simultaneously with the fall
-            .rotationEffect(.degrees(fallen ? piece.spin : 0))
-            .position(
-                x: piece.xFrac * screenW + (fallen ? piece.xDrift : 0),
-                y: fallen ? screenH + 80 : piece.startY
-            )
-            // easeIn mimics gravity: slow at top, fast at bottom
-            .animation(
-                .easeIn(duration: piece.duration).delay(piece.delay),
-                value: fallen
-            )
-            .onAppear { fallen = true }
+        particleShape
+            .offset(currentOffset)
+            .rotationEffect(.degrees(currentRotation))
+            .opacity(currentOpacity)
+            .position(x: centre.x, y: centre.y)
+            // Whole animation driven by a single value change on `phase`
+            .animation(currentAnimation, value: phase)
+    }
+
+    private var currentOffset: CGSize {
+        switch phase {
+        case .hidden:   return .zero
+        case .bursting: return CGSize(width: bx, height: by)
+        case .falling:  return CGSize(width: bx + particle.fallDrift,
+                                      height: by + particle.fallDrop)
+        }
+    }
+
+    private var currentOpacity: Double {
+        switch phase {
+        case .hidden:   return 0
+        case .bursting: return 1
+        case .falling:  return 0
+        }
+    }
+
+    private var currentRotation: Double {
+        switch phase {
+        case .hidden:   return 0
+        case .bursting: return particle.spin * 0.3
+        case .falling:  return particle.spin
+        }
+    }
+
+    private var currentAnimation: Animation? {
+        switch phase {
+        case .hidden:   return nil
+        case .bursting: return .spring(response: 0.44, dampingFraction: 0.62)
+        case .falling:  return .easeIn(duration: particle.fallDuration)
+        }
     }
 
     @ViewBuilder
-    private var pieceShape: some View {
-        switch piece.shape {
+    private var particleShape: some View {
+        switch particle.shape {
         case .dot:
-            Circle()
-                .fill(piece.color)
-                .frame(width: piece.size, height: piece.size)
+            Circle().fill(particle.color)
+                .frame(width: particle.size, height: particle.size)
         case .square:
-            RoundedRectangle(cornerRadius: 2)
-                .fill(piece.color)
-                .frame(width: piece.size, height: piece.size * 0.8)
+            RoundedRectangle(cornerRadius: 2).fill(particle.color)
+                .frame(width: particle.size, height: particle.size * 0.8)
         case .diamond:
-            // A square rotated 45° looks like a diamond;
-            // the outer view's spin adds on top, making it tumble.
-            Rectangle()
-                .fill(piece.color)
-                .frame(width: piece.size * 0.85, height: piece.size * 0.85)
+            // Inner 45° rotation makes the diamond shape;
+            // the outer `spin` adds tumbling on top.
+            Rectangle().fill(particle.color)
+                .frame(width: particle.size * 0.85, height: particle.size * 0.85)
                 .rotationEffect(.degrees(45))
         case .ribbon:
-            Capsule()
-                .fill(piece.color)
-                .frame(width: piece.size * 2.4, height: piece.size * 0.45)
+            Capsule().fill(particle.color)
+                .frame(width: particle.size * 2.2, height: particle.size * 0.44)
+        case .triangle:
+            PPTriangle().fill(particle.color)
+                .frame(width: particle.size, height: particle.size * 0.88)
         }
     }
 }
 
-// Full-screen overlay: confetti rain + centred success banner
-struct ConfettiOverlay: View {
+// ── Triangle shape ────────────────────────────────────────────────────────────
+private struct PPTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { p in
+            p.move(to:    CGPoint(x: rect.midX, y: rect.minY))
+            p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            p.closeSubpath()
+        }
+    }
+}
+
+// ── Full-screen overlay: 🎉 flies in → bursts → colourful confetti rains ──────
+struct PartyPopperOverlay: View {
     @Binding var isVisible: Bool
 
-    // Fresh random pieces every time the overlay is created
-    @State private var pieces = ConfettiPiece.makeAll()
+    // Fresh random particles generated each time the view is created
+    @State private var particles   = PPParticle.makeAll()
+    @State private var phase:      PPPhase  = .hidden
     @State private var overlayAlpha: Double = 1
-    @State private var bannerScale: CGFloat = 0.1
-    @State private var bannerAlpha: Double  = 0
+
+    // Party-popper emoji animation state
+    // Starts at (900, 900) offset so it is far off-screen before onAppear fires
+    @State private var popperOffset:   CGSize  = CGSize(width: 900, height: 900)
+    @State private var popperRotation: Double  = 45
+    @State private var popperScale:    CGFloat = 1
+    @State private var popperOpacity:  Double  = 1
+
+    // Flash-ring state (expands outward at the moment of the "pop")
+    @State private var flashScale:   CGFloat = 0.1
+    @State private var flashOpacity: Double  = 0
 
     var body: some View {
         GeometryReader { geo in
+            let sw     = geo.size.width
+            let sh     = geo.size.height
+            let centre = CGPoint(x: sw / 2, y: sh / 2)
+
             ZStack {
-                // ── 1. Confetti rain ──────────────────────────────────
-                ForEach(pieces) { piece in
-                    ConfettiPieceView(
-                        piece: piece,
-                        screenW: geo.size.width,
-                        screenH: geo.size.height
-                    )
+                // ── 1. Burst particles (behind popper so popper stays on top) ──
+                ForEach(particles) { p in
+                    PPParticleView(particle: p, centre: centre, phase: phase)
                 }
 
-                // ── 2. Centred success banner ─────────────────────────
-                VStack(spacing: 10) {
-                    Text("🎉")
-                        .font(.system(size: 68))
-                    Text("All Done!")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    Text("100% Complete!")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.88))
-                        .padding(.top, 2)
-                }
-                .padding(.horizontal, 46)
-                .padding(.vertical, 38)
-                .background(
-                    ZStack {
-                        // Deep purple → violet gradient card
+                // ── 2. Expanding flash ring at the pop moment ──────────────────
+                Circle()
+                    .stroke(
                         LinearGradient(
-                            colors: [
-                                Color(red: 0.28, green: 0.13, blue: 0.82),
-                                Color(red: 0.78, green: 0.10, blue: 0.94),
-                            ],
+                            colors: [Color.yellow, Color.orange],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
-                        )
-                        // Subtle glassy highlight blobs
-                        Circle()
-                            .fill(.white.opacity(0.14))
-                            .frame(width: 70, height: 70)
-                            .offset(x: -55, y: -42)
-                        Circle()
-                            .fill(.white.opacity(0.09))
-                            .frame(width: 48, height: 48)
-                            .offset(x: 62, y: 34)
-                        Circle()
-                            .fill(.white.opacity(0.07))
-                            .frame(width: 90, height: 90)
-                            .offset(x: 28, y: -66)
+                        ),
+                        lineWidth: 5
+                    )
+                    .frame(width: 88, height: 88)
+                    .scaleEffect(flashScale)
+                    .opacity(flashOpacity)
+                    .position(centre)
+
+                // ── 3. The 🎉 party-popper emoji ──────────────────────────────
+                Text("🎉")
+                    .font(.system(size: 76))
+                    .scaleEffect(popperScale)
+                    .rotationEffect(.degrees(popperRotation))
+                    .opacity(popperOpacity)
+                    .offset(popperOffset)     // relative to centre below
+                    .position(centre)
+            }
+            .onAppear {
+                // ── Phase 0 → 1: reposition off-screen (bottom-right corner) ──
+                // Using sw/sh captured here so the start point is just outside
+                // the visible area regardless of device size.
+                popperOffset = CGSize(width: sw * 0.5 + 70, height: sh * 0.5 + 70)
+
+                // ── Phase 1: spring-fly to centre ──────────────────────────────
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                    withAnimation(.spring(response: 0.56, dampingFraction: 0.68)) {
+                        popperOffset   = .zero
+                        popperRotation = -22   // tilt: opening faces upper-right
                     }
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 30))
-                .shadow(color: .black.opacity(0.38), radius: 26, x: 0, y: 14)
-                .scaleEffect(bannerScale)
-                .opacity(bannerAlpha)
+                }
+
+                // ── Phase 2 (t≈0.70s): pop! scale punch + flash ring ───────────
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.70) {
+                    withAnimation(.easeOut(duration: 0.14)) { popperScale = 1.55 }
+                    flashOpacity = 0.95
+                    withAnimation(.easeOut(duration: 0.60)) {
+                        flashScale   = 3.4
+                        flashOpacity = 0
+                    }
+                }
+                // Popper shrinks to nothing right after the punch peak
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.84) {
+                    withAnimation(.easeIn(duration: 0.20)) {
+                        popperScale   = 0
+                        popperOpacity = 0
+                    }
+                }
+
+                // ── Phase 3 (t≈0.73s): confetti burst outward ─────────────────
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.73) {
+                    phase = .bursting
+                }
+                // ── Phase 4 (t≈1.22s): confetti falls with gravity ────────────
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.22) {
+                    phase = .falling
+                }
+
+                // ── Fade and dismiss ───────────────────────────────────────────
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                    withAnimation(.easeOut(duration: 1.0)) { overlayAlpha = 0 }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4.6) {
+                    isVisible = false
+                }
             }
         }
-        .allowsHitTesting(false)   // taps pass through to the app underneath
+        .allowsHitTesting(false)   // taps pass straight through to the app
         .opacity(overlayAlpha)
-        .onAppear {
-            // Spring-pop the banner in
-            withAnimation(.spring(response: 0.48, dampingFraction: 0.66)) {
-                bannerScale = 1.0
-                bannerAlpha = 1.0
-            }
-            // Fade banner out after 2.4 s
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
-                withAnimation(.easeOut(duration: 0.65)) {
-                    bannerAlpha = 0
-                    bannerScale = 1.18
-                }
-            }
-            // Fade the whole overlay out
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.8) {
-                withAnimation(.easeOut(duration: 1.0)) {
-                    overlayAlpha = 0
-                }
-            }
-            // Remove from the hierarchy
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4.9) {
-                isVisible = false
-            }
-        }
     }
 }

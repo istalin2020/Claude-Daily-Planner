@@ -4,11 +4,13 @@ struct RateYourDayView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var rating: DayRating = DayRating()
     @State private var notesText = ""
+    @State private var showPopper = false
 
     var entry: DailyEntry { vm.currentEntry }
 
     var body: some View {
-        ScrollView {
+        ZStack {
+          ScrollView {
             VStack(spacing: 0) {
                 SectionHeader(section: .rateYourDay,
                               subtitle: "Reflect on your day",
@@ -113,9 +115,19 @@ struct RateYourDayView: View {
                 Spacer(minLength: 40)
             }
         }
-        .onAppear {
-            rating = entry.rating
-            notesText = entry.rating.notes
+            .onAppear {
+                rating    = entry.rating
+                notesText = entry.rating.notes
+            }
+
+            if showPopper {
+                PartyPopperOverlay(isVisible: $showPopper)
+                    .ignoresSafeArea()
+            }
+        }
+        // Fire when the averaged score reaches 5 (all ratings Excellent / 5 ★)
+        .onChange(of: overallScore) { newVal in
+            if newVal == 5 { showPopper = true }
         }
     }
 

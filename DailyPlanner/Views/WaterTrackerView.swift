@@ -3,12 +3,14 @@ import SwiftUI
 struct WaterTrackerView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showGoalSheet = false
+    @State private var showPopper    = false
 
     var entry: DailyEntry { vm.currentEntry }
     var percent: Double { vm.waterPercent }
 
     var body: some View {
-        ScrollView {
+        ZStack {
+          ScrollView {
             VStack(spacing: 0) {
                 SectionHeader(section: .waterTracker,
                               subtitle: "Stay hydrated throughout the day",
@@ -101,9 +103,20 @@ struct WaterTrackerView: View {
                 Spacer(minLength: 40)
             }
         }
-        .sheet(isPresented: $showGoalSheet) {
-            WaterGoalSheet(currentGoal: entry.waterGoal) { goal in
-                vm.setWaterGoal(goal)
+            .sheet(isPresented: $showGoalSheet) {
+                WaterGoalSheet(currentGoal: entry.waterGoal) { goal in
+                    vm.setWaterGoal(goal)
+                }
+            }
+
+            if showPopper {
+                PartyPopperOverlay(isVisible: $showPopper)
+                    .ignoresSafeArea()
+            }
+        }
+        .onChange(of: entry.waterGlasses) { newVal in
+            if newVal >= entry.waterGoal && entry.waterGoal > 0 {
+                showPopper = true
             }
         }
     }
