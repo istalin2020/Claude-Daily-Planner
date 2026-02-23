@@ -3,40 +3,28 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showSettings = false
-    @State private var showConfetti = false
 
     var body: some View {
-        ZStack {
-            VStack(spacing: 0) {
-                // App Header
-                AppHeaderView(showSettings: $showSettings)
+        VStack(spacing: 0) {
+            // App Header
+            AppHeaderView(showSettings: $showSettings)
 
-                // Date Scroller
-                DateScrollerView()
+            // Date Scroller
+            DateScrollerView()
 
-                // Section Tab Bar
-                SectionTabBarView()
+            // Section Tab Bar
+            SectionTabBarView()
 
-                // Main Content
-                ZStack {
-                    currentSectionView
-                        .transition(.opacity.combined(with: .move(edge: .trailing)))
-                }
-                .animation(.easeInOut(duration: 0.25), value: vm.selectedSection)
+            // Main Content
+            ZStack {
+                currentSectionView
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
-            .background(Color(.systemGroupedBackground))
-
-            // Confetti burst when all tasks reach 100%
-            if showConfetti {
-                ConfettiOverlay(isVisible: $showConfetti)
-                    .ignoresSafeArea()
-            }
+            .animation(.easeInOut(duration: 0.25), value: vm.selectedSection)
         }
+        .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showSettings) {
             SettingsView()
-        }
-        .onChange(of: vm.completionPercent) { newVal in
-            if newVal == 100 { showConfetti = true }
         }
     }
 

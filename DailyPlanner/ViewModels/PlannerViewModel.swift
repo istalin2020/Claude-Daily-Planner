@@ -508,6 +508,29 @@ class PlannerViewModel: ObservableObject {
     // MARK: - Summary helpers
     var completionPercent: Int { Int(currentEntry.taskCompletionRate * 100) }
 
+    // Per-section completion percentages (0–100).
+    // Return 0 when the section has no tasks so confetti never fires on empty lists.
+    var topPrioritiesCompletionPercent: Int {
+        let t = currentEntry.topPriorities
+        guard !t.isEmpty else { return 0 }
+        return Int(Double(t.filter(\.isCompleted).count) / Double(t.count) * 100)
+    }
+    var toDoListsCompletionPercent: Int {
+        let t = currentEntry.toDoLists
+        guard !t.isEmpty else { return 0 }
+        return Int(Double(t.filter(\.isCompleted).count) / Double(t.count) * 100)
+    }
+    var callsEmailsCompletionPercent: Int {
+        let t = currentEntry.callsEmails
+        guard !t.isEmpty else { return 0 }
+        return Int(Double(t.filter(\.isCompleted).count) / Double(t.count) * 100)
+    }
+    var personalTodoCompletionPercent: Int {
+        let t = currentEntry.personalTodo
+        guard !t.isEmpty else { return 0 }
+        return Int(Double(t.filter(\.isCompleted).count) / Double(t.count) * 100)
+    }
+
     var waterPercent: Double {
         let e = currentEntry
         guard e.waterGoal > 0 else { return 0 }
