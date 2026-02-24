@@ -385,7 +385,7 @@ struct AddMealItemSheet: View {
             HStack(spacing: 6) {
                 Image(systemName: "info.circle.fill")
                     .foregroundColor(.secondary)
-                Text(""\(foodName)" isn't in our database.")
+                Text("\"\(foodName)\" isn't in our database.")
                     .font(.subheadline).foregroundColor(.secondary)
             }
 
