@@ -367,12 +367,6 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
-    func updateNotesForTomorrow(_ notes: String) {
-        var e = currentEntry
-        e.notesForTomorrow = notes
-        currentEntry = e
-    }
-
     // MARK: - Expenses
     func addExpense(_ expense: Expense) {
         var e = currentEntry

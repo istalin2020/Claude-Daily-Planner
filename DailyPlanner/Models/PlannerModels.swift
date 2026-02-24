@@ -195,7 +195,6 @@ struct DailyEntry: Codable {
     var appointments: [Appointment] = []
 
     var notes: String = ""
-    var notesForTomorrow: String = ""
 
     var expenses: [Expense] = []
     var savings: Double = 0.0
@@ -230,7 +229,6 @@ enum AppSection: String, CaseIterable, Identifiable {
     case dailySchedule = "Daily Schedule"
     case appointments = "Appointments"
     case notes = "Notes"
-    case notesForTomorrow = "Notes Tomorrow"
     case expenseTracker = "Expenses"
     case rateYourDay = "Rate Your Day"
 
@@ -249,7 +247,6 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .dailySchedule: return "calendar.badge.clock"
         case .appointments: return "clock.fill"
         case .notes: return "note.text"
-        case .notesForTomorrow: return "moon.stars.fill"
         case .expenseTracker: return "dollarsign.circle.fill"
         case .rateYourDay: return "heart.fill"
         }
@@ -268,7 +265,6 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .dailySchedule: return Color(red: 0.4, green: 0.3, blue: 0.85)
         case .appointments: return Color(red: 0.1, green: 0.6, blue: 0.7)
         case .notes: return Color(red: 0.6, green: 0.4, blue: 0.2)
-        case .notesForTomorrow: return Color(red: 0.3, green: 0.45, blue: 0.85)
         case .expenseTracker: return Color(red: 0.1, green: 0.65, blue: 0.35)
         case .rateYourDay: return Color(red: 0.9, green: 0.3, blue: 0.5)
         }

@@ -216,19 +216,6 @@ struct OverviewView: View {
                     }
                 }
 
-                // Notes for Tomorrow
-                OverviewCard(section: .notesForTomorrow, action: { vm.selectedSection = .notesForTomorrow }) {
-                    if entry.notesForTomorrow.isEmpty {
-                        EmptyOverviewRow(text: "No notes for tomorrow")
-                    } else {
-                        Text(entry.notesForTomorrow)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(3)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-
                 // Expense Tracker Card
                 OverviewCard(section: .expenseTracker, action: { vm.selectedSection = .expenseTracker }) {
                     HStack(spacing: 20) {

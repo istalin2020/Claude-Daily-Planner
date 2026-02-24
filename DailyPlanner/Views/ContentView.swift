@@ -42,7 +42,6 @@ struct ContentView: View {
         case .dailySchedule:   DailyScheduleView()
         case .appointments:    AppointmentsView()
         case .notes:           NotesView()
-        case .notesForTomorrow: NotesForTomorrowView()
         case .expenseTracker:  ExpenseTrackerView()
         case .rateYourDay:     RateYourDayView()
         }
