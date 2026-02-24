@@ -24,7 +24,6 @@
 		AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA290000000000000000001A /* DailyScheduleView.swift */; };
 		AA2C0000000000000000001A /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B0000000000000000001A /* AppointmentsView.swift */; };
 		AA2E0000000000000000001A /* NotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2D0000000000000000001A /* NotesView.swift */; };
-		AA300000000000000000001A /* NotesForTomorrowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2F0000000000000000001A /* NotesForTomorrowView.swift */; };
 		AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA310000000000000000001A /* ExpenseTrackerView.swift */; };
 		AA340000000000000000001A /* RateYourDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA330000000000000000001A /* RateYourDayView.swift */; };
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
@@ -51,7 +50,6 @@
 		AA290000000000000000001A /* DailyScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScheduleView.swift; sourceTree = "<group>"; };
 		AA2B0000000000000000001A /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
 		AA2D0000000000000000001A /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
-		AA2F0000000000000000001A /* NotesForTomorrowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesForTomorrowView.swift; sourceTree = "<group>"; };
 		AA310000000000000000001A /* ExpenseTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTrackerView.swift; sourceTree = "<group>"; };
 		AA330000000000000000001A /* RateYourDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateYourDayView.swift; sourceTree = "<group>"; };
 		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -125,7 +123,6 @@
 				AA290000000000000000001A /* DailyScheduleView.swift */,
 				AA2B0000000000000000001A /* AppointmentsView.swift */,
 				AA2D0000000000000000001A /* NotesView.swift */,
-				AA2F0000000000000000001A /* NotesForTomorrowView.swift */,
 				AA310000000000000000001A /* ExpenseTrackerView.swift */,
 				AA330000000000000000001A /* RateYourDayView.swift */,
 				AA410000000000000000001A /* SettingsView.swift */,
@@ -237,7 +234,6 @@
 				AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */,
 				AA2C0000000000000000001A /* AppointmentsView.swift in Sources */,
 				AA2E0000000000000000001A /* NotesView.swift in Sources */,
-				AA300000000000000000001A /* NotesForTomorrowView.swift in Sources */,
 				AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */,
 				AA340000000000000000001A /* RateYourDayView.swift in Sources */,
 				AA420000000000000000001A /* SettingsView.swift in Sources */,
