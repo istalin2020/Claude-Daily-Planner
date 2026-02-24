@@ -2,8 +2,11 @@ import SwiftUI
 
 struct WaterTrackerView: View {
     @EnvironmentObject var vm: PlannerViewModel
-    @State private var showGoalSheet = false
-    @State private var showPopper    = false
+    @State private var showGoalSheet    = false
+    @State private var showPopper       = false
+    // Track previous glass count so we only fire the popper on the
+    // exact moment the user crosses from below-goal to at/above-goal.
+    @State private var prevWaterCount: Int = -1
 
     var entry: DailyEntry { vm.currentEntry }
     var percent: Double { vm.waterPercent }
@@ -114,10 +117,20 @@ struct WaterTrackerView: View {
                     .ignoresSafeArea()
             }
         }
+        .onAppear {
+            // Seed prevWaterCount so a view that appears already-complete
+            // does NOT immediately fire the popper.
+            prevWaterCount = entry.waterGlasses
+        }
         .onChange(of: entry.waterGlasses) { newVal in
-            if newVal >= entry.waterGoal && entry.waterGoal > 0 {
+            let goal = entry.waterGoal
+            // Fire only on the transition that crosses the goal threshold
+            // (e.g. 7→8 when goal is 8). Re-adding a glass after already
+            // reaching goal will not re-trigger.
+            if goal > 0 && newVal >= goal && prevWaterCount < goal {
                 showPopper = true
             }
+            prevWaterCount = newVal
         }
     }
 

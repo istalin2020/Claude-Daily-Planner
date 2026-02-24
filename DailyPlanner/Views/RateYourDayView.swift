@@ -5,6 +5,9 @@ struct RateYourDayView: View {
     @State private var rating: DayRating = DayRating()
     @State private var notesText = ""
     @State private var showPopper = false
+    // Set to true after onAppear so we don't fire the popper when restoring
+    // an existing 5-star rating from saved data.
+    @State private var isLoaded = false
 
     var entry: DailyEntry { vm.currentEntry }
 
@@ -118,6 +121,9 @@ struct RateYourDayView: View {
             .onAppear {
                 rating    = entry.rating
                 notesText = entry.rating.notes
+                // Allow a single run-loop tick for the state to settle before
+                // we begin watching for user-initiated 5-star changes.
+                DispatchQueue.main.async { isLoaded = true }
             }
 
             if showPopper {
@@ -125,9 +131,11 @@ struct RateYourDayView: View {
                     .ignoresSafeArea()
             }
         }
-        // Fire when the averaged score reaches 5 (all ratings Excellent / 5 ★)
-        .onChange(of: overallScore) { newVal in
-            if newVal == 5 { showPopper = true }
+        // Fire whenever any individual category reaches 5 stars.
+        // Using the max so that tapping 5 on a second category doesn't
+        // re-trigger (maxRating stays 5, no change event).
+        .onChange(of: maxRating) { newMax in
+            if newMax == 5 && isLoaded { showPopper = true }
         }
     }
 
@@ -137,6 +145,12 @@ struct RateYourDayView: View {
 
     private var hasRating: Bool {
         rating.productivity > 0 || rating.mood > 0 || rating.health > 0
+    }
+
+    // Highest single rating across all three categories.
+    // Watched by onChange so the popper fires as soon as the user taps any ★★★★★.
+    private var maxRating: Int {
+        max(rating.productivity, max(rating.mood, rating.health))
     }
 
     private var overallScore: Int {

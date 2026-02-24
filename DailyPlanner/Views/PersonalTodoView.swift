@@ -3,7 +3,7 @@ import SwiftUI
 struct PersonalTodoView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet = false
-    @State private var showConfetti = false
+    @State private var showPopper = false
 
     var entry: DailyEntry { vm.currentEntry }
 
@@ -74,13 +74,13 @@ struct PersonalTodoView: View {
                 }
             }
 
-            if showConfetti {
-                PartyPopperOverlay(isVisible: $showConfetti)
+            if showPopper {
+                PartyPopperOverlay(isVisible: $showPopper)
                     .ignoresSafeArea()
             }
         }
         .onChange(of: vm.personalTodoCompletionPercent) { newVal in
-            if newVal == 100 { showConfetti = true }
+            if newVal == 100 { showPopper = true }
         }
     }
 }
