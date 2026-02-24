@@ -92,6 +92,8 @@ struct TaskRowCard: View {
     /// When non-nil, tapping the task text opens the edit flow.
     /// Pass nil for read-only contexts (e.g. future dates).
     var onEdit: (() -> Void)? = nil
+    /// When non-nil, a trash button is shown and calls this on tap.
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -137,6 +139,17 @@ struct TaskRowCard: View {
             }
             .contentShape(Rectangle())   // makes the Spacer area tappable too
             .onTapGesture { onEdit?() }
+
+            // ── Delete button (outside tappable area so it doesn't trigger edit) ─
+            if let onDelete = onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.red.opacity(0.6))
+                        .padding(6)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)

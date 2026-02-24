@@ -112,7 +112,14 @@ class PlannerViewModel: ObservableObject {
     func addToDoListItem(_ title: String) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        e.toDoLists.append(PlannerTask(title: title.trimmingCharacters(in: .whitespaces)))
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
+        // Insert before the first completed fresh (non-rolled-over) task so the
+        // new item always lands below open tasks and above completed tasks.
+        if let idx = e.toDoLists.firstIndex(where: { $0.isCompleted && !$0.isRolledOver }) {
+            e.toDoLists.insert(task, at: idx)
+        } else {
+            e.toDoLists.append(task)
+        }
         currentEntry = e
     }
 
@@ -132,6 +139,12 @@ class PlannerViewModel: ObservableObject {
         if let i = e.toDoLists.firstIndex(where: { $0.id == task.id }) {
             e.toDoLists[i].title = trimmed
         }
+        currentEntry = e
+    }
+
+    func deleteToDoListItem(_ task: PlannerTask) {
+        var e = currentEntry
+        e.toDoLists.removeAll { $0.id == task.id }
         currentEntry = e
     }
 

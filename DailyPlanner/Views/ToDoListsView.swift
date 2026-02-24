@@ -39,7 +39,8 @@ struct ToDoListsView: View {
                                     task: task,
                                     color: AppSection.toDoLists.color,
                                     onToggle: { vm.toggleToDoListItem(task) },
-                                    onEdit: vm.isFuture ? nil : { editingTask = task }
+                                    onEdit: vm.isFuture ? nil : { editingTask = task },
+                                    onDelete: { vm.deleteToDoListItem(task) }
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
@@ -54,7 +55,8 @@ struct ToDoListsView: View {
                                     task: task,
                                     color: AppSection.toDoLists.color,
                                     onToggle: { vm.toggleToDoListItem(task) },
-                                    onEdit: vm.isFuture ? nil : { editingTask = task }
+                                    onEdit: vm.isFuture ? nil : { editingTask = task },
+                                    onDelete: { vm.deleteToDoListItem(task) }
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
