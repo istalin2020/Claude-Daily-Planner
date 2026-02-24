@@ -360,61 +360,98 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Rollover
-    /// Automatically rolls over incomplete tasks from yesterday when
-    /// the user has enabled the setting. No alert is shown.
+    /// Automatically rolls over incomplete tasks from any missed past days
+    /// (up to 30 days back) into today's entry. Uses task-ID deduplication so
+    /// the same task is never added twice, and works even when today's entry
+    /// already exists (e.g. user opened the app earlier today).
     func checkForRollover() {
         guard settings.autoRollover else { return }
 
-        let today     = Calendar.current.startOfDay(for: Date())
-        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
-        let yKey      = dateKey(for: yesterday)
-        let tKey      = dateKey(for: today)
+        let today = Calendar.current.startOfDay(for: Date())
+        let tKey  = dateKey(for: today)
+        var te    = entries[tKey] ?? DailyEntry(date: today)
 
-        guard let ye = entries[yKey] else { return }
-        let hasIncomplete =
-            ye.topPriorities.contains { !$0.isCompleted && !$0.isRolledOver } ||
-            ye.toDoLists.contains    { !$0.isCompleted && !$0.isRolledOver } ||
-            ye.personalTodo.contains { !$0.isCompleted && !$0.isRolledOver }
+        // Build a set of task IDs already present in today's entry so we never
+        // add the same task twice, even across multiple rollover passes.
+        var existingIDs: Set<UUID> = Set(
+            te.topPriorities.map(\.id) +
+            te.toDoLists.map(\.id) +
+            te.personalTodo.map(\.id)
+        )
 
-        if hasIncomplete && entries[tKey] == nil {
-            performRollover()
+        var updatedEntries = entries
+        var didChange = false
+
+        // Walk backwards through the last 30 days to catch any missed days.
+        for daysBack in 1...30 {
+            guard let pastDate = Calendar.current.date(
+                byAdding: .day, value: -daysBack, to: today
+            ) else { continue }
+            let pastKey = dateKey(for: pastDate)
+
+            guard var pastEntry = updatedEntries[pastKey] else { continue }
+
+            // Collect tasks that are still incomplete and not yet in today.
+            let missingPriorities = pastEntry.topPriorities.filter {
+                !$0.isCompleted && !existingIDs.contains($0.id)
+            }
+            let missingTodos = pastEntry.toDoLists.filter {
+                !$0.isCompleted && !existingIDs.contains($0.id)
+            }
+            let missingPersonal = pastEntry.personalTodo.filter {
+                !$0.isCompleted && !existingIDs.contains($0.id)
+            }
+
+            guard !missingPriorities.isEmpty || !missingTodos.isEmpty || !missingPersonal.isEmpty
+            else { continue }
+
+            // Insert rolled-over tasks at the top of today's lists.
+            for var task in missingPriorities {
+                task.isRolledOver = true
+                task.originalDate = pastDate
+                te.topPriorities.insert(task, at: 0)
+                existingIDs.insert(task.id)
+            }
+            for var task in missingTodos {
+                task.isRolledOver = true
+                task.originalDate = pastDate
+                te.toDoLists.insert(task, at: 0)
+                existingIDs.insert(task.id)
+            }
+            for var task in missingPersonal {
+                task.isRolledOver = true
+                task.originalDate = pastDate
+                te.personalTodo.insert(task, at: 0)
+                existingIDs.insert(task.id)
+            }
+
+            // Mark the source entry's tasks as rolled over so they won't be
+            // picked up again on the next app launch.
+            for i in pastEntry.topPriorities.indices where !pastEntry.topPriorities[i].isCompleted {
+                pastEntry.topPriorities[i].isRolledOver = true
+            }
+            for i in pastEntry.toDoLists.indices where !pastEntry.toDoLists[i].isCompleted {
+                pastEntry.toDoLists[i].isRolledOver = true
+            }
+            for i in pastEntry.personalTodo.indices where !pastEntry.personalTodo[i].isCompleted {
+                pastEntry.personalTodo[i].isRolledOver = true
+            }
+
+            updatedEntries[pastKey] = pastEntry
+            didChange = true
+        }
+
+        if didChange {
+            updatedEntries[tKey] = te
+            entries = updatedEntries
+            saveData()
         }
     }
 
+    /// Manual rollover trigger (e.g. from Settings). Delegates to checkForRollover
+    /// which already handles deduplication and multi-day lookback.
     func performRollover() {
-        let today     = Calendar.current.startOfDay(for: Date())
-        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
-        let yKey      = dateKey(for: yesterday)
-        let tKey      = dateKey(for: today)
-
-        guard var ye = entries[yKey] else { return }
-        var te = entries[tKey] ?? DailyEntry(date: today)
-
-        for var task in ye.topPriorities where !task.isCompleted {
-            task.isRolledOver = true; task.originalDate = yesterday
-            te.topPriorities.insert(task, at: 0)
-        }
-        for var task in ye.toDoLists where !task.isCompleted {
-            task.isRolledOver = true; task.originalDate = yesterday
-            te.toDoLists.insert(task, at: 0)
-        }
-        for var task in ye.personalTodo where !task.isCompleted {
-            task.isRolledOver = true; task.originalDate = yesterday
-            te.personalTodo.insert(task, at: 0)
-        }
-        for i in ye.topPriorities.indices where !ye.topPriorities[i].isCompleted {
-            ye.topPriorities[i].isRolledOver = true
-        }
-        for i in ye.toDoLists.indices where !ye.toDoLists[i].isCompleted {
-            ye.toDoLists[i].isRolledOver = true
-        }
-        for i in ye.personalTodo.indices where !ye.personalTodo[i].isCompleted {
-            ye.personalTodo[i].isRolledOver = true
-        }
-
-        entries[yKey] = ye
-        entries[tKey] = te
-        saveData()
+        checkForRollover()
     }
 
     // MARK: - Persistence (Documents Directory)
