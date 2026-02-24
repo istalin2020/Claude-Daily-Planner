@@ -27,8 +27,16 @@ final class NotificationManager {
 
     // MARK: - Sound helper
     private func sound(for tone: NotificationTone) -> UNNotificationSound {
+        // UNNotificationSound(named:) only finds files bundled inside the app.
+        // If the file is absent it plays NOTHING – not even the default tone.
+        // We therefore verify the resource exists first; if it doesn't we fall
+        // back to .default so the user always hears a sound.
         if let file = tone.soundFileName {
-            return UNNotificationSound(named: UNNotificationSoundName(rawValue: file))
+            let name = (file as NSString).deletingPathExtension
+            let ext  = (file as NSString).pathExtension
+            if Bundle.main.url(forResource: name, withExtension: ext) != nil {
+                return UNNotificationSound(named: UNNotificationSoundName(rawValue: file))
+            }
         }
         return .default
     }
