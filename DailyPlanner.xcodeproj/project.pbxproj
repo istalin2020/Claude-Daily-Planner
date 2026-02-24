@@ -28,6 +28,7 @@
 		AA340000000000000000001A /* RateYourDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA330000000000000000001A /* RateYourDayView.swift */; };
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
 		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
+		AA440000000000000000001A /* CalorieEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA430000000000000000001A /* CalorieEstimator.swift */; };
 		AA420000000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA410000000000000000001A /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
@@ -55,6 +56,7 @@
 		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		AA430000000000000000001A /* CalorieEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieEstimator.swift; sourceTree = "<group>"; };
 		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -95,6 +97,7 @@
 			children = (
 				AA110000000000000000001A /* PlannerModels.swift */,
 				AA3F0000000000000000001A /* NotificationManager.swift */,
+				AA430000000000000000001A /* CalorieEstimator.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -219,6 +222,7 @@
 				AA100000000000000000001A /* DailyPlannerApp.swift in Sources */,
 				AA120000000000000000001A /* PlannerModels.swift in Sources */,
 				AA400000000000000000001A /* NotificationManager.swift in Sources */,
+				AA440000000000000000001A /* CalorieEstimator.swift in Sources */,
 				AA140000000000000000001A /* PlannerViewModel.swift in Sources */,
 				AA160000000000000000001A /* ContentView.swift in Sources */,
 				AA180000000000000000001A /* DateScrollerView.swift in Sources */,

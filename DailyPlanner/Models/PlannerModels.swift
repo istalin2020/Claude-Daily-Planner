@@ -66,13 +66,26 @@ struct Expense: Identifiable, Codable {
     var isDeposit: Bool = false
 }
 
+// MARK: - Meal Item
+struct MealItem: Identifiable, Codable {
+    var id      = UUID()
+    var name    : String
+    var calories: Int          // 0 = user didn't enter / not estimable
+    var portion : String = ""  // human-readable portion description
+}
+
 // MARK: - Meal Entry
 struct MealEntry: Codable {
-    var breakfastItems: [String] = []
-    var lunchItems: [String] = []
-    var dinnerItems: [String] = []
-    var snackItems: [String] = []
-    var totalCalories: Int = 0
+    var breakfastItems: [MealItem] = []
+    var lunchItems    : [MealItem] = []
+    var dinnerItems   : [MealItem] = []
+    var snackItems    : [MealItem] = []
+
+    /// Auto-computed from item calories; no longer stored.
+    var totalCalories: Int {
+        (breakfastItems + lunchItems + dinnerItems + snackItems)
+            .reduce(0) { $0 + $1.calories }
+    }
 }
 
 // MARK: - Fitness Activity

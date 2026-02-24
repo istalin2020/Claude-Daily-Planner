@@ -240,33 +240,25 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Meals
-    func addMealItem(_ item: String, to meal: String) {
-        guard !item.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+    func addMealItem(_ item: MealItem, to meal: String) {
         var e = currentEntry
-        let trimmed = item.trimmingCharacters(in: .whitespaces)
         switch meal {
-        case "breakfast": e.meals.breakfastItems.append(trimmed)
-        case "lunch":     e.meals.lunchItems.append(trimmed)
-        case "dinner":    e.meals.dinnerItems.append(trimmed)
-        default:          e.meals.snackItems.append(trimmed)
+        case "breakfast": e.meals.breakfastItems.append(item)
+        case "lunch":     e.meals.lunchItems.append(item)
+        case "dinner":    e.meals.dinnerItems.append(item)
+        default:          e.meals.snackItems.append(item)
         }
         currentEntry = e
     }
 
-    func removeMealItem(_ item: String, from meal: String) {
+    func removeMealItem(_ item: MealItem, from meal: String) {
         var e = currentEntry
         switch meal {
-        case "breakfast": e.meals.breakfastItems.removeAll { $0 == item }
-        case "lunch":     e.meals.lunchItems.removeAll { $0 == item }
-        case "dinner":    e.meals.dinnerItems.removeAll { $0 == item }
-        default:          e.meals.snackItems.removeAll { $0 == item }
+        case "breakfast": e.meals.breakfastItems.removeAll { $0.id == item.id }
+        case "lunch":     e.meals.lunchItems.removeAll { $0.id == item.id }
+        case "dinner":    e.meals.dinnerItems.removeAll { $0.id == item.id }
+        default:          e.meals.snackItems.removeAll { $0.id == item.id }
         }
-        currentEntry = e
-    }
-
-    func updateCalories(_ calories: Int) {
-        var e = currentEntry
-        e.meals.totalCalories = calories
         currentEntry = e
     }
 
