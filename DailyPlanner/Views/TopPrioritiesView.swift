@@ -3,7 +3,7 @@ import SwiftUI
 struct TopPrioritiesView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet = false
-    @State private var newTaskText = ""
+    @State private var editingTask: PlannerTask? = nil
     @State private var showPopper = false
 
     var entry: DailyEntry { vm.currentEntry }
@@ -35,9 +35,12 @@ struct TopPrioritiesView: View {
                         if !rolledOver.isEmpty {
                             SectionGroupLabel(title: "Rolled Over", color: .orange)
                             ForEach(rolledOver) { task in
-                                TaskRowCard(task: task, color: AppSection.topPriorities.color) {
-                                    vm.toggleTopPriority(task)
-                                }
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.topPriorities.color,
+                                    onToggle: { vm.toggleTopPriority(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task }
+                                )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
                         }
@@ -47,13 +50,13 @@ struct TopPrioritiesView: View {
                                 SectionGroupLabel(title: "Today's Priorities", color: AppSection.topPriorities.color)
                             }
                             ForEach(fresh) { task in
-                                TaskRowCard(task: task, color: AppSection.topPriorities.color) {
-                                    vm.toggleTopPriority(task)
-                                }
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.topPriorities.color,
+                                    onToggle: { vm.toggleTopPriority(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task }
+                                )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
-                            }
-                            .onDelete { offsets in
-                                // We need to map back to original indices
                             }
                         }
                     }
@@ -77,6 +80,15 @@ struct TopPrioritiesView: View {
                     icon: AppSection.topPriorities.icon
                 ) { text in
                     vm.addTopPriority(text)
+                }
+            }
+            .sheet(item: $editingTask) { task in
+                EditTaskSheet(
+                    task: task,
+                    accentColor: AppSection.topPriorities.color,
+                    icon: AppSection.topPriorities.icon
+                ) { newTitle in
+                    vm.updateTopPriority(task, newTitle: newTitle)
                 }
             }
 

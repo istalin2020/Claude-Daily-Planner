@@ -92,6 +92,16 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    func updateTopPriority(_ task: PlannerTask, newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        var e = currentEntry
+        if let i = e.topPriorities.firstIndex(where: { $0.id == task.id }) {
+            e.topPriorities[i].title = trimmed
+        }
+        currentEntry = e
+    }
+
     func deleteTopPriority(at offsets: IndexSet) {
         var e = currentEntry
         e.topPriorities.remove(atOffsets: offsets)
@@ -112,6 +122,16 @@ class PlannerViewModel: ObservableObject {
             e.toDoLists[i].isCompleted.toggle()
         }
         e.toDoLists = sortedByCompletion(e.toDoLists) { $0.isCompleted }
+        currentEntry = e
+    }
+
+    func updateToDoListItem(_ task: PlannerTask, newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        var e = currentEntry
+        if let i = e.toDoLists.firstIndex(where: { $0.id == task.id }) {
+            e.toDoLists[i].title = trimmed
+        }
         currentEntry = e
     }
 
@@ -138,6 +158,16 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    func updateCallEmail(_ task: PlannerTask, newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        var e = currentEntry
+        if let i = e.callsEmails.firstIndex(where: { $0.id == task.id }) {
+            e.callsEmails[i].title = trimmed
+        }
+        currentEntry = e
+    }
+
     func deleteCallEmail(at offsets: IndexSet) {
         var e = currentEntry
         e.callsEmails.remove(atOffsets: offsets)
@@ -158,6 +188,16 @@ class PlannerViewModel: ObservableObject {
             e.personalTodo[i].isCompleted.toggle()
         }
         e.personalTodo = sortedByCompletion(e.personalTodo) { $0.isCompleted }
+        currentEntry = e
+    }
+
+    func updatePersonalTodo(_ task: PlannerTask, newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        var e = currentEntry
+        if let i = e.personalTodo.firstIndex(where: { $0.id == task.id }) {
+            e.personalTodo[i].title = trimmed
+        }
         currentEntry = e
     }
 

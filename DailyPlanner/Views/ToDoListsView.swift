@@ -3,6 +3,7 @@ import SwiftUI
 struct ToDoListsView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet = false
+    @State private var editingTask: PlannerTask? = nil
     @State private var showPopper = false
 
     var entry: DailyEntry { vm.currentEntry }
@@ -34,9 +35,12 @@ struct ToDoListsView: View {
                         if !rolledOver.isEmpty {
                             SectionGroupLabel(title: "Rolled Over", color: .orange)
                             ForEach(rolledOver) { task in
-                                TaskRowCard(task: task, color: AppSection.toDoLists.color) {
-                                    vm.toggleToDoListItem(task)
-                                }
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.toDoLists.color,
+                                    onToggle: { vm.toggleToDoListItem(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task }
+                                )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
                         }
@@ -46,9 +50,12 @@ struct ToDoListsView: View {
                                 SectionGroupLabel(title: "Today's To-Dos", color: AppSection.toDoLists.color)
                             }
                             ForEach(fresh) { task in
-                                TaskRowCard(task: task, color: AppSection.toDoLists.color) {
-                                    vm.toggleToDoListItem(task)
-                                }
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.toDoLists.color,
+                                    onToggle: { vm.toggleToDoListItem(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task }
+                                )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
                         }
@@ -73,6 +80,15 @@ struct ToDoListsView: View {
                     icon: AppSection.toDoLists.icon
                 ) { text in
                     vm.addToDoListItem(text)
+                }
+            }
+            .sheet(item: $editingTask) { task in
+                EditTaskSheet(
+                    task: task,
+                    accentColor: AppSection.toDoLists.color,
+                    icon: AppSection.toDoLists.icon
+                ) { newTitle in
+                    vm.updateToDoListItem(task, newTitle: newTitle)
                 }
             }
 

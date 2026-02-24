@@ -89,9 +89,13 @@ struct TaskRowCard: View {
     let task: PlannerTask
     let color: Color
     let onToggle: () -> Void
+    /// When non-nil, tapping the task text opens the edit flow.
+    /// Pass nil for read-only contexts (e.g. future dates).
+    var onEdit: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
+            // ── Checkbox: toggles completion ──────────────────────────────────
             Button(action: onToggle) {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 24))
@@ -100,29 +104,39 @@ struct TaskRowCard: View {
             }
             .buttonStyle(PlainButtonStyle())
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(task.title)
-                    .font(.system(size: 14, weight: .medium))
-                    .strikethrough(task.isCompleted, color: .secondary)
-                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+            // ── Tappable content area: title + rollover badge + trailing icon ─
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(task.title)
+                        .font(.system(size: 14, weight: .medium))
+                        .strikethrough(task.isCompleted, color: .secondary)
+                        .foregroundColor(task.isCompleted ? .secondary : .primary)
 
-                if task.isRolledOver, let originalDate = task.originalDate {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.uturn.right").font(.system(size: 9))
-                        Text("Rolled from \(shortDate(originalDate))")
-                            .font(.system(size: 10))
+                    if task.isRolledOver, let originalDate = task.originalDate {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.uturn.right").font(.system(size: 9))
+                            Text("Rolled from \(shortDate(originalDate))")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(.orange)
                     }
-                    .foregroundColor(.orange)
+                }
+
+                Spacer()
+
+                // Trailing indicator: checkmark when done, pencil when editable
+                if task.isCompleted {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(color.opacity(0.7))
+                } else if onEdit != nil {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.4))
                 }
             }
-
-            Spacer()
-
-            if task.isCompleted {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(color.opacity(0.7))
-            }
+            .contentShape(Rectangle())   // makes the Spacer area tappable too
+            .onTapGesture { onEdit?() }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -138,6 +152,84 @@ struct TaskRowCard: View {
         let fmt = DateFormatter()
         fmt.dateFormat = "MMM d"
         return fmt.string(from: date)
+    }
+}
+
+// MARK: - Edit Task Sheet
+struct EditTaskSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var text: String
+    @FocusState private var focused: Bool
+
+    let task: PlannerTask
+    let accentColor: Color
+    let icon: String
+    let onSave: (String) -> Void
+
+    init(task: PlannerTask, accentColor: Color, icon: String, onSave: @escaping (String) -> Void) {
+        self._text = State(initialValue: task.title)
+        self.task = task
+        self.accentColor = accentColor
+        self.icon = icon
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundColor(accentColor)
+                    Text("Edit Task")
+                        .font(.title3).fontWeight(.bold)
+                }
+                .padding(.top, 20)
+
+                // Text field — pre-filled with current title
+                TextField("Task title", text: $text, axis: .vertical)
+                    .focused($focused)
+                    .font(.body)
+                    .padding(14)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(14)
+                    .lineLimit(3...6)
+                    .padding(.horizontal, 20)
+
+                // Save button
+                Button(action: {
+                    let trimmed = text.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty else { return }
+                    onSave(trimmed)
+                    dismiss()
+                }) {
+                    Text("Save Changes")
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            text.trimmingCharacters(in: .whitespaces).isEmpty
+                                ? Color.secondary.opacity(0.3)
+                                : accentColor
+                        )
+                        .foregroundColor(.white)
+                        .cornerRadius(14)
+                }
+                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                .padding(.horizontal, 20)
+
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .onAppear { focused = true }
+        }
+        .presentationDetents([.medium])
     }
 }
 

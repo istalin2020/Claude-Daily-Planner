@@ -3,6 +3,7 @@ import SwiftUI
 struct PersonalTodoView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet = false
+    @State private var editingTask: PlannerTask? = nil
     @State private var showPopper = false
 
     var entry: DailyEntry { vm.currentEntry }
@@ -33,9 +34,12 @@ struct PersonalTodoView: View {
                         if !rolledOver.isEmpty {
                             SectionGroupLabel(title: "Rolled Over", color: .orange)
                             ForEach(rolledOver) { task in
-                                TaskRowCard(task: task, color: AppSection.personalTodo.color) {
-                                    vm.togglePersonalTodo(task)
-                                }
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.personalTodo.color,
+                                    onToggle: { vm.togglePersonalTodo(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task }
+                                )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
                         }
@@ -45,9 +49,12 @@ struct PersonalTodoView: View {
                                 SectionGroupLabel(title: "Today", color: AppSection.personalTodo.color)
                             }
                             ForEach(fresh) { task in
-                                TaskRowCard(task: task, color: AppSection.personalTodo.color) {
-                                    vm.togglePersonalTodo(task)
-                                }
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.personalTodo.color,
+                                    onToggle: { vm.togglePersonalTodo(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task }
+                                )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
                         }
@@ -71,6 +78,15 @@ struct PersonalTodoView: View {
                     icon: AppSection.personalTodo.icon
                 ) { text in
                     vm.addPersonalTodo(text)
+                }
+            }
+            .sheet(item: $editingTask) { task in
+                EditTaskSheet(
+                    task: task,
+                    accentColor: AppSection.personalTodo.color,
+                    icon: AppSection.personalTodo.icon
+                ) { newTitle in
+                    vm.updatePersonalTodo(task, newTitle: newTitle)
                 }
             }
 

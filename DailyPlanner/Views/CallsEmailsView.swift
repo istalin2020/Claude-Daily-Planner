@@ -3,6 +3,7 @@ import SwiftUI
 struct CallsEmailsView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet = false
+    @State private var editingTask: PlannerTask? = nil
     @State private var showPopper = false
 
     var entry: DailyEntry { vm.currentEntry }
@@ -28,9 +29,12 @@ struct CallsEmailsView: View {
                                          message: "Add calls and emails you need to make today")
                     } else {
                         ForEach(entry.callsEmails) { task in
-                            TaskRowCard(task: task, color: AppSection.callsEmails.color) {
-                                vm.toggleCallEmail(task)
-                            }
+                            TaskRowCard(
+                                task: task,
+                                color: AppSection.callsEmails.color,
+                                onToggle: { vm.toggleCallEmail(task) },
+                                onEdit: vm.isFuture ? nil : { editingTask = task }
+                            )
                             .padding(.horizontal, 16).padding(.vertical, 3)
                         }
                     }
@@ -53,6 +57,15 @@ struct CallsEmailsView: View {
                     icon: AppSection.callsEmails.icon
                 ) { text in
                     vm.addCallEmail(text)
+                }
+            }
+            .sheet(item: $editingTask) { task in
+                EditTaskSheet(
+                    task: task,
+                    accentColor: AppSection.callsEmails.color,
+                    icon: AppSection.callsEmails.icon
+                ) { newTitle in
+                    vm.updateCallEmail(task, newTitle: newTitle)
                 }
             }
 
