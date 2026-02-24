@@ -197,30 +197,69 @@ struct AddActivitySheet: View {
 // MARK: - Steps Input Sheet
 struct StepsInputSheet: View {
     @Environment(\.dismiss) var dismiss
+    @State private var stepsText: String
     @State private var steps: Int
     let onSave: (Int) -> Void
 
+    private let presets = [2000, 5000, 8000, 10000]
+
     init(currentSteps: Int, onSave: @escaping (Int) -> Void) {
-        self._steps = State(initialValue: currentSteps)
+        let initial = currentSteps > 0 ? currentSteps : 0
+        self._steps = State(initialValue: initial)
+        self._stepsText = State(initialValue: initial > 0 ? "\(initial)" : "")
         self.onSave = onSave
     }
 
     var body: some View {
         NavigationView {
             Form {
-                Section("Steps Today") {
-                    Stepper("\(steps) steps", value: $steps, in: 0...50000, step: 100)
+                Section {
                     HStack {
-                        ForEach([2000, 5000, 8000, 10000], id: \.self) { s in
-                            Button("\(s)") { steps = s }
-                                .font(.caption)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 6)
-                                .background(steps == s ? Color.blue : Color(.secondarySystemBackground))
-                                .foregroundColor(steps == s ? .white : .primary)
-                                .cornerRadius(8)
+                        Image(systemName: "figure.walk")
+                            .foregroundColor(.blue)
+                        TextField("Type step count", text: $stepsText)
+                            .keyboardType(.numberPad)
+                            .onChange(of: stepsText) { newValue in
+                                let digits = newValue.filter(\.isNumber)
+                                if digits != newValue { stepsText = digits }
+                                steps = Int(digits) ?? 0
+                            }
+                        if !stepsText.isEmpty {
+                            Button {
+                                stepsText = ""
+                                steps = 0
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
+                } header: {
+                    Text("Steps Today")
+                }
+
+                Section {
+                    HStack(spacing: 8) {
+                        ForEach(presets, id: \.self) { preset in
+                            Button {
+                                steps = preset
+                                stepsText = "\(preset)"
+                            } label: {
+                                Text("\(preset)")
+                                    .font(.subheadline.bold())
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(steps == preset ? Color.blue : Color(.secondarySystemBackground))
+                                    .foregroundColor(steps == preset ? .white : .primary)
+                                    .cornerRadius(10)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Quick Select")
                 }
             }
             .navigationTitle("Daily Steps")
