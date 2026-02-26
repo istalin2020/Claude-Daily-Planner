@@ -46,6 +46,9 @@ struct OverviewView: View {
                     QuickStatCard(icon: "star.fill", label: "Priorities",
                                   value: "\(entry.topPriorities.filter(\.isCompleted).count)/\(entry.topPriorities.count)",
                                   color: AppSection.topPriorities.color)
+                    QuickStatCard(icon: "list.bullet.clipboard.fill", label: "To-Do",
+                                  value: "\(entry.toDoLists.filter(\.isCompleted).count)/\(entry.toDoLists.count)",
+                                  color: AppSection.toDoLists.color)
                     QuickStatCard(icon: "drop.fill", label: "Water",
                                   value: "\(entry.waterGlasses)/\(entry.waterGoal)",
                                   color: AppSection.waterTracker.color)
