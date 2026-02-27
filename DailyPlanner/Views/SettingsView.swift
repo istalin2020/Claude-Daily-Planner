@@ -22,7 +22,7 @@ struct SettingsView: View {
                         Label("Enable Daily Reminders", systemImage: "bell.badge.fill")
                     }
                     .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
-                    .onChange(of: vm.settings.notificationsEnabled) { enabled in
+                    .onChange(of: vm.settings.notificationsEnabled) { _, enabled in
                         if enabled {
                             requestNotificationPermission()
                         } else {
@@ -78,12 +78,14 @@ struct SettingsView: View {
                         } label: {
                             Label("Notification Tone", systemImage: "speaker.wave.2.fill")
                         }
-                        .onChange(of: vm.settings.notificationTone) { _ in
+                        .onChange(of: vm.settings.notificationTone) { _, newTone in
                             if !vm.settings.notificationTimes.isEmpty {
                                 NotificationManager.shared.scheduleNotifications(
                                     times: vm.settings.notificationTimes,
-                                    tone: vm.settings.notificationTone)
+                                    tone: newTone)
                             }
+                            // Play a 1-second preview so the user hears the chosen tone
+                            NotificationManager.shared.playPreview(tone: newTone)
                         }
                     }
                 } header: {

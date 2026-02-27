@@ -2,9 +2,29 @@ import Foundation
 import UserNotifications
 
 // MARK: - Notification Manager
-final class NotificationManager {
+final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
-    private init() {}
+
+    private override init() {
+        super.init()
+        // Register as delegate so preview notifications can play sound
+        // while the app is in the foreground.
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    // Allow foreground presentation so the tone-preview notification
+    // plays its sound even when the app is open.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        if notification.request.identifier == "dp_tone_preview" {
+            completionHandler([.sound])          // sound only – no banner for a preview
+        } else {
+            completionHandler([.banner, .sound, .badge])
+        }
+    }
 
     // Suggested reminder messages that rotate through scheduled times
     static let reminderMessages: [String] = [
@@ -27,18 +47,33 @@ final class NotificationManager {
 
     // MARK: - Sound helper
     private func sound(for tone: NotificationTone) -> UNNotificationSound {
-        // UNNotificationSound(named:) only finds files bundled inside the app.
-        // If the file is absent it plays NOTHING – not even the default tone.
-        // We therefore verify the resource exists first; if it doesn't we fall
-        // back to .default so the user always hears a sound.
-        if let file = tone.soundFileName {
-            let name = (file as NSString).deletingPathExtension
-            let ext  = (file as NSString).pathExtension
-            if Bundle.main.url(forResource: name, withExtension: ext) != nil {
-                return UNNotificationSound(named: UNNotificationSoundName(rawValue: file))
-            }
-        }
-        return .default
+        // Named tones use the iOS system alert-sound names (tri-tone.caf, chime.caf,
+        // etc.).  Pass the name straight to UNNotificationSound – iOS resolves these
+        // from its own sound library.  A bundle-presence check is NOT needed here and
+        // was the original bug: it always fell through to .default because the files
+        // are system sounds, not app-bundle resources.
+        guard let file = tone.soundFileName else { return .default }
+        return UNNotificationSound(named: UNNotificationSoundName(rawValue: file))
+    }
+
+    // MARK: - Tone preview
+    /// Fires a one-shot local notification in 1 second so the user hears the
+    /// exact notification sound that will be used for real reminders.
+    func playPreview(tone: NotificationTone) {
+        let content = UNMutableNotificationContent()
+        content.title = "Tone Preview"
+        content.body  = tone.rawValue
+        content.sound = sound(for: tone)
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "dp_tone_preview",
+            content: content,
+            trigger: trigger
+        )
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: ["dp_tone_preview"])
+        center.add(request, withCompletionHandler: nil)
     }
 
     // MARK: - Daily Reminders
