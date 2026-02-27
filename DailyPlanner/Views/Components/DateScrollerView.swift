@@ -81,10 +81,10 @@ struct DateScrollerView: View {
                 .onAppear {
                     proxy.scrollTo(vm.selectedDate, anchor: .center)
                 }
-                .onChange(of: vm.selectedDate) { newDate in
+                .onChange(of: vm.selectedDate) { _, newDate in
                     withAnimation { proxy.scrollTo(newDate, anchor: .center) }
                 }
-                .onChange(of: monthOffset) { _ in
+                .onChange(of: monthOffset) { _, _ in
                     let today = cal.startOfDay(for: Date())
                     if cal.isDate(today, equalTo: currentMonthDate, toGranularity: .month),
                        let todayCell = datesInMonth.first(where: { cal.isDateInToday($0) }) {

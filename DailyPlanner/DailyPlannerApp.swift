@@ -14,7 +14,7 @@ struct DailyPlannerApp: App {
         // Guarantee a synchronous flush whenever the app leaves the foreground.
         // This catches the window between a Xcode "Run" kill and the next launch,
         // as well as any normal home-button / app-switcher backgrounding.
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             if phase == .background || phase == .inactive {
                 viewModel.saveDataNow()
                 viewModel.saveSettings()

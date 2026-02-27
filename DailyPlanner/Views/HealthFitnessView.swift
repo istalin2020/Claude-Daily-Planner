@@ -219,7 +219,7 @@ struct StepsInputSheet: View {
                             .foregroundColor(.blue)
                         TextField("Type step count", text: $stepsText)
                             .keyboardType(.numberPad)
-                            .onChange(of: stepsText) { newValue in
+                            .onChange(of: stepsText) { _, newValue in
                                 let digits = newValue.filter(\.isNumber)
                                 if digits != newValue { stepsText = digits }
                                 steps = Int(digits) ?? 0

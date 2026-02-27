@@ -398,7 +398,7 @@ struct AddMealItemSheet: View {
                     .padding(12)
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
-                    .onChange(of: manualCalText) { v in
+                    .onChange(of: manualCalText) { _, v in
                         manualCalText = v.filter(\.isNumber)
                     }
                 Text("cal")

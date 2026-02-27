@@ -236,7 +236,7 @@ struct EditTaskSheet: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItemGroup(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
             }
@@ -394,7 +394,7 @@ struct AddItemSheet: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItemGroup(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
             }
@@ -446,7 +446,7 @@ struct NotesCard: View {
                     .padding(4)
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
-                    .onChange(of: text) { onSave($0) }
+                    .onChange(of: text) { _, newText in onSave(newText) }
             } else if text.isEmpty {
                 Text(placeholder)
                     .font(.caption)
