@@ -1,3 +1,4 @@
+import AudioToolbox
 import Foundation
 import UserNotifications
 
@@ -7,23 +8,18 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private override init() {
         super.init()
-        // Register as delegate so preview notifications can play sound
-        // while the app is in the foreground.
+        // Register as delegate so reminders can show banner + sound
+        // even when the app is already in the foreground.
         UNUserNotificationCenter.current().delegate = self
     }
 
-    // Allow foreground presentation so the tone-preview notification
-    // plays its sound even when the app is open.
+    // Show banner and play sound for reminders that arrive while the app is open.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        if notification.request.identifier == "dp_tone_preview" {
-            completionHandler([.sound])          // sound only – no banner for a preview
-        } else {
-            completionHandler([.banner, .sound, .badge])
-        }
+        completionHandler([.banner, .sound, .badge])
     }
 
     // Suggested reminder messages that rotate through scheduled times
@@ -45,35 +41,57 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             }
     }
 
-    // MARK: - Sound helper
+    // MARK: - Sound helper (for scheduled notifications)
     private func sound(for tone: NotificationTone) -> UNNotificationSound {
-        // Named tones use the iOS system alert-sound names (tri-tone.caf, chime.caf,
-        // etc.).  Pass the name straight to UNNotificationSound – iOS resolves these
-        // from its own sound library.  A bundle-presence check is NOT needed here and
-        // was the original bug: it always fell through to .default because the files
-        // are system sounds, not app-bundle resources.
         guard let file = tone.soundFileName else { return .default }
         return UNNotificationSound(named: UNNotificationSoundName(rawValue: file))
     }
 
-    // MARK: - Tone preview
-    /// Fires a one-shot local notification in 1 second so the user hears the
-    /// exact notification sound that will be used for real reminders.
+    // MARK: - Tone preview (immediate in-app playback)
+    /// Plays the chosen tone immediately using AudioToolbox so the user hears
+    /// a truly distinct sound for every option in the picker.
+    ///
+    /// Strategy:
+    ///  1. Try AudioServicesCreateSystemSoundID from the iOS system sound
+    ///     directories — AudioToolbox has read access to these paths even
+    ///     inside the sandbox, so the exact system sound file is used.
+    ///  2. If that fails (file absent / iOS version difference), fall back to
+    ///     a hand-picked SystemSoundID that is audibly distinct per tone.
     func playPreview(tone: NotificationTone) {
-        let content = UNMutableNotificationContent()
-        content.title = "Tone Preview"
-        content.body  = tone.rawValue
-        content.sound = sound(for: tone)
+        if let fileName = tone.soundFileName {
+            // iOS stores its alert/notification sounds in these directories.
+            let dirs = [
+                "/System/Library/Audio/UISounds/",
+                "/System/Library/Audio/UISounds/Modern/",
+                "/System/Library/Audio/UISounds/New/"
+            ]
+            for dir in dirs {
+                let url = URL(fileURLWithPath: dir + fileName) as CFURL
+                var sid: SystemSoundID = 0
+                if AudioServicesCreateSystemSoundID(url, &sid) == kAudioServicesNoError {
+                    AudioServicesPlaySystemSound(sid)
+                    AudioServicesDisposeSystemSoundID(sid)
+                    return
+                }
+            }
+        }
+        // Fallback: distinct, well-known iOS system alert-sound IDs.
+        AudioServicesPlaySystemSound(Self.fallbackSoundID(for: tone))
+    }
 
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-        let request = UNNotificationRequest(
-            identifier: "dp_tone_preview",
-            content: content,
-            trigger: trigger
-        )
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: ["dp_tone_preview"])
-        center.add(request, withCompletionHandler: nil)
+    /// Maps each tone to a distinct iOS system sound ID used when the
+    /// system-path approach cannot locate the named file.
+    private static func fallbackSoundID(for tone: NotificationTone) -> SystemSoundID {
+        switch tone {
+        case .defaultTone: return 1007  // new-mail / tri-tone
+        case .triTone:     return 1007  // tri-tone (identical to default by design)
+        case .chime:       return 1013  // chime / lock
+        case .glass:       return 1009  // crystal ping
+        case .beacon:      return 1022  // calendar alert
+        case .bulletin:    return 1016  // tweet / bulletin
+        case .bamboo:      return 1057  // subtle tap
+        case .chord:       return 1008  // mail-sent chord
+        }
     }
 
     // MARK: - Daily Reminders
