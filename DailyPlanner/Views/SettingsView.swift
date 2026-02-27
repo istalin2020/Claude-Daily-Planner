@@ -250,7 +250,7 @@ struct TimePickerSheet: View {
             .padding(.top, 32)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItemGroup(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
             }
