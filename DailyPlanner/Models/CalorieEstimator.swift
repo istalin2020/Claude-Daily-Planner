@@ -493,6 +493,357 @@ final class CalorieEstimator {
             ])
         ]),
 
+        // ── SOUTH INDIAN DISHES ─────────────────────────────────────────────
+
+        DBEntry(keywords: ["idli", "idly"], calories: 39, portion: "1 idli", questions: [
+            ClarifyQuestion(prompt: "How many idlis?", options: [
+                ClarifyOption(label: "2 idlis",  calories: 78),
+                ClarifyOption(label: "4 idlis",  calories: 156),
+                ClarifyOption(label: "6 idlis",  calories: 234)
+            ]),
+            ClarifyQuestion(prompt: "Served with?", options: [
+                ClarifyOption(label: "Plain",              calories: 0),
+                ClarifyOption(label: "Sambar",             calories: 80),
+                ClarifyOption(label: "Coconut chutney",    calories: 50),
+                ClarifyOption(label: "Sambar + chutney",   calories: 130)
+            ])
+        ]),
+
+        DBEntry(keywords: ["dosa"], calories: 120, portion: "1 dosa", questions: [
+            ClarifyQuestion(prompt: "What type of dosa?", options: [
+                ClarifyOption(label: "Plain dosa",          calories: 120),
+                ClarifyOption(label: "Masala dosa",         calories: 220),
+                ClarifyOption(label: "Ghee / butter dosa",  calories: 190),
+                ClarifyOption(label: "Onion dosa",          calories: 150)
+            ]),
+            ClarifyQuestion(prompt: "Served with?", options: [
+                ClarifyOption(label: "Plain",               calories: 0),
+                ClarifyOption(label: "Sambar",              calories: 80),
+                ClarifyOption(label: "Coconut chutney",     calories: 50),
+                ClarifyOption(label: "Sambar + chutney",    calories: 130)
+            ])
+        ]),
+
+        DBEntry(keywords: ["masala dosa"], calories: 220, portion: "1 dosa", questions: nil),
+
+        DBEntry(keywords: ["uttapam", "uthappam"], calories: 130, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many uttapams?", options: [
+                ClarifyOption(label: "1 uttapam",    calories: 130),
+                ClarifyOption(label: "2 uttapams",   calories: 260),
+                ClarifyOption(label: "3 uttapams",   calories: 390)
+            ])
+        ]),
+
+        DBEntry(keywords: ["vada", "medu vada", "meduvada"], calories: 97, portion: "1 vada", questions: [
+            ClarifyQuestion(prompt: "How many vadas?", options: [
+                ClarifyOption(label: "1 vada",   calories: 97),
+                ClarifyOption(label: "2 vadas",  calories: 194),
+                ClarifyOption(label: "3 vadas",  calories: 291)
+            ])
+        ]),
+
+        DBEntry(keywords: ["sambar"], calories: 80, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "How much sambar?", options: [
+                ClarifyOption(label: "½ cup",    calories: 40),
+                ClarifyOption(label: "1 cup",    calories: 80),
+                ClarifyOption(label: "1½ cups",  calories: 120)
+            ])
+        ]),
+
+        DBEntry(keywords: ["upma", "uppuma", "uppumav"], calories: 200, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "How much upma?", options: [
+                ClarifyOption(label: "Small – ½ cup",    calories: 100),
+                ClarifyOption(label: "Medium – 1 cup",   calories: 200),
+                ClarifyOption(label: "Large – 1½ cups",  calories: 300)
+            ])
+        ]),
+
+        DBEntry(keywords: ["pongal", "ven pongal", "khichadi", "khichdee"], calories: 250, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "What type?", options: [
+                ClarifyOption(label: "Ven pongal (savoury)",  calories: 250),
+                ClarifyOption(label: "Sweet pongal",          calories: 340),
+                ClarifyOption(label: "Plain khichdi",         calories: 200),
+                ClarifyOption(label: "Dal khichdi",           calories: 230)
+            ])
+        ]),
+
+        DBEntry(keywords: ["appam", "aappam"], calories: 82, portion: "1 appam", questions: [
+            ClarifyQuestion(prompt: "How many appams?", options: [
+                ClarifyOption(label: "2 appams",  calories: 164),
+                ClarifyOption(label: "3 appams",  calories: 246),
+                ClarifyOption(label: "4 appams",  calories: 328)
+            ])
+        ]),
+
+        DBEntry(keywords: ["rasam"], calories: 50, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["curd rice", "thayir sadam"], calories: 200, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["lemon rice", "elumichai sadam"], calories: 220, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["tamarind rice", "puliyogare", "pulihora"], calories: 200, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["coconut rice", "thengai sadam"], calories: 250, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["pesarattu"], calories: 120, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many?", options: [
+                ClarifyOption(label: "1 pesarattu",  calories: 120),
+                ClarifyOption(label: "2 pesarattu",  calories: 240),
+                ClarifyOption(label: "3 pesarattu",  calories: 360)
+            ])
+        ]),
+
+        DBEntry(keywords: ["puttu"], calories: 200, portion: "1 serving", questions: [
+            ClarifyQuestion(prompt: "With what?", options: [
+                ClarifyOption(label: "Plain",                  calories: 200),
+                ClarifyOption(label: "With coconut",           calories: 250),
+                ClarifyOption(label: "With banana",            calories: 290),
+                ClarifyOption(label: "With kadala curry",      calories: 350)
+            ])
+        ]),
+
+        DBEntry(keywords: ["bonda", "bajji", "pakora", "pakoda"], calories: 100, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "2 pieces",   calories: 200),
+                ClarifyOption(label: "4 pieces",   calories: 400),
+                ClarifyOption(label: "6 pieces",   calories: 600)
+            ])
+        ]),
+
+        DBEntry(keywords: ["kootu"], calories: 150, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["aviyal"], calories: 130, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["payasam", "kheer payasam"], calories: 200, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "What type?", options: [
+                ClarifyOption(label: "Rice payasam",    calories: 200),
+                ClarifyOption(label: "Semiya payasam",  calories: 220),
+                ClarifyOption(label: "Moong payasam",   calories: 180)
+            ])
+        ]),
+
+        // ── NORTH INDIAN DISHES ─────────────────────────────────────────────
+
+        DBEntry(keywords: ["biryani", "biriyani"], calories: 450, portion: "1 plate (~300 g)", questions: [
+            ClarifyQuestion(prompt: "What type of biryani?", options: [
+                ClarifyOption(label: "Veg biryani",       calories: 350),
+                ClarifyOption(label: "Chicken biryani",   calories: 450),
+                ClarifyOption(label: "Mutton biryani",    calories: 550),
+                ClarifyOption(label: "Prawn biryani",     calories: 400)
+            ]),
+            ClarifyQuestion(prompt: "Portion size?", options: [
+                ClarifyOption(label: "Small – 200 g",   calories: -100),
+                ClarifyOption(label: "Regular – 300 g", calories: 0),
+                ClarifyOption(label: "Large – 500 g",   calories: 200)
+            ])
+        ]),
+
+        DBEntry(keywords: ["roti", "chapati", "chapatti", "phulka"], calories: 100, portion: "1 roti", questions: [
+            ClarifyQuestion(prompt: "How many rotis?", options: [
+                ClarifyOption(label: "1 roti",   calories: 100),
+                ClarifyOption(label: "2 rotis",  calories: 200),
+                ClarifyOption(label: "3 rotis",  calories: 300),
+                ClarifyOption(label: "4 rotis",  calories: 400)
+            ]),
+            ClarifyQuestion(prompt: "With ghee?", options: [
+                ClarifyOption(label: "Plain / no ghee",    calories: 0),
+                ClarifyOption(label: "Light ghee",         calories: 40),
+                ClarifyOption(label: "Generous ghee",      calories: 80)
+            ])
+        ]),
+
+        DBEntry(keywords: ["naan"], calories: 260, portion: "1 naan", questions: [
+            ClarifyQuestion(prompt: "What type of naan?", options: [
+                ClarifyOption(label: "Plain naan",       calories: 260),
+                ClarifyOption(label: "Butter naan",      calories: 320),
+                ClarifyOption(label: "Garlic naan",      calories: 290),
+                ClarifyOption(label: "Stuffed naan",     calories: 380)
+            ])
+        ]),
+
+        DBEntry(keywords: ["paratha", "parantha"], calories: 200, portion: "1 paratha", questions: [
+            ClarifyQuestion(prompt: "What type?", options: [
+                ClarifyOption(label: "Plain paratha",        calories: 180),
+                ClarifyOption(label: "Aloo paratha",         calories: 260),
+                ClarifyOption(label: "Paneer paratha",       calories: 300),
+                ClarifyOption(label: "Gobi / methi paratha", calories: 240)
+            ]),
+            ClarifyQuestion(prompt: "With ghee / butter?", options: [
+                ClarifyOption(label: "No extra ghee",   calories: 0),
+                ClarifyOption(label: "Light ghee",      calories: 40),
+                ClarifyOption(label: "Generous ghee",   calories: 80)
+            ])
+        ]),
+
+        DBEntry(keywords: ["dal", "daal", "dal tadka", "dal makhani", "dal fry"], calories: 180, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "What type of dal?", options: [
+                ClarifyOption(label: "Plain toor / moong dal",  calories: 120),
+                ClarifyOption(label: "Dal tadka",               calories: 180),
+                ClarifyOption(label: "Dal fry",                 calories: 200),
+                ClarifyOption(label: "Dal makhani",             calories: 300)
+            ])
+        ]),
+
+        DBEntry(keywords: ["paneer"], calories: 265, portion: "100 g", questions: [
+            ClarifyQuestion(prompt: "What paneer dish?", options: [
+                ClarifyOption(label: "Palak paneer (1 cup)",         calories: 250),
+                ClarifyOption(label: "Paneer butter masala (1 cup)", calories: 350),
+                ClarifyOption(label: "Shahi paneer (1 cup)",         calories: 380),
+                ClarifyOption(label: "Kadai paneer (1 cup)",         calories: 300)
+            ])
+        ]),
+
+        DBEntry(keywords: ["butter chicken", "murgh makhani", "makhani"], calories: 350, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "How much?", options: [
+                ClarifyOption(label: "½ cup (side portion)",    calories: 175),
+                ClarifyOption(label: "1 cup (main portion)",    calories: 350),
+                ClarifyOption(label: "1½ cups (large)",         calories: 525)
+            ])
+        ]),
+
+        DBEntry(keywords: ["chole", "chana masala", "chhole"], calories: 200, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "How much?", options: [
+                ClarifyOption(label: "½ cup",   calories: 100),
+                ClarifyOption(label: "1 cup",   calories: 200),
+                ClarifyOption(label: "1½ cups", calories: 300)
+            ])
+        ]),
+
+        DBEntry(keywords: ["rajma"], calories: 210, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "Portion size?", options: [
+                ClarifyOption(label: "½ cup",   calories: 105),
+                ClarifyOption(label: "1 cup",   calories: 210),
+                ClarifyOption(label: "1½ cups", calories: 315)
+            ])
+        ]),
+
+        DBEntry(keywords: ["pav bhaji"], calories: 400, portion: "1 plate", questions: [
+            ClarifyQuestion(prompt: "How many pavs?", options: [
+                ClarifyOption(label: "Bhaji only (1 cup)",         calories: 200),
+                ClarifyOption(label: "1 pav + bhaji",              calories: 330),
+                ClarifyOption(label: "2 pavs + bhaji (full plate)", calories: 400)
+            ])
+        ]),
+
+        DBEntry(keywords: ["samosa"], calories: 150, portion: "1 samosa", questions: [
+            ClarifyQuestion(prompt: "How many samosas?", options: [
+                ClarifyOption(label: "1 samosa",   calories: 150),
+                ClarifyOption(label: "2 samosas",  calories: 300),
+                ClarifyOption(label: "3 samosas",  calories: 450)
+            ])
+        ]),
+
+        DBEntry(keywords: ["poha", "aval", "beaten rice"], calories: 250, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "Portion size?", options: [
+                ClarifyOption(label: "Small – ½ cup",   calories: 125),
+                ClarifyOption(label: "Medium – 1 cup",  calories: 250),
+                ClarifyOption(label: "Large – 1½ cups", calories: 375)
+            ])
+        ]),
+
+        DBEntry(keywords: ["aloo gobi", "alu gobi"], calories: 150, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["palak paneer"], calories: 250, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["kadai chicken", "karahi chicken"], calories: 280, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["tandoori chicken"], calories: 165, portion: "100 g (2 pieces)", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "1 piece – 100 g",   calories: 165),
+                ClarifyOption(label: "2 pieces – 200 g",  calories: 330),
+                ClarifyOption(label: "Half bird – 300 g", calories: 495)
+            ])
+        ]),
+
+        DBEntry(keywords: ["seekh kebab", "sheek kebab"], calories: 140, portion: "1 skewer", questions: [
+            ClarifyQuestion(prompt: "How many skewers?", options: [
+                ClarifyOption(label: "1 skewer",   calories: 140),
+                ClarifyOption(label: "2 skewers",  calories: 280),
+                ClarifyOption(label: "3 skewers",  calories: 420)
+            ])
+        ]),
+
+        DBEntry(keywords: ["lassi"], calories: 180, portion: "1 glass (300 ml)", questions: [
+            ClarifyQuestion(prompt: "What type of lassi?", options: [
+                ClarifyOption(label: "Sweet lassi",       calories: 250),
+                ClarifyOption(label: "Salted / plain",    calories: 120),
+                ClarifyOption(label: "Mango lassi",       calories: 300),
+                ClarifyOption(label: "Rose lassi",        calories: 270)
+            ])
+        ]),
+
+        DBEntry(keywords: ["kheer"], calories: 200, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "How much kheer?", options: [
+                ClarifyOption(label: "½ cup",   calories: 100),
+                ClarifyOption(label: "1 cup",   calories: 200),
+                ClarifyOption(label: "1½ cups", calories: 300)
+            ])
+        ]),
+
+        DBEntry(keywords: ["gulab jamun"], calories: 150, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "1 piece",   calories: 150),
+                ClarifyOption(label: "2 pieces",  calories: 300),
+                ClarifyOption(label: "3 pieces",  calories: 450)
+            ])
+        ]),
+
+        DBEntry(keywords: ["jalebi"], calories: 150, portion: "2 pieces", questions: [
+            ClarifyQuestion(prompt: "How many jalebis?", options: [
+                ClarifyOption(label: "2 pieces (small serving)",  calories: 150),
+                ClarifyOption(label: "4 pieces (medium serving)", calories: 300),
+                ClarifyOption(label: "6 pieces (large serving)",  calories: 450)
+            ])
+        ]),
+
+        DBEntry(keywords: ["halwa", "halva", "suji halwa", "gajar halwa", "carrot halwa"], calories: 280, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "What type of halwa?", options: [
+                ClarifyOption(label: "Suji / semolina halwa", calories: 280),
+                ClarifyOption(label: "Gajar / carrot halwa",  calories: 300),
+                ClarifyOption(label: "Moong dal halwa",       calories: 350),
+                ClarifyOption(label: "Badam / almond halwa",  calories: 400)
+            ])
+        ]),
+
+        DBEntry(keywords: ["raita"], calories: 80, portion: "½ cup", questions: [
+            ClarifyQuestion(prompt: "Type of raita?", options: [
+                ClarifyOption(label: "Plain / boondi",   calories: 80),
+                ClarifyOption(label: "Cucumber",         calories: 65),
+                ClarifyOption(label: "Mixed vegetable",  calories: 90),
+                ClarifyOption(label: "Onion",            calories: 75)
+            ])
+        ]),
+
+        DBEntry(keywords: ["kulcha", "amritsari kulcha"], calories: 280, portion: "1 kulcha", questions: [
+            ClarifyQuestion(prompt: "Type?", options: [
+                ClarifyOption(label: "Plain kulcha",        calories: 260),
+                ClarifyOption(label: "Aloo stuffed kulcha", calories: 350),
+                ClarifyOption(label: "Paneer kulcha",       calories: 380)
+            ])
+        ]),
+
+        DBEntry(keywords: ["kachori"], calories: 160, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many?", options: [
+                ClarifyOption(label: "1 kachori",   calories: 160),
+                ClarifyOption(label: "2 kachoris",  calories: 320),
+                ClarifyOption(label: "3 kachoris",  calories: 480)
+            ])
+        ]),
+
+        DBEntry(keywords: ["puri", "poori"], calories: 140, portion: "2 puris", questions: [
+            ClarifyQuestion(prompt: "How many puris?", options: [
+                ClarifyOption(label: "2 puris",   calories: 140),
+                ClarifyOption(label: "4 puris",   calories: 280),
+                ClarifyOption(label: "6 puris",   calories: 420)
+            ])
+        ]),
+
+        DBEntry(keywords: ["aloo sabzi", "aloo ki sabzi", "aloo matar"], calories: 160, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["bhindi", "okra sabzi"], calories: 90, portion: "1 cup", questions: nil),
+
+        DBEntry(keywords: ["methi", "fenugreek sabzi"], calories: 100, portion: "1 cup", questions: nil),
+
         // ── DESSERTS ────────────────────────────────────────────────────────
         DBEntry(keywords: ["ice cream", "gelato", "sorbet"], calories: 137, portion: "½ cup", questions: [
             ClarifyQuestion(prompt: "How much?", options: [
