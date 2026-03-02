@@ -4,6 +4,7 @@ struct CallsEmailsView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet = false
     @State private var editingTask: PlannerTask? = nil
+    @State private var taskToDelete: PlannerTask? = nil
     @State private var showPopper = false
 
     var entry: DailyEntry { vm.currentEntry }
@@ -33,7 +34,8 @@ struct CallsEmailsView: View {
                                 task: task,
                                 color: AppSection.callsEmails.color,
                                 onToggle: { vm.toggleCallEmail(task) },
-                                onEdit: vm.isFuture ? nil : { editingTask = task }
+                                onEdit: vm.isFuture ? nil : { editingTask = task },
+                                onDelete: vm.isFuture ? nil : { taskToDelete = task }
                             )
                             .padding(.horizontal, 16).padding(.vertical, 3)
                         }
@@ -66,6 +68,22 @@ struct CallsEmailsView: View {
                     icon: AppSection.callsEmails.icon
                 ) { newTitle in
                     vm.updateCallEmail(task, newTitle: newTitle)
+                }
+            }
+            .alert("Delete Entry?", isPresented: Binding(
+                get: { taskToDelete != nil },
+                set: { if !$0 { taskToDelete = nil } }
+            )) {
+                Button("Delete", role: .destructive) {
+                    if let task = taskToDelete {
+                        vm.deleteCallEmail(task)
+                    }
+                    taskToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { taskToDelete = nil }
+            } message: {
+                if let task = taskToDelete {
+                    Text(""\(task.title)" will be permanently removed.")
                 }
             }
 

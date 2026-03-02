@@ -102,6 +102,12 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    func deleteTopPriority(_ task: PlannerTask) {
+        var e = currentEntry
+        e.topPriorities.removeAll { $0.id == task.id }
+        currentEntry = e
+    }
+
     func deleteTopPriority(at offsets: IndexSet) {
         var e = currentEntry
         e.topPriorities.remove(atOffsets: offsets)
@@ -181,6 +187,12 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    func deleteCallEmail(_ task: PlannerTask) {
+        var e = currentEntry
+        e.callsEmails.removeAll { $0.id == task.id }
+        currentEntry = e
+    }
+
     func deleteCallEmail(at offsets: IndexSet) {
         var e = currentEntry
         e.callsEmails.remove(atOffsets: offsets)
@@ -211,6 +223,12 @@ class PlannerViewModel: ObservableObject {
         if let i = e.personalTodo.firstIndex(where: { $0.id == task.id }) {
             e.personalTodo[i].title = trimmed
         }
+        currentEntry = e
+    }
+
+    func deletePersonalTodo(_ task: PlannerTask) {
+        var e = currentEntry
+        e.personalTodo.removeAll { $0.id == task.id }
         currentEntry = e
     }
 
