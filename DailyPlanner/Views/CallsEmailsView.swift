@@ -83,7 +83,7 @@ struct CallsEmailsView: View {
                 Button("Cancel", role: .cancel) { taskToDelete = nil }
             } message: {
                 if let task = taskToDelete {
-                    Text(""\(task.title)" will be permanently removed.")
+                    Text("\"\(task.title)\" will be permanently removed.")
                 }
             }
 
