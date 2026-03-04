@@ -29,12 +29,13 @@ struct PersonalTodoView: View {
                         EmptySectionView(section: .personalTodo,
                                          message: "Add your personal tasks for the day")
                     } else {
-                        let rolledOver = entry.personalTodo.filter(\.isRolledOver)
-                        let fresh = entry.personalTodo.filter { !$0.isRolledOver }
+                        let rolledIncomplete = entry.personalTodo.filter { $0.isRolledOver && !$0.isCompleted }
+                        let freshIncomplete  = entry.personalTodo.filter { !$0.isRolledOver && !$0.isCompleted }
+                        let completed        = entry.personalTodo.filter { $0.isCompleted }
 
-                        if !rolledOver.isEmpty {
+                        if !rolledIncomplete.isEmpty {
                             SectionGroupLabel(title: "Rolled Over", color: .orange)
-                            ForEach(rolledOver) { task in
+                            ForEach(rolledIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.personalTodo.color,
@@ -46,11 +47,25 @@ struct PersonalTodoView: View {
                             }
                         }
 
-                        if !fresh.isEmpty {
-                            if !rolledOver.isEmpty {
+                        if !freshIncomplete.isEmpty {
+                            if !rolledIncomplete.isEmpty {
                                 SectionGroupLabel(title: "Today", color: AppSection.personalTodo.color)
                             }
-                            ForEach(fresh) { task in
+                            ForEach(freshIncomplete) { task in
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.personalTodo.color,
+                                    onToggle: { vm.togglePersonalTodo(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task },
+                                    onDelete: vm.isFuture ? nil : { taskToDelete = task }
+                                )
+                                .padding(.horizontal, 16).padding(.vertical, 3)
+                            }
+                        }
+
+                        if !completed.isEmpty {
+                            SectionGroupLabel(title: "Completed", color: .secondary)
+                            ForEach(completed) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.personalTodo.color,

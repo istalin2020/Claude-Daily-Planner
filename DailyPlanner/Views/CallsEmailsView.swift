@@ -29,12 +29,13 @@ struct CallsEmailsView: View {
                         EmptySectionView(section: .callsEmails,
                                          message: "Add calls and emails you need to make today")
                     } else {
-                        let rolledOver = entry.callsEmails.filter(\.isRolledOver)
-                        let fresh = entry.callsEmails.filter { !$0.isRolledOver }
+                        let rolledIncomplete = entry.callsEmails.filter { $0.isRolledOver && !$0.isCompleted }
+                        let freshIncomplete  = entry.callsEmails.filter { !$0.isRolledOver && !$0.isCompleted }
+                        let completed        = entry.callsEmails.filter { $0.isCompleted }
 
-                        if !rolledOver.isEmpty {
+                        if !rolledIncomplete.isEmpty {
                             SectionGroupLabel(title: "Rolled Over", color: .orange)
-                            ForEach(rolledOver) { task in
+                            ForEach(rolledIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.callsEmails.color,
@@ -46,11 +47,25 @@ struct CallsEmailsView: View {
                             }
                         }
 
-                        if !fresh.isEmpty {
-                            if !rolledOver.isEmpty {
+                        if !freshIncomplete.isEmpty {
+                            if !rolledIncomplete.isEmpty {
                                 SectionGroupLabel(title: "Today's Calls & Emails", color: AppSection.callsEmails.color)
                             }
-                            ForEach(fresh) { task in
+                            ForEach(freshIncomplete) { task in
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.callsEmails.color,
+                                    onToggle: { vm.toggleCallEmail(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task },
+                                    onDelete: vm.isFuture ? nil : { taskToDelete = task }
+                                )
+                                .padding(.horizontal, 16).padding(.vertical, 3)
+                            }
+                        }
+
+                        if !completed.isEmpty {
+                            SectionGroupLabel(title: "Completed", color: .secondary)
+                            ForEach(completed) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.callsEmails.color,

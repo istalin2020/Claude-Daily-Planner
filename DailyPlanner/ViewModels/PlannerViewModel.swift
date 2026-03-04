@@ -79,7 +79,12 @@ class PlannerViewModel: ObservableObject {
     func addTopPriority(_ title: String) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        e.topPriorities.append(PlannerTask(title: title.trimmingCharacters(in: .whitespaces)))
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
+        if let idx = e.topPriorities.firstIndex(where: { $0.isCompleted }) {
+            e.topPriorities.insert(task, at: idx)
+        } else {
+            e.topPriorities.append(task)
+        }
         currentEntry = e
     }
 
@@ -126,7 +131,7 @@ class PlannerViewModel: ObservableObject {
         let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
         // Insert before the first completed fresh (non-rolled-over) task so the
         // new item always lands below open tasks and above completed tasks.
-        if let idx = e.toDoLists.firstIndex(where: { $0.isCompleted && !$0.isRolledOver }) {
+        if let idx = e.toDoLists.firstIndex(where: { $0.isCompleted }) {
             e.toDoLists.insert(task, at: idx)
         } else {
             e.toDoLists.append(task)
@@ -172,7 +177,12 @@ class PlannerViewModel: ObservableObject {
     func addCallEmail(_ title: String) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        e.callsEmails.append(PlannerTask(title: title.trimmingCharacters(in: .whitespaces)))
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
+        if let idx = e.callsEmails.firstIndex(where: { $0.isCompleted }) {
+            e.callsEmails.insert(task, at: idx)
+        } else {
+            e.callsEmails.append(task)
+        }
         currentEntry = e
     }
 
@@ -214,7 +224,12 @@ class PlannerViewModel: ObservableObject {
     func addPersonalTodo(_ title: String) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        e.personalTodo.append(PlannerTask(title: title.trimmingCharacters(in: .whitespaces)))
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
+        if let idx = e.personalTodo.firstIndex(where: { $0.isCompleted }) {
+            e.personalTodo.insert(task, at: idx)
+        } else {
+            e.personalTodo.append(task)
+        }
         currentEntry = e
     }
 

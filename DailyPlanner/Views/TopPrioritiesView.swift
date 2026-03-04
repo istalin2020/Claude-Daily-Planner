@@ -29,12 +29,13 @@ struct TopPrioritiesView: View {
                         EmptySectionView(section: .topPriorities,
                                          message: "Add your top priorities to stay focused")
                     } else {
-                        let rolledOver = entry.topPriorities.filter(\.isRolledOver)
-                        let fresh = entry.topPriorities.filter { !$0.isRolledOver }
+                        let rolledIncomplete = entry.topPriorities.filter { $0.isRolledOver && !$0.isCompleted }
+                        let freshIncomplete  = entry.topPriorities.filter { !$0.isRolledOver && !$0.isCompleted }
+                        let completed        = entry.topPriorities.filter { $0.isCompleted }
 
-                        if !rolledOver.isEmpty {
+                        if !rolledIncomplete.isEmpty {
                             SectionGroupLabel(title: "Rolled Over", color: .orange)
-                            ForEach(rolledOver) { task in
+                            ForEach(rolledIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.topPriorities.color,
@@ -46,11 +47,25 @@ struct TopPrioritiesView: View {
                             }
                         }
 
-                        if !fresh.isEmpty {
-                            if !rolledOver.isEmpty {
+                        if !freshIncomplete.isEmpty {
+                            if !rolledIncomplete.isEmpty {
                                 SectionGroupLabel(title: "Today's Priorities", color: AppSection.topPriorities.color)
                             }
-                            ForEach(fresh) { task in
+                            ForEach(freshIncomplete) { task in
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.topPriorities.color,
+                                    onToggle: { vm.toggleTopPriority(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task },
+                                    onDelete: vm.isFuture ? nil : { taskToDelete = task }
+                                )
+                                .padding(.horizontal, 16).padding(.vertical, 3)
+                            }
+                        }
+
+                        if !completed.isEmpty {
+                            SectionGroupLabel(title: "Completed", color: .secondary)
+                            ForEach(completed) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.topPriorities.color,
