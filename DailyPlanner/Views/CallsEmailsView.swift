@@ -29,15 +29,37 @@ struct CallsEmailsView: View {
                         EmptySectionView(section: .callsEmails,
                                          message: "Add calls and emails you need to make today")
                     } else {
-                        ForEach(entry.callsEmails) { task in
-                            TaskRowCard(
-                                task: task,
-                                color: AppSection.callsEmails.color,
-                                onToggle: { vm.toggleCallEmail(task) },
-                                onEdit: vm.isFuture ? nil : { editingTask = task },
-                                onDelete: vm.isFuture ? nil : { taskToDelete = task }
-                            )
-                            .padding(.horizontal, 16).padding(.vertical, 3)
+                        let rolledOver = entry.callsEmails.filter(\.isRolledOver)
+                        let fresh = entry.callsEmails.filter { !$0.isRolledOver }
+
+                        if !rolledOver.isEmpty {
+                            SectionGroupLabel(title: "Rolled Over", color: .orange)
+                            ForEach(rolledOver) { task in
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.callsEmails.color,
+                                    onToggle: { vm.toggleCallEmail(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task },
+                                    onDelete: vm.isFuture ? nil : { taskToDelete = task }
+                                )
+                                .padding(.horizontal, 16).padding(.vertical, 3)
+                            }
+                        }
+
+                        if !fresh.isEmpty {
+                            if !rolledOver.isEmpty {
+                                SectionGroupLabel(title: "Today's Calls & Emails", color: AppSection.callsEmails.color)
+                            }
+                            ForEach(fresh) { task in
+                                TaskRowCard(
+                                    task: task,
+                                    color: AppSection.callsEmails.color,
+                                    onToggle: { vm.toggleCallEmail(task) },
+                                    onEdit: vm.isFuture ? nil : { editingTask = task },
+                                    onDelete: vm.isFuture ? nil : { taskToDelete = task }
+                                )
+                                .padding(.horizontal, 16).padding(.vertical, 3)
+                            }
                         }
                     }
 

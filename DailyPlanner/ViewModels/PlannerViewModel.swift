@@ -85,11 +85,16 @@ class PlannerViewModel: ObservableObject {
 
     func toggleTopPriority(_ task: PlannerTask) {
         var e = currentEntry
+        var newState = task.isCompleted
         if let i = e.topPriorities.firstIndex(where: { $0.id == task.id }) {
             e.topPriorities[i].isCompleted.toggle()
+            newState = e.topPriorities[i].isCompleted
         }
         e.topPriorities = sortedByCompletion(e.topPriorities) { $0.isCompleted }
         currentEntry = e
+        // Propagate completion back to the original past-day entry so the
+        // rollover engine never re-picks up an already-handled task.
+        syncTaskCompletion(taskId: task.id, isCompleted: newState)
     }
 
     func updateTopPriority(_ task: PlannerTask, newTitle: String) {
@@ -131,11 +136,14 @@ class PlannerViewModel: ObservableObject {
 
     func toggleToDoListItem(_ task: PlannerTask) {
         var e = currentEntry
+        var newState = task.isCompleted
         if let i = e.toDoLists.firstIndex(where: { $0.id == task.id }) {
             e.toDoLists[i].isCompleted.toggle()
+            newState = e.toDoLists[i].isCompleted
         }
         e.toDoLists = sortedByCompletion(e.toDoLists) { $0.isCompleted }
         currentEntry = e
+        syncTaskCompletion(taskId: task.id, isCompleted: newState)
     }
 
     func updateToDoListItem(_ task: PlannerTask, newTitle: String) {
@@ -170,11 +178,14 @@ class PlannerViewModel: ObservableObject {
 
     func toggleCallEmail(_ task: PlannerTask) {
         var e = currentEntry
+        var newState = task.isCompleted
         if let i = e.callsEmails.firstIndex(where: { $0.id == task.id }) {
             e.callsEmails[i].isCompleted.toggle()
+            newState = e.callsEmails[i].isCompleted
         }
         e.callsEmails = sortedByCompletion(e.callsEmails) { $0.isCompleted }
         currentEntry = e
+        syncTaskCompletion(taskId: task.id, isCompleted: newState)
     }
 
     func updateCallEmail(_ task: PlannerTask, newTitle: String) {
@@ -209,11 +220,41 @@ class PlannerViewModel: ObservableObject {
 
     func togglePersonalTodo(_ task: PlannerTask) {
         var e = currentEntry
+        var newState = task.isCompleted
         if let i = e.personalTodo.firstIndex(where: { $0.id == task.id }) {
             e.personalTodo[i].isCompleted.toggle()
+            newState = e.personalTodo[i].isCompleted
         }
         e.personalTodo = sortedByCompletion(e.personalTodo) { $0.isCompleted }
         currentEntry = e
+        syncTaskCompletion(taskId: task.id, isCompleted: newState)
+    }
+
+    /// Propagates a completion-state change to every other entry that contains
+    /// a task with the same UUID.  This is the core fix for rolled-over tasks
+    /// re-appearing after the user marks them complete: when a rolled copy on
+    /// Day N is toggled, the original record on Day N-1 (or earlier) is updated
+    /// to match, so the rollover engine's `!$0.isCompleted` guard sees it as
+    /// done and never rolls it forward again.
+    private func syncTaskCompletion(taskId: UUID, isCompleted: Bool) {
+        let todayKey = selectedDateKey
+        for key in entries.keys where key != todayKey {
+            guard var entry = entries[key] else { continue }
+            var changed = false
+            if let i = entry.topPriorities.firstIndex(where: { $0.id == taskId }) {
+                entry.topPriorities[i].isCompleted = isCompleted; changed = true
+            }
+            if let i = entry.toDoLists.firstIndex(where: { $0.id == taskId }) {
+                entry.toDoLists[i].isCompleted = isCompleted; changed = true
+            }
+            if let i = entry.callsEmails.firstIndex(where: { $0.id == taskId }) {
+                entry.callsEmails[i].isCompleted = isCompleted; changed = true
+            }
+            if let i = entry.personalTodo.firstIndex(where: { $0.id == taskId }) {
+                entry.personalTodo[i].isCompleted = isCompleted; changed = true
+            }
+            if changed { entries[key] = entry }
+        }
     }
 
     func updatePersonalTodo(_ task: PlannerTask, newTitle: String) {
@@ -433,6 +474,7 @@ class PlannerViewModel: ObservableObject {
         var existingIDs: Set<UUID> = Set(
             te.topPriorities.map(\.id) +
             te.toDoLists.map(\.id) +
+            te.callsEmails.map(\.id) +
             te.personalTodo.map(\.id)
         )
 
@@ -455,11 +497,15 @@ class PlannerViewModel: ObservableObject {
             let missingTodos = pastEntry.toDoLists.filter {
                 !$0.isCompleted && !existingIDs.contains($0.id)
             }
+            let missingCalls = pastEntry.callsEmails.filter {
+                !$0.isCompleted && !existingIDs.contains($0.id)
+            }
             let missingPersonal = pastEntry.personalTodo.filter {
                 !$0.isCompleted && !existingIDs.contains($0.id)
             }
 
-            guard !missingPriorities.isEmpty || !missingTodos.isEmpty || !missingPersonal.isEmpty
+            guard !missingPriorities.isEmpty || !missingTodos.isEmpty
+                    || !missingCalls.isEmpty || !missingPersonal.isEmpty
             else { continue }
 
             // Insert rolled-over tasks at the top of today's lists.
@@ -473,6 +519,12 @@ class PlannerViewModel: ObservableObject {
                 task.isRolledOver = true
                 task.originalDate = pastDate
                 te.toDoLists.insert(task, at: 0)
+                existingIDs.insert(task.id)
+            }
+            for var task in missingCalls {
+                task.isRolledOver = true
+                task.originalDate = pastDate
+                te.callsEmails.insert(task, at: 0)
                 existingIDs.insert(task.id)
             }
             for var task in missingPersonal {
@@ -489,6 +541,9 @@ class PlannerViewModel: ObservableObject {
             }
             for i in pastEntry.toDoLists.indices where !pastEntry.toDoLists[i].isCompleted {
                 pastEntry.toDoLists[i].isRolledOver = true
+            }
+            for i in pastEntry.callsEmails.indices where !pastEntry.callsEmails[i].isCompleted {
+                pastEntry.callsEmails[i].isRolledOver = true
             }
             for i in pastEntry.personalTodo.indices where !pastEntry.personalTodo[i].isCompleted {
                 pastEntry.personalTodo[i].isRolledOver = true
