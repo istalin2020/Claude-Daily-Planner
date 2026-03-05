@@ -369,6 +369,106 @@ struct ScheduleBlock: Identifiable, Codable {
     }
 }
 
+// MARK: - Currency
+enum Currency: String, Codable, CaseIterable, Identifiable {
+    case usd = "USD"; case eur = "EUR"; case gbp = "GBP"
+    case jpy = "JPY"; case cny = "CNY"; case inr = "INR"
+    case aud = "AUD"; case cad = "CAD"; case chf = "CHF"
+    case krw = "KRW"; case brl = "BRL"; case mxn = "MXN"
+    case aed = "AED"; case sar = "SAR"; case sgd = "SGD"
+    case hkd = "HKD"; case nzd = "NZD"; case zar = "ZAR"
+    case tryLira = "TRY"; case pln = "PLN"; case myr = "MYR"
+    case thb = "THB"; case idr = "IDR"; case php = "PHP"
+    case vnd = "VND"; case egp = "EGP"; case pkr = "PKR"
+    case bdt = "BDT"; case ngn = "NGN"; case qar = "QAR"
+    case kwd = "KWD"; case bhd = "BHD"; case omr = "OMR"
+    case nok = "NOK"; case sek = "SEK"; case dkk = "DKK"
+
+    var id: String { rawValue }
+
+    var symbol: String {
+        switch self {
+        case .usd: return "$"
+        case .eur: return "€"
+        case .gbp: return "£"
+        case .jpy: return "¥"
+        case .cny: return "¥"
+        case .inr: return "₹"
+        case .aud: return "A$"
+        case .cad: return "C$"
+        case .chf: return "Fr"
+        case .krw: return "₩"
+        case .brl: return "R$"
+        case .mxn: return "MX$"
+        case .aed: return "د.إ"
+        case .sar: return "﷼"
+        case .sgd: return "S$"
+        case .hkd: return "HK$"
+        case .nzd: return "NZ$"
+        case .zar: return "R"
+        case .tryLira: return "₺"
+        case .pln: return "zł"
+        case .myr: return "RM"
+        case .thb: return "฿"
+        case .idr: return "Rp"
+        case .php: return "₱"
+        case .vnd: return "₫"
+        case .egp: return "E£"
+        case .pkr: return "₨"
+        case .bdt: return "৳"
+        case .ngn: return "₦"
+        case .qar: return "﷼"
+        case .kwd: return "KD"
+        case .bhd: return "BD"
+        case .omr: return "﷼"
+        case .nok: return "kr"
+        case .sek: return "kr"
+        case .dkk: return "kr"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .usd: return "US Dollar ($)"
+        case .eur: return "Euro (€)"
+        case .gbp: return "British Pound (£)"
+        case .jpy: return "Japanese Yen (¥)"
+        case .cny: return "Chinese Yuan (¥)"
+        case .inr: return "Indian Rupee (₹)"
+        case .aud: return "Australian Dollar (A$)"
+        case .cad: return "Canadian Dollar (C$)"
+        case .chf: return "Swiss Franc (Fr)"
+        case .krw: return "South Korean Won (₩)"
+        case .brl: return "Brazilian Real (R$)"
+        case .mxn: return "Mexican Peso (MX$)"
+        case .aed: return "UAE Dirham (د.إ)"
+        case .sar: return "Saudi Riyal (﷼)"
+        case .sgd: return "Singapore Dollar (S$)"
+        case .hkd: return "Hong Kong Dollar (HK$)"
+        case .nzd: return "New Zealand Dollar (NZ$)"
+        case .zar: return "South African Rand (R)"
+        case .tryLira: return "Turkish Lira (₺)"
+        case .pln: return "Polish Złoty (zł)"
+        case .myr: return "Malaysian Ringgit (RM)"
+        case .thb: return "Thai Baht (฿)"
+        case .idr: return "Indonesian Rupiah (Rp)"
+        case .php: return "Philippine Peso (₱)"
+        case .vnd: return "Vietnamese Đồng (₫)"
+        case .egp: return "Egyptian Pound (E£)"
+        case .pkr: return "Pakistani Rupee (₨)"
+        case .bdt: return "Bangladeshi Taka (৳)"
+        case .ngn: return "Nigerian Naira (₦)"
+        case .qar: return "Qatari Riyal (﷼)"
+        case .kwd: return "Kuwaiti Dinar (KD)"
+        case .bhd: return "Bahraini Dinar (BD)"
+        case .omr: return "Omani Rial (﷼)"
+        case .nok: return "Norwegian Krone (kr)"
+        case .sek: return "Swedish Krona (kr)"
+        case .dkk: return "Danish Krone (kr)"
+        }
+    }
+}
+
 // MARK: - App Settings
 struct AppSettings: Codable {
     var isDarkMode: Bool = false
@@ -376,17 +476,20 @@ struct AppSettings: Codable {
     var notificationsEnabled: Bool = false
     var notificationTimes: [Date] = []
     var notificationTone: NotificationTone = .defaultTone
+    var currency: Currency = .usd
 
     init(isDarkMode: Bool = false,
          autoRollover: Bool = true,
          notificationsEnabled: Bool = false,
          notificationTimes: [Date] = [],
-         notificationTone: NotificationTone = .defaultTone) {
+         notificationTone: NotificationTone = .defaultTone,
+         currency: Currency = .usd) {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
         self.notificationsEnabled = notificationsEnabled
         self.notificationTimes = notificationTimes
         self.notificationTone = notificationTone
+        self.currency = currency
     }
 
     init(from decoder: Decoder) throws {
@@ -396,6 +499,7 @@ struct AppSettings: Codable {
         notificationsEnabled = try c.decodeIfPresent(Bool.self,             forKey: .notificationsEnabled) ?? false
         notificationTimes    = try c.decodeIfPresent([Date].self,           forKey: .notificationTimes)    ?? []
         notificationTone     = try c.decodeIfPresent(NotificationTone.self, forKey: .notificationTone)     ?? .defaultTone
+        currency             = try c.decodeIfPresent(Currency.self,         forKey: .currency)             ?? .usd
     }
 }
 

@@ -123,6 +123,21 @@ struct SettingsView: View {
                     .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
                 }
 
+                // ── FINANCE ────────────────────────────────────────────
+                Section {
+                    Picker(selection: $vm.settings.currency) {
+                        ForEach(Currency.allCases) { currency in
+                            Text(currency.displayName).tag(currency)
+                        }
+                    } label: {
+                        Label("Currency", systemImage: "dollarsign.circle.fill")
+                    }
+                } header: {
+                    Text("Finance")
+                } footer: {
+                    Text("The selected currency symbol appears in the Expense Tracker.")
+                }
+
                 // ── TASK MANAGEMENT ────────────────────────────────────
                 Section {
                     Toggle(isOn: $vm.settings.autoRollover) {

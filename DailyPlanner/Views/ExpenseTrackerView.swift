@@ -7,6 +7,7 @@ struct ExpenseTrackerView: View {
     @State private var addingDeposit = false
 
     var entry: DailyEntry { vm.currentEntry }
+    private var sym: String { vm.settings.currency.symbol }
 
     var body: some View {
         ScrollView {
@@ -18,9 +19,9 @@ struct ExpenseTrackerView: View {
 
                 // Summary cards
                 HStack(spacing: 10) {
-                    FinanceSummaryCard(title: "Spent", amount: entry.totalExpenses, color: .red, icon: "arrow.up.circle.fill")
-                    FinanceSummaryCard(title: "Saved", amount: entry.totalDeposits, color: .green, icon: "arrow.down.circle.fill")
-                    FinanceSummaryCard(title: "Future Fund", amount: entry.savings, color: .blue, icon: "banknote.fill")
+                    FinanceSummaryCard(title: "Spent",       amount: entry.totalExpenses, color: .red,   icon: "arrow.up.circle.fill",   currencySymbol: sym)
+                    FinanceSummaryCard(title: "Saved",       amount: entry.totalDeposits, color: .green, icon: "arrow.down.circle.fill", currencySymbol: sym)
+                    FinanceSummaryCard(title: "Future Fund", amount: entry.savings,       color: .blue,  icon: "banknote.fill",          currencySymbol: sym)
                 }
                 .padding(.horizontal, 16).padding(.top, 12)
 
@@ -49,7 +50,7 @@ struct ExpenseTrackerView: View {
                     .padding(.horizontal, 16).padding(.top, 8)
 
                     Button(action: { showSavingsSheet = true }) {
-                        Label("Set Future Fund Target: \(String(format: "$%.2f", entry.savings))",
+                        Label("Set Future Fund Target: \(sym)\(String(format: "%.2f", entry.savings))",
                               systemImage: "target")
                             .font(.system(size: 13, weight: .semibold))
                             .frame(maxWidth: .infinity)
@@ -63,7 +64,7 @@ struct ExpenseTrackerView: View {
 
                 // Category breakdown
                 if !entry.expenses.isEmpty {
-                    CategoryBreakdownView(expenses: entry.expenses)
+                    CategoryBreakdownView(expenses: entry.expenses, currencySymbol: sym)
                         .padding(.horizontal, 16).padding(.top, 12)
                 }
 
@@ -79,7 +80,7 @@ struct ExpenseTrackerView: View {
                         if !expenses.isEmpty {
                             SectionGroupLabel(title: "Expenses", color: .red)
                             ForEach(expenses) { expense in
-                                ExpenseRow(expense: expense) {
+                                ExpenseRow(expense: expense, currencySymbol: sym) {
                                     if let i = vm.currentEntry.expenses.firstIndex(where: { $0.id == expense.id }) {
                                         vm.deleteExpense(at: IndexSet([i]))
                                     }
@@ -91,7 +92,7 @@ struct ExpenseTrackerView: View {
                         if !deposits.isEmpty {
                             SectionGroupLabel(title: "Savings", color: .green)
                             ForEach(deposits) { deposit in
-                                ExpenseRow(expense: deposit) {
+                                ExpenseRow(expense: deposit, currencySymbol: sym) {
                                     if let i = vm.currentEntry.expenses.firstIndex(where: { $0.id == deposit.id }) {
                                         vm.deleteExpense(at: IndexSet([i]))
                                     }
@@ -107,12 +108,12 @@ struct ExpenseTrackerView: View {
             }
         }
         .sheet(isPresented: $showAddExpense) {
-            AddExpenseSheet(isDeposit: addingDeposit) { expense in
+            AddExpenseSheet(isDeposit: addingDeposit, currencySymbol: sym) { expense in
                 vm.addExpense(expense)
             }
         }
         .sheet(isPresented: $showSavingsSheet) {
-            SavingsTargetSheet(current: entry.savings) { amount in
+            SavingsTargetSheet(current: entry.savings, currencySymbol: sym) { amount in
                 vm.updateSavings(amount)
             }
         }
@@ -125,11 +126,12 @@ struct FinanceSummaryCard: View {
     let amount: Double
     let color: Color
     let icon: String
+    let currencySymbol: String
 
     var body: some View {
         VStack(spacing: 4) {
             Image(systemName: icon).font(.system(size: 16)).foregroundColor(color)
-            Text(String(format: "$%.2f", amount))
+            Text("\(currencySymbol)\(String(format: "%.2f", amount))")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundColor(color)
                 .minimumScaleFactor(0.7)
@@ -145,6 +147,7 @@ struct FinanceSummaryCard: View {
 // MARK: - Category Breakdown
 struct CategoryBreakdownView: View {
     let expenses: [Expense]
+    let currencySymbol: String
 
     private var grouped: [(ExpenseCategory, Double)] {
         let spentOnly = expenses.filter { !$0.isDeposit }
@@ -170,7 +173,7 @@ struct CategoryBreakdownView: View {
                     ProgressView(value: totalSpent > 0 ? amount / totalSpent : 0)
                         .tint(cat.color)
                         .frame(width: 80)
-                    Text(String(format: "$%.2f", amount))
+                    Text("\(currencySymbol)\(String(format: "%.2f", amount))")
                         .font(.caption).fontWeight(.semibold)
                         .frame(width: 55, alignment: .trailing)
                 }
@@ -186,6 +189,7 @@ struct CategoryBreakdownView: View {
 // MARK: - Expense Row
 struct ExpenseRow: View {
     let expense: Expense
+    let currencySymbol: String
     let onDelete: () -> Void
 
     var body: some View {
@@ -201,7 +205,7 @@ struct ExpenseRow: View {
                     .font(.caption2).foregroundColor(.secondary)
             }
             Spacer()
-            Text(String(format: "%@$%.2f", expense.isDeposit ? "+" : "-", expense.amount))
+            Text("\(expense.isDeposit ? "+" : "-")\(currencySymbol)\(String(format: "%.2f", expense.amount))")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(expense.isDeposit ? .green : .red)
             Button(action: onDelete) {
@@ -222,6 +226,7 @@ struct AddExpenseSheet: View {
     @State private var description = ""
     @State private var category = ExpenseCategory.other
     let isDeposit: Bool
+    let currencySymbol: String
     let onSave: (Expense) -> Void
 
     var body: some View {
@@ -231,7 +236,8 @@ struct AddExpenseSheet: View {
                     TextField("Description", text: $description)
                         .autocapitalization(.sentences)
                     HStack {
-                        Text("$")
+                        Text(currencySymbol)
+                            .foregroundColor(.secondary)
                         TextField("0.00", text: $amount)
                             .keyboardType(.decimalPad)
                     }
@@ -266,10 +272,12 @@ struct AddExpenseSheet: View {
 struct SavingsTargetSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var amountText: String
+    let currencySymbol: String
     let onSave: (Double) -> Void
 
-    init(current: Double, onSave: @escaping (Double) -> Void) {
+    init(current: Double, currencySymbol: String, onSave: @escaping (Double) -> Void) {
         self._amountText = State(initialValue: current > 0 ? String(format: "%.2f", current) : "")
+        self.currencySymbol = currencySymbol
         self.onSave = onSave
     }
 
@@ -278,7 +286,8 @@ struct SavingsTargetSheet: View {
             Form {
                 Section("Future Fund Amount") {
                     HStack {
-                        Text("$")
+                        Text(currencySymbol)
+                            .foregroundColor(.secondary)
                         TextField("0.00", text: $amountText)
                             .keyboardType(.decimalPad)
                     }
