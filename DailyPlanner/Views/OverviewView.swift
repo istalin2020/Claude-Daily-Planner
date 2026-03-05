@@ -124,11 +124,11 @@ struct OverviewView: View {
                         HealthMiniStat(icon: "figure.run", label: "Workouts",
                                        value: "\(entry.fitness.activities.filter(\.isCompleted).count)")
                         HealthMiniStat(icon: "timer", label: "Minutes",
-                                       value: "\(entry.fitness.totalMinutes)")
+                                       value: "\(entry.fitness.displayWorkoutMinutes)")
                         HealthMiniStat(icon: "flame.fill", label: "Calories",
-                                       value: "\(entry.fitness.totalCaloriesBurned)")
+                                       value: "\(entry.fitness.displayCalories)")
                         HealthMiniStat(icon: "figure.walk", label: "Steps",
-                                       value: "\(entry.fitness.steps)")
+                                       value: "\(entry.fitness.displaySteps)")
                     }
                     .frame(maxWidth: .infinity)
                 }

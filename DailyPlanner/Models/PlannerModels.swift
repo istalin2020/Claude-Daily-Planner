@@ -228,28 +228,77 @@ struct FitnessActivity: Identifiable, Codable {
     }
 }
 
-// MARK: - Fitness Entry
-struct FitnessEntry: Codable {
-    var activities: [FitnessActivity] = []
-    var generalNotes: String = ""
-    var steps: Int = 0
+// MARK: - Health Workout (HealthKit-sourced, Codable for persistence)
+struct HealthWorkout: Identifiable, Codable {
+    var id             = UUID()
+    var activityType   : String
+    var icon           : String
+    var durationMinutes: Int
+    var calories       : Int
+    var startTime      : Date
 
-    var totalMinutes: Int { activities.filter(\.isCompleted).reduce(0) { $0 + $1.duration } }
-    var totalCaloriesBurned: Int { activities.filter(\.isCompleted).reduce(0) { $0 + $1.calories } }
-
-    init(activities: [FitnessActivity] = [],
-         generalNotes: String = "",
-         steps: Int = 0) {
-        self.activities = activities
-        self.generalNotes = generalNotes
-        self.steps = steps
+    init(id: UUID = UUID(), activityType: String, icon: String,
+         durationMinutes: Int, calories: Int, startTime: Date) {
+        self.id              = id
+        self.activityType    = activityType
+        self.icon            = icon
+        self.durationMinutes = durationMinutes
+        self.calories        = calories
+        self.startTime       = startTime
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        activities   = try c.decodeIfPresent([FitnessActivity].self, forKey: .activities)   ?? []
-        generalNotes = try c.decodeIfPresent(String.self,             forKey: .generalNotes) ?? ""
-        steps        = try c.decodeIfPresent(Int.self,                forKey: .steps)        ?? 0
+        id              = try c.decodeIfPresent(UUID.self,   forKey: .id)              ?? UUID()
+        activityType    = try c.decode(String.self,           forKey: .activityType)
+        icon            = try c.decodeIfPresent(String.self, forKey: .icon)            ?? "heart.fill"
+        durationMinutes = try c.decodeIfPresent(Int.self,    forKey: .durationMinutes) ?? 0
+        calories        = try c.decodeIfPresent(Int.self,    forKey: .calories)        ?? 0
+        startTime       = try c.decodeIfPresent(Date.self,   forKey: .startTime)       ?? Date()
+    }
+}
+
+// MARK: - Fitness Entry
+struct FitnessEntry: Codable {
+    var activities   : [FitnessActivity] = []
+    var generalNotes : String = ""
+    var steps        : Int = 0
+
+    // ── HealthKit synced data ──────────────────────────────────────────
+    var hkSteps          : Int = 0
+    var hkCalories       : Int = 0
+    var hkWorkoutMinutes : Int = 0
+    var hkWalkingMinutes : Int = 0
+    var hkWorkouts       : [HealthWorkout] = []
+    var hkSyncedAt       : Date? = nil
+
+    // ── Computed from manually-logged activities ───────────────────────
+    var totalMinutes       : Int { activities.filter(\.isCompleted).reduce(0) { $0 + $1.duration } }
+    var totalCaloriesBurned: Int { activities.filter(\.isCompleted).reduce(0) { $0 + $1.calories } }
+
+    // ── Best available (HealthKit first, manual fallback) ─────────────
+    var displaySteps          : Int { hkSteps > 0          ? hkSteps          : steps }
+    var displayCalories       : Int { hkCalories > 0       ? hkCalories       : totalCaloriesBurned }
+    var displayWorkoutMinutes : Int { hkWorkoutMinutes > 0 ? hkWorkoutMinutes : totalMinutes }
+    var displayWalkingMinutes : Int { hkWalkingMinutes }
+
+    init(activities: [FitnessActivity] = [], generalNotes: String = "", steps: Int = 0) {
+        self.activities   = activities
+        self.generalNotes = generalNotes
+        self.steps        = steps
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        activities       = try c.decodeIfPresent([FitnessActivity].self, forKey: .activities)       ?? []
+        generalNotes     = try c.decodeIfPresent(String.self,             forKey: .generalNotes)     ?? ""
+        steps            = try c.decodeIfPresent(Int.self,                forKey: .steps)            ?? 0
+        hkSteps          = try c.decodeIfPresent(Int.self,                forKey: .hkSteps)          ?? 0
+        hkCalories       = try c.decodeIfPresent(Int.self,                forKey: .hkCalories)       ?? 0
+        hkWorkoutMinutes = try c.decodeIfPresent(Int.self,                forKey: .hkWorkoutMinutes) ?? 0
+        hkWalkingMinutes = try c.decodeIfPresent(Int.self,                forKey: .hkWalkingMinutes) ?? 0
+        hkWorkouts       = try c.decodeIfPresent([HealthWorkout].self,    forKey: .hkWorkouts)       ?? []
+        hkSyncedAt       = try c.decodeIfPresent(Date.self,               forKey: .hkSyncedAt)
     }
 }
 
@@ -478,18 +527,32 @@ struct AppSettings: Codable {
     var notificationTone: NotificationTone = .defaultTone
     var currency: Currency = .usd
 
+    // MARK: - Health & Fitness daily targets
+    var workoutTarget: Int  = 30    // minutes
+    var walkingTarget: Int  = 30    // minutes
+    var stepsTarget: Int    = 5000
+    var caloriesTarget: Int = 500
+
     init(isDarkMode: Bool = false,
          autoRollover: Bool = true,
          notificationsEnabled: Bool = false,
          notificationTimes: [Date] = [],
          notificationTone: NotificationTone = .defaultTone,
-         currency: Currency = .usd) {
+         currency: Currency = .usd,
+         workoutTarget: Int = 30,
+         walkingTarget: Int = 30,
+         stepsTarget: Int = 5000,
+         caloriesTarget: Int = 500) {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
         self.notificationsEnabled = notificationsEnabled
         self.notificationTimes = notificationTimes
         self.notificationTone = notificationTone
         self.currency = currency
+        self.workoutTarget = workoutTarget
+        self.walkingTarget = walkingTarget
+        self.stepsTarget = stepsTarget
+        self.caloriesTarget = caloriesTarget
     }
 
     init(from decoder: Decoder) throws {
@@ -500,6 +563,10 @@ struct AppSettings: Codable {
         notificationTimes    = try c.decodeIfPresent([Date].self,           forKey: .notificationTimes)    ?? []
         notificationTone     = try c.decodeIfPresent(NotificationTone.self, forKey: .notificationTone)     ?? .defaultTone
         currency             = try c.decodeIfPresent(Currency.self,         forKey: .currency)             ?? .usd
+        workoutTarget        = try c.decodeIfPresent(Int.self,              forKey: .workoutTarget)        ?? 30
+        walkingTarget        = try c.decodeIfPresent(Int.self,              forKey: .walkingTarget)        ?? 30
+        stepsTarget          = try c.decodeIfPresent(Int.self,              forKey: .stepsTarget)          ?? 5000
+        caloriesTarget       = try c.decodeIfPresent(Int.self,              forKey: .caloriesTarget)       ?? 500
     }
 }
 

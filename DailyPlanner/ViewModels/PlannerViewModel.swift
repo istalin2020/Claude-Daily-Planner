@@ -465,6 +465,20 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    // MARK: - HealthKit sync
+    func syncHealthKitData(steps: Int, calories: Int, workoutMins: Int,
+                           walkingMins: Int, workouts: [HealthWorkout]) {
+        var e = currentEntry
+        e.fitness.hkSteps          = steps
+        e.fitness.hkCalories       = calories
+        e.fitness.hkWorkoutMinutes = workoutMins
+        e.fitness.hkWalkingMinutes = walkingMins
+        e.fitness.hkWorkouts       = workouts
+        e.fitness.hkSyncedAt       = Date()
+        if steps > 0 { e.fitness.steps = steps }
+        currentEntry = e
+    }
+
     // MARK: - Rating
     func updateRating(_ rating: DayRating) {
         var e = currentEntry
