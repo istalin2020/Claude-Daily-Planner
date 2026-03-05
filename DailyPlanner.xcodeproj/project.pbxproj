@@ -30,6 +30,7 @@
 		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
 		AA440000000000000000001A /* CalorieEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA430000000000000000001A /* CalorieEstimator.swift */; };
 		AA420000000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA410000000000000000001A /* SettingsView.swift */; };
+		AA470000000000000000001A /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA460000000000000000001A /* HealthKitManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +59,7 @@
 		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		AA430000000000000000001A /* CalorieEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieEstimator.swift; sourceTree = "<group>"; };
 		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA460000000000000000001A /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +79,7 @@
 				AA0F0000000000000000001A /* DailyPlannerApp.swift */,
 				AA380000000000000000001A /* Models */,
 				AA390000000000000000001A /* ViewModels */,
+				AA450000000000000000001A /* Services */,
 				AA3A0000000000000000001A /* Views */,
 				AA350000000000000000001A /* Assets.xcassets */,
 				AA370000000000000000001A /* Info.plist */,
@@ -108,6 +111,14 @@
 				AA130000000000000000001A /* PlannerViewModel.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		AA450000000000000000001A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AA460000000000000000001A /* HealthKitManager.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		AA3A0000000000000000001A /* Views */ = {
@@ -241,6 +252,7 @@
 				AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */,
 				AA340000000000000000001A /* RateYourDayView.swift in Sources */,
 				AA420000000000000000001A /* SettingsView.swift in Sources */,
+				AA470000000000000000001A /* HealthKitManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
