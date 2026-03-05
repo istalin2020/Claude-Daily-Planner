@@ -27,7 +27,8 @@ final class HealthKitManager {
         let qIds: [HKQuantityTypeIdentifier] = [
             .stepCount,
             .activeEnergyBurned,
-            .appleExerciseTime
+            .appleExerciseTime,
+            .distanceWalkingRunning
         ]
         for id in qIds {
             if let t = HKQuantityType.quantityType(forIdentifier: id) { types.insert(t) }
@@ -52,6 +53,10 @@ final class HealthKitManager {
         var data = HealthKitDayData()
         let group = DispatchGroup()
 
+        // Collect walking sub-results separately to combine safely in notify.
+        var walkingFromSessions: Int = 0
+        var walkingDistanceKm: Double = 0
+
         // Steps
         group.enter()
         fetchSum(.stepCount, unit: .count(), date: date) {
@@ -64,18 +69,42 @@ final class HealthKitManager {
             data.calories = Int($0); group.leave()
         }
 
-        // Workouts (includes walking, running, swimming …)
+        // Apple Exercise Time — matches the Exercise ring in Apple Health exactly.
+        // Covers brisk walks, workouts, and any activity ≥ 3 METs even when
+        // no explicit HKWorkout session was saved (e.g. iPhone passive tracking).
+        group.enter()
+        fetchSum(.appleExerciseTime, unit: .minute(), date: date) {
+            data.workoutMinutes = Int($0); group.leave()
+        }
+
+        // Walking/running distance — used to estimate walking time when no
+        // formal walking workout session exists (iPhone passive step tracking).
+        group.enter()
+        fetchSum(.distanceWalkingRunning, unit: .meterUnit(with: .kilo), date: date) { km in
+            walkingDistanceKm = km; group.leave()
+        }
+
+        // Workout samples — drives the "From Apple Health" list and session-based
+        // walking minutes (Apple Watch auto-detected walks).
         group.enter()
         fetchWorkoutSamples(date: date) { workouts in
-            data.workouts        = workouts
-            data.workoutMinutes  = workouts.reduce(0) { $0 + $1.durationMinutes }
-            data.walkingMinutes  = workouts
+            data.workouts = workouts
+            walkingFromSessions = workouts
                 .filter { $0.activityType.lowercased().contains("walk") }
                 .reduce(0) { $0 + $1.durationMinutes }
             group.leave()
         }
 
-        group.notify(queue: .main) { completion(data) }
+        group.notify(queue: .main) {
+            // Prefer explicit walking sessions; fall back to distance-based estimate
+            // at average walking pace of 5 km/h (12 min per km).
+            if walkingFromSessions > 0 {
+                data.walkingMinutes = walkingFromSessions
+            } else if walkingDistanceKm > 0 {
+                data.walkingMinutes = Int(walkingDistanceKm * 12)
+            }
+            completion(data)
+        }
     }
 
     // MARK: - Private: cumulative quantity sum for a day
