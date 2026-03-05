@@ -53,7 +53,7 @@ struct OverviewView: View {
                                   value: "\(entry.waterGlasses)/\(entry.waterGoal)",
                                   color: AppSection.waterTracker.color)
                     QuickStatCard(icon: "dollarsign.circle.fill", label: "Spent",
-                                  value: String(format: "$%.0f", entry.totalExpenses),
+                                  value: String(format: "%@%.0f", vm.settings.currency.symbol, entry.totalExpenses),
                                   color: AppSection.expenseTracker.color)
                 }
                 .padding(.horizontal, 12)
@@ -223,21 +223,21 @@ struct OverviewView: View {
                 OverviewCard(section: .expenseTracker, action: { vm.selectedSection = .expenseTracker }) {
                     HStack(spacing: 20) {
                         VStack(spacing: 2) {
-                            Text(String(format: "$%.2f", entry.totalExpenses))
+                            Text(String(format: "%@%.2f", vm.settings.currency.symbol, entry.totalExpenses))
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.red)
                             Text("Spent")
                                 .font(.caption2).foregroundColor(.secondary)
                         }
                         VStack(spacing: 2) {
-                            Text(String(format: "$%.2f", entry.totalDeposits))
+                            Text(String(format: "%@%.2f", vm.settings.currency.symbol, entry.totalDeposits))
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.green)
                             Text("Saved")
                                 .font(.caption2).foregroundColor(.secondary)
                         }
                         VStack(spacing: 2) {
-                            Text(String(format: "$%.2f", entry.savings))
+                            Text(String(format: "%@%.2f", vm.settings.currency.symbol, entry.savings))
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.blue)
                             Text("Future Fund")
