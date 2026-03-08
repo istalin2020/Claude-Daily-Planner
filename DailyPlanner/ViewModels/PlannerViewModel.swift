@@ -466,9 +466,13 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - HealthKit sync
-    func syncHealthKitData(steps: Int, calories: Int, workoutMins: Int,
-                           walkingMins: Int, workouts: [HealthWorkout]) {
-        var e = currentEntry
+
+    /// Saves HealthKit data into a specific date's entry (not selectedDate).
+    /// Used by both the app-level foreground sync and the per-view sync.
+    func syncHealthKitData(for date: Date, steps: Int, calories: Int,
+                           workoutMins: Int, walkingMins: Int, workouts: [HealthWorkout]) {
+        let key = dateKey(for: date)
+        var e = entries[key] ?? DailyEntry(date: date)
         e.fitness.hkSteps          = steps
         e.fitness.hkCalories       = calories
         e.fitness.hkWorkoutMinutes = workoutMins
@@ -476,18 +480,29 @@ class PlannerViewModel: ObservableObject {
         e.fitness.hkWorkouts       = workouts
         e.fitness.hkSyncedAt       = Date()
         if steps > 0 { e.fitness.steps = steps }
-        currentEntry = e
+        entries[key] = e
+        objectWillChange.send()
+    }
+
+    /// Backward-compatible overload used by HealthFitnessView (saves to selectedDate).
+    func syncHealthKitData(steps: Int, calories: Int, workoutMins: Int,
+                           walkingMins: Int, workouts: [HealthWorkout]) {
+        syncHealthKitData(for: selectedDate, steps: steps, calories: calories,
+                          workoutMins: workoutMins, walkingMins: walkingMins, workouts: workouts)
     }
 
     /// Silently syncs HealthKit data for today. Called on every app foreground
     /// so data is always fresh regardless of which tab the user is on.
+    /// Always targets today's actual calendar date — never selectedDate.
     func syncHealthKitForToday() {
         guard HealthKitManager.shared.isAvailable else { return }
         HealthKitManager.shared.requestAuthorization { [weak self] granted in
             guard granted, let self else { return }
             let today = Calendar.current.startOfDay(for: Date())
-            HealthKitManager.shared.fetchAllHealthData(for: today) { data in
+            HealthKitManager.shared.fetchAllHealthData(for: today) { [weak self] data in
+                guard let self else { return }
                 self.syncHealthKitData(
+                    for: today,
                     steps: data.steps,
                     calories: data.calories,
                     workoutMins: data.workoutMinutes,

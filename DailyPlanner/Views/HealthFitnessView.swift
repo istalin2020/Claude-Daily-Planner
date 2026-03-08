@@ -171,10 +171,9 @@ struct HealthFitnessView: View {
 
     private func autoSync() {
         guard HealthKitManager.shared.isAvailable else { return }
-        // 5-min threshold — the app-level sync already fires on foreground;
-        // this just refreshes when navigating directly to this tab.
-        let threshold = Date().addingTimeInterval(-300)
-        guard fitness.hkSyncedAt == nil || fitness.hkSyncedAt! < threshold else { return }
+        // Always sync when entering the view — the app-level sync covers
+        // foreground launches; this ensures the viewed date is up-to-date
+        // even when navigating between days.
         syncFromAppleHealth()
     }
 
@@ -184,10 +183,12 @@ struct HealthFitnessView: View {
             return
         }
         isSyncing = true
+        let dateToSync = vm.selectedDate
         HealthKitManager.shared.requestAuthorization { granted in
             guard granted else { isSyncing = false; return }
-            HealthKitManager.shared.fetchAllHealthData(for: vm.selectedDate) { data in
+            HealthKitManager.shared.fetchAllHealthData(for: dateToSync) { data in
                 vm.syncHealthKitData(
+                    for: dateToSync,
                     steps: data.steps,
                     calories: data.calories,
                     workoutMins: data.workoutMinutes,
