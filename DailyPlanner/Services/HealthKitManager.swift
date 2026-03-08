@@ -21,6 +21,9 @@ final class HealthKitManager {
     /// false on Simulator — HealthKit is only available on real iPhone/Apple Watch
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
+    /// Prevents two simultaneous requestAuthorization calls from colliding.
+    private var isAuthorizing = false
+
     // MARK: - Read permission types
     private var readTypes: Set<HKObjectType> {
         var types = Set<HKObjectType>()
@@ -38,11 +41,18 @@ final class HealthKitManager {
     }
 
     // MARK: - Request authorisation
-    /// Safe to call multiple times — iOS silently skips the dialog if already answered.
-    func requestAuthorization(completion: @escaping (Bool) -> Void) {
-        guard isAvailable else { completion(false); return }
-        store.requestAuthorization(toShare: nil, read: readTypes) { ok, _ in
-            DispatchQueue.main.async { completion(ok) }
+    /// Requests HealthKit access and always calls completion on the main thread.
+    /// If a request is already in flight the new call is dropped — the in-flight
+    /// request will trigger the fetch when it completes.
+    func requestAuthorization(completion: @escaping () -> Void) {
+        guard isAvailable else { DispatchQueue.main.async { completion() }; return }
+        guard !isAuthorizing else { return }
+        isAuthorizing = true
+        store.requestAuthorization(toShare: nil, read: readTypes) { [weak self] _, _ in
+            // Ignore success/error — always proceed. HealthKit returns empty
+            // data for denied types; attempting the fetch is always safe.
+            self?.isAuthorizing = false
+            DispatchQueue.main.async { completion() }
         }
     }
 

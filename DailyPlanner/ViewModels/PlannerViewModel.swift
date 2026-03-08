@@ -496,9 +496,9 @@ class PlannerViewModel: ObservableObject {
     /// Always targets today's actual calendar date — never selectedDate.
     func syncHealthKitForToday() {
         guard HealthKitManager.shared.isAvailable else { return }
-        HealthKitManager.shared.requestAuthorization { [weak self] granted in
-            guard granted, let self else { return }
-            let today = Calendar.current.startOfDay(for: Date())
+        let today = Calendar.current.startOfDay(for: Date())
+        HealthKitManager.shared.requestAuthorization { [weak self] in
+            guard let self else { return }
             HealthKitManager.shared.fetchAllHealthData(for: today) { [weak self] data in
                 guard let self else { return }
                 self.syncHealthKitData(

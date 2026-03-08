@@ -7,6 +7,7 @@ struct HealthFitnessView: View {
     @State private var showAddActivity = false
     @State private var isSyncing = false
     @State private var showHKUnavailable = false
+    @State private var showSettingsAlert = false
 
     var entry: DailyEntry { vm.currentEntry }
     var fitness: FitnessEntry { entry.fitness }
@@ -164,6 +165,16 @@ struct HealthFitnessView: View {
         } message: {
             Text("Apple Health is not available on this device or simulator.")
         }
+        .alert("Health Access Required", isPresented: $showSettingsAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Please go to Settings → Privacy & Security → Health → Daily Planner and enable all health data categories.")
+        }
         .onAppear { autoSync() }
     }
 
@@ -171,9 +182,12 @@ struct HealthFitnessView: View {
 
     private func autoSync() {
         guard HealthKitManager.shared.isAvailable else { return }
-        // Always sync when entering the view — the app-level sync covers
-        // foreground launches; this ensures the viewed date is up-to-date
-        // even when navigating between days.
+        // Only auto-sync if this date has never been synced or hasn't been
+        // synced today — the app-level foreground sync handles the common case.
+        let lastSync = fitness.hkSyncedAt
+        let needsSync = lastSync == nil ||
+            !Calendar.current.isDateInToday(lastSync!)
+        guard needsSync else { return }
         syncFromAppleHealth()
     }
 
@@ -182,10 +196,21 @@ struct HealthFitnessView: View {
             showHKUnavailable = true
             return
         }
+
+        // Check if user has previously denied all HealthKit access.
+        // If so, direct them to Settings instead of silently failing.
+        let store = HKHealthStore()
+        let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        if store.authorizationStatus(for: stepType) == .sharingDenied {
+            showSettingsAlert = true
+            return
+        }
+
         isSyncing = true
         let dateToSync = vm.selectedDate
-        HealthKitManager.shared.requestAuthorization { granted in
-            guard granted else { isSyncing = false; return }
+        HealthKitManager.shared.requestAuthorization {
+            // Always fetch regardless of auth result —
+            // HealthKit returns 0 for denied types but never hangs.
             HealthKitManager.shared.fetchAllHealthData(for: dateToSync) { data in
                 vm.syncHealthKitData(
                     for: dateToSync,
