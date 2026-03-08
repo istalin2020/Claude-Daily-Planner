@@ -121,14 +121,16 @@ struct OverviewView: View {
                 // Health & Fitness Card
                 OverviewCard(section: .healthFitness, action: { vm.selectedSection = .healthFitness }) {
                     HStack(spacing: 16) {
-                        HealthMiniStat(icon: "figure.run", label: "Workouts",
-                                       value: "\(entry.fitness.activities.filter(\.isCompleted).count)")
-                        HealthMiniStat(icon: "timer", label: "Minutes",
+                        HealthMiniStat(icon: "figure.run", label: "Workout",
                                        value: "\(entry.fitness.displayWorkoutMinutes)")
+                        HealthMiniStat(icon: "figure.walk", label: "Walking",
+                                       value: "\(entry.fitness.displayWalkingMinutes)")
+                        HealthMiniStat(icon: "shoeprints.fill", label: "Steps",
+                                       value: entry.fitness.displaySteps >= 1000
+                                           ? String(format: "%.1fk", Double(entry.fitness.displaySteps) / 1000)
+                                           : "\(entry.fitness.displaySteps)")
                         HealthMiniStat(icon: "flame.fill", label: "Calories",
                                        value: "\(entry.fitness.displayCalories)")
-                        HealthMiniStat(icon: "figure.walk", label: "Steps",
-                                       value: "\(entry.fitness.displaySteps)")
                     }
                     .frame(maxWidth: .infinity)
                 }
