@@ -479,6 +479,25 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    /// Silently syncs HealthKit data for today. Called on every app foreground
+    /// so data is always fresh regardless of which tab the user is on.
+    func syncHealthKitForToday() {
+        guard HealthKitManager.shared.isAvailable else { return }
+        HealthKitManager.shared.requestAuthorization { [weak self] granted in
+            guard granted, let self else { return }
+            let today = Calendar.current.startOfDay(for: Date())
+            HealthKitManager.shared.fetchAllHealthData(for: today) { data in
+                self.syncHealthKitData(
+                    steps: data.steps,
+                    calories: data.calories,
+                    workoutMins: data.workoutMinutes,
+                    walkingMins: data.walkingMinutes,
+                    workouts: data.workouts
+                )
+            }
+        }
+    }
+
     // MARK: - Rating
     func updateRating(_ rating: DayRating) {
         var e = currentEntry

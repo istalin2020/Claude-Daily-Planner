@@ -171,7 +171,9 @@ struct HealthFitnessView: View {
 
     private func autoSync() {
         guard HealthKitManager.shared.isAvailable else { return }
-        let threshold = Date().addingTimeInterval(-900) // 15 minutes
+        // 5-min threshold — the app-level sync already fires on foreground;
+        // this just refreshes when navigating directly to this tab.
+        let threshold = Date().addingTimeInterval(-300)
         guard fitness.hkSyncedAt == nil || fitness.hkSyncedAt! < threshold else { return }
         syncFromAppleHealth()
     }
