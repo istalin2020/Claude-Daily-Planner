@@ -262,11 +262,11 @@ struct DaySummaryCard: View {
                               color: .cyan)
                 SummaryMetric(icon: "figure.run",
                               label: "Workout Mins",
-                              value: "\(entry.fitness.totalMinutes)",
+                              value: "\(entry.fitness.displayWorkoutMinutes)",
                               color: .orange)
                 SummaryMetric(icon: "dollarsign.circle",
                               label: "Spent Today",
-                              value: String(format: "$%.0f", entry.totalExpenses),
+                              value: String(format: "%@%.0f", vm.settings.currency.symbol, entry.totalExpenses),
                               color: .red)
             }
         }

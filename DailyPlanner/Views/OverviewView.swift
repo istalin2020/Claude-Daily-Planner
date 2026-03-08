@@ -159,12 +159,9 @@ struct OverviewView: View {
                         MealMiniStat(meal: "Breakfast", items: entry.meals.breakfastItems.count, icon: "sunrise.fill")
                         MealMiniStat(meal: "Lunch", items: entry.meals.lunchItems.count, icon: "sun.max.fill")
                         MealMiniStat(meal: "Dinner", items: entry.meals.dinnerItems.count, icon: "moon.fill")
+                        CalorieMiniStat(calories: entry.meals.totalCalories)
                     }
                     .frame(maxWidth: .infinity)
-                    if entry.meals.totalCalories > 0 {
-                        Text("Total: \(entry.meals.totalCalories) cal")
-                            .font(.caption).foregroundColor(.secondary)
-                    }
                 }
 
                 // Daily Schedule Card
@@ -386,6 +383,20 @@ struct MealMiniStat: View {
             Image(systemName: icon).font(.system(size: 14)).foregroundColor(AppSection.foodTracker.color)
             Text("\(items)").font(.system(size: 13, weight: .bold))
             Text(meal).font(.system(size: 9)).foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct CalorieMiniStat: View {
+    let calories: Int
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Image(systemName: "flame.fill").font(.system(size: 14)).foregroundColor(.red)
+            Text(calories > 0 ? "\(calories)" : "0")
+                .font(.system(size: 13, weight: .bold))
+            Text("cal").font(.system(size: 9)).foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
