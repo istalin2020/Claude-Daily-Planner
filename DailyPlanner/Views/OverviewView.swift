@@ -54,7 +54,7 @@ struct OverviewView: View {
                                   color: AppSection.waterTracker.color)
                     QuickStatCard(icon: "dollarsign.circle.fill", label: "Spent",
                                   value: String(format: "%@%.0f", vm.settings.currency.symbol, entry.totalExpenses),
-                                  color: AppSection.expenseTracker.color)
+                                  color: .red)
                 }
                 .padding(.horizontal, 12)
 
@@ -220,30 +220,61 @@ struct OverviewView: View {
 
                 // Expense Tracker Card
                 OverviewCard(section: .expenseTracker, action: { vm.selectedSection = .expenseTracker }) {
-                    HStack(spacing: 20) {
-                        VStack(spacing: 2) {
-                            Text(String(format: "%@%.2f", vm.settings.currency.symbol, entry.totalExpenses))
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.red)
-                            Text("Spent")
-                                .font(.caption2).foregroundColor(.secondary)
+                    let sym      = vm.settings.currency.symbol
+                    let balance  = vm.monthlyBalance(for: vm.selectedDate)
+                    let totInc   = vm.monthlyTotalIncome(for: vm.selectedDate)
+
+                    VStack(spacing: 10) {
+                        // Row 1 — today's three figures
+                        HStack(spacing: 0) {
+                            ExpenseMiniStat(
+                                icon: "arrow.down.circle.fill",
+                                label: "Earning",
+                                value: String(format: "%@%.2f", sym, entry.totalIncome),
+                                color: Color(red: 0.1, green: 0.65, blue: 0.35)
+                            )
+                            Divider().frame(height: 36)
+                            ExpenseMiniStat(
+                                icon: "arrow.up.circle.fill",
+                                label: "Expenses",
+                                value: String(format: "%@%.2f", sym, entry.totalExpenses),
+                                color: .red
+                            )
+                            Divider().frame(height: 36)
+                            ExpenseMiniStat(
+                                icon: "banknote.fill",
+                                label: "Saving",
+                                value: String(format: "%@%.2f", sym, entry.totalDeposits),
+                                color: Color(red: 0.3, green: 0.5, blue: 0.95)
+                            )
                         }
-                        VStack(spacing: 2) {
-                            Text(String(format: "%@%.2f", vm.settings.currency.symbol, entry.totalDeposits))
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.green)
-                            Text("Saved")
-                                .font(.caption2).foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+
+                        // Row 2 — monthly totals
+                        HStack {
+                            // Total Income (left)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Total Income")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                Text(String(format: "%@%.2f", sym, totInc))
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
+                            }
+                            Spacer()
+                            // Monthly Balance (right)
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text("Month Balance")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                Text("\(balance >= 0 ? "+" : "")\(sym)\(String(format: "%.2f", balance))")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(balance >= 0 ? Color(red: 0.1, green: 0.65, blue: 0.35) : .red)
+                            }
                         }
-                        VStack(spacing: 2) {
-                            Text(String(format: "%@%.2f", vm.settings.currency.symbol, entry.savings))
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.blue)
-                            Text("Future Fund")
-                                .font(.caption2).foregroundColor(.secondary)
-                        }
+                        .padding(.horizontal, 4)
+                        .padding(.top, 2)
                     }
-                    .frame(maxWidth: .infinity)
                 }
 
                 // Rate Your Day Card
@@ -397,6 +428,30 @@ struct CalorieMiniStat: View {
             Text(calories > 0 ? "\(calories)" : "0")
                 .font(.system(size: 13, weight: .bold))
             Text("cal").font(.system(size: 9)).foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct ExpenseMiniStat: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundColor(color)
+            Text(value)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(color)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
