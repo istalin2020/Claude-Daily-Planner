@@ -1,126 +1,644 @@
 import SwiftUI
 
+// MARK: - Main View
+
 struct ExpenseTrackerView: View {
     @EnvironmentObject var vm: PlannerViewModel
-    @State private var showAddExpense = false
-    @State private var showSavingsSheet = false
-    @State private var addingDeposit = false
+    @State private var showAddSheet     = false
+    @State private var addMode: AddMode = .expense
+    @State private var summaryMonthOffset = 0
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
+
+    // Reference month for monthly summary (can navigate independently)
+    private var summaryDate: Date {
+        Calendar.current.date(byAdding: .month, value: summaryMonthOffset, to: vm.selectedDate) ?? vm.selectedDate
+    }
+    private var summaryMonthLabel: String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMMM yyyy"
+        return fmt.string(from: summaryDate)
+    }
+
+    enum AddMode { case income, expense, savings }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 SectionHeader(section: .expenseTracker,
-                              subtitle: "Track spending and savings",
+                              subtitle: "Track income, spending & savings",
                               completedCount: entry.expenses.count,
                               totalCount: entry.expenses.count)
 
-                // Summary cards
-                HStack(spacing: 10) {
-                    FinanceSummaryCard(title: "Spent",       amount: entry.totalExpenses, color: .red,   icon: "arrow.up.circle.fill",   currencySymbol: sym)
-                    FinanceSummaryCard(title: "Saved",       amount: entry.totalDeposits, color: .green, icon: "arrow.down.circle.fill", currencySymbol: sym)
-                    FinanceSummaryCard(title: "Future Fund", amount: entry.savings,       color: .blue,  icon: "banknote.fill",          currencySymbol: sym)
-                }
-                .padding(.horizontal, 16).padding(.top, 12)
+                // ── Today's Snapshot ──────────────────────────────────
+                todaySnapshotSection
+                    .padding(.top, 12)
 
+                // ── Quick Add Buttons ──────────────────────────────────
                 if !vm.isFuture {
-                    // Action buttons
-                    HStack(spacing: 8) {
-                        Button(action: { addingDeposit = false; showAddExpense = true }) {
-                            Label("Add Expense", systemImage: "minus.circle.fill")
-                                .font(.system(size: 13, weight: .semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(Color.red.opacity(0.1))
-                                .foregroundColor(.red)
-                                .cornerRadius(12)
-                        }
-                        Button(action: { addingDeposit = true; showAddExpense = true }) {
-                            Label("Add Saving", systemImage: "plus.circle.fill")
-                                .font(.system(size: 13, weight: .semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(Color.green.opacity(0.1))
-                                .foregroundColor(.green)
-                                .cornerRadius(12)
-                        }
-                    }
-                    .padding(.horizontal, 16).padding(.top, 8)
-
-                    Button(action: { showSavingsSheet = true }) {
-                        Label("Set Future Fund Target: \(sym)\(String(format: "%.2f", entry.savings))",
-                              systemImage: "target")
-                            .font(.system(size: 13, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal, 16).padding(.top, 4)
+                    quickAddButtons
+                        .padding(.top, 10)
                 }
 
-                // Category breakdown
-                if !entry.expenses.isEmpty {
-                    CategoryBreakdownView(expenses: entry.expenses, currencySymbol: sym)
-                        .padding(.horizontal, 16).padding(.top, 12)
-                }
+                // ── Monthly Summary ────────────────────────────────────
+                monthlySummaryCard
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
 
-                // Expense list
-                if entry.expenses.isEmpty {
-                    EmptySectionView(section: .expenseTracker,
-                                     message: "Log your expenses and savings")
-                } else {
-                    VStack(spacing: 6) {
-                        let expenses = entry.expenses.filter { !$0.isDeposit }
-                        let deposits = entry.expenses.filter { $0.isDeposit }
-
-                        if !expenses.isEmpty {
-                            SectionGroupLabel(title: "Expenses", color: .red)
-                            ForEach(expenses) { expense in
-                                ExpenseRow(expense: expense, currencySymbol: sym) {
-                                    if let i = vm.currentEntry.expenses.firstIndex(where: { $0.id == expense.id }) {
-                                        vm.deleteExpense(at: IndexSet([i]))
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                            }
-                        }
-
-                        if !deposits.isEmpty {
-                            SectionGroupLabel(title: "Savings", color: .green)
-                            ForEach(deposits) { deposit in
-                                ExpenseRow(expense: deposit, currencySymbol: sym) {
-                                    if let i = vm.currentEntry.expenses.firstIndex(where: { $0.id == deposit.id }) {
-                                        vm.deleteExpense(at: IndexSet([i]))
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                            }
-                        }
-                    }
-                    .padding(.top, 8)
-                }
+                // ── Today's Transactions ───────────────────────────────
+                todayTransactionsList
+                    .padding(.top, 16)
 
                 Spacer(minLength: 40)
             }
         }
-        .sheet(isPresented: $showAddExpense) {
-            AddExpenseSheet(isDeposit: addingDeposit, currencySymbol: sym) { expense in
-                vm.addExpense(expense)
+        .sheet(isPresented: $showAddSheet) {
+            AddTransactionSheet(mode: addMode, currencySymbol: sym) { transaction in
+                vm.addExpense(transaction)
             }
         }
-        .sheet(isPresented: $showSavingsSheet) {
-            SavingsTargetSheet(current: entry.savings, currencySymbol: sym) { amount in
-                vm.updateSavings(amount)
+    }
+
+    // MARK: - Today Snapshot
+
+    private var todaySnapshotSection: some View {
+        HStack(spacing: 10) {
+            TodayFinanceCard(
+                title: "Today's Income",
+                amount: entry.totalIncome,
+                icon: "arrow.down.circle.fill",
+                gradient: [Color(red: 0.1, green: 0.75, blue: 0.4), Color(red: 0.0, green: 0.55, blue: 0.3)],
+                sym: sym
+            )
+            TodayFinanceCard(
+                title: "Today's Expenses",
+                amount: entry.totalExpenses,
+                icon: "arrow.up.circle.fill",
+                gradient: [Color(red: 0.95, green: 0.35, blue: 0.3), Color(red: 0.8, green: 0.15, blue: 0.15)],
+                sym: sym
+            )
+            TodayFinanceCard(
+                title: "Future Savings",
+                amount: entry.totalDeposits,
+                icon: "banknote.fill",
+                gradient: [Color(red: 0.3, green: 0.5, blue: 0.95), Color(red: 0.15, green: 0.3, blue: 0.8)],
+                sym: sym
+            )
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Quick Add Buttons
+
+    private var quickAddButtons: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                FinanceAddButton(label: "Add Income", icon: "plus.circle.fill",
+                                 bg: Color(red: 0.1, green: 0.75, blue: 0.4).opacity(0.12),
+                                 fg: Color(red: 0.1, green: 0.65, blue: 0.35)) {
+                    addMode = .income; showAddSheet = true
+                }
+                FinanceAddButton(label: "Add Expense", icon: "minus.circle.fill",
+                                 bg: Color.red.opacity(0.1), fg: .red) {
+                    addMode = .expense; showAddSheet = true
+                }
+            }
+            .padding(.horizontal, 16)
+
+            FinanceAddButton(label: "Add Saving  \(sym)\(String(format: "%.2f", entry.totalDeposits))",
+                             icon: "banknote.fill",
+                             bg: Color(red: 0.3, green: 0.5, blue: 0.95).opacity(0.1),
+                             fg: Color(red: 0.3, green: 0.5, blue: 0.95)) {
+                addMode = .savings; showAddSheet = true
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    // MARK: - Monthly Summary Card
+
+    private var monthlySummaryCard: some View {
+        let totalIncome   = vm.monthlyTotalIncome(for: summaryDate)
+        let totalExpenses = vm.monthlyTotalExpenses(for: summaryDate)
+        let balance       = vm.monthlyBalance(for: summaryDate)
+        let categories    = vm.monthlyExpensesByCategory(for: summaryDate)
+        let barRatio: Double = totalIncome > 0 ? min(totalExpenses / totalIncome, 1.0) : 0
+
+        return VStack(alignment: .leading, spacing: 0) {
+
+            // Header with month navigation
+            HStack {
+                Button { summaryMonthOffset -= 1 } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(width: 32, height: 32)
+                }
+                Spacer()
+                VStack(spacing: 2) {
+                    Text(summaryMonthLabel)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                    Text("Monthly Overview")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                Spacer()
+                Button { summaryMonthOffset += 1 } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(width: 32, height: 32)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            // Income/Expense progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.red.opacity(0.5))
+                        .frame(height: 6)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color(red: 0.1, green: 0.85, blue: 0.5))
+                        .frame(width: geo.size.width * (1 - barRatio), height: 6)
+                }
+            }
+            .frame(height: 6)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
+
+            // ── Income rows ──
+            VStack(spacing: 0) {
+                // Monthly salary row (if set)
+                if vm.settings.monthlyIncome > 0 {
+                    SummaryRow(
+                        label: "Monthly Salary",
+                        amount: vm.settings.monthlyIncome,
+                        sym: sym,
+                        color: Color(red: 0.1, green: 0.85, blue: 0.5),
+                        isHeader: false
+                    )
+                    .padding(.horizontal, 16)
+                }
+
+                // Daily income entries summed for month
+                let dailyIncome = vm.monthlyEntries(for: summaryDate)
+                    .flatMap { $0.expenses }
+                    .filter { $0.isIncome }
+                    .reduce(0) { $0 + $1.amount }
+
+                if dailyIncome > 0 {
+                    SummaryRow(
+                        label: "Other Income",
+                        amount: dailyIncome,
+                        sym: sym,
+                        color: Color(red: 0.1, green: 0.85, blue: 0.5),
+                        isHeader: false
+                    )
+                    .padding(.horizontal, 16)
+                }
+
+                // Total income (bold header row)
+                SummaryRow(
+                    label: "Income",
+                    amount: totalIncome,
+                    sym: sym,
+                    color: Color(red: 0.1, green: 0.85, blue: 0.5),
+                    isHeader: true
+                )
+                .padding(.horizontal, 16)
+
+                // Spacer between income and expenses
+                if !categories.isEmpty {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 1)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                }
+
+                // Category-wise expense rows
+                ForEach(categories, id: \.0) { cat, amount in
+                    HStack(spacing: 10) {
+                        Image(systemName: cat.icon)
+                            .font(.system(size: 12))
+                            .foregroundColor(cat.color)
+                            .frame(width: 20)
+                        Text(cat.rawValue)
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.8))
+                        Spacer()
+                        Text("\(sym)\(String(format: "%.2f", amount))")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(Color.red.opacity(0.9))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                }
+
+                if totalExpenses > 0 {
+                    SummaryRow(
+                        label: "Expense",
+                        amount: totalExpenses,
+                        sym: sym,
+                        color: Color.red.opacity(0.85),
+                        isHeader: true
+                    )
+                    .padding(.horizontal, 16)
+                }
+
+                // Dashed divider
+                DashedDivider()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+
+                // Balance
+                HStack {
+                    Text("Balance")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Text("\(balance >= 0 ? "+" : "")\(sym)\(String(format: "%.2f", balance))")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(balance >= 0
+                            ? Color(red: 0.1, green: 0.85, blue: 0.5)
+                            : Color.red.opacity(0.9))
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.1, green: 0.12, blue: 0.18), Color(red: 0.05, green: 0.07, blue: 0.12)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
+    }
+
+    // MARK: - Today's Transactions List
+
+    private var todayTransactionsList: some View {
+        let incomes   = entry.expenses.filter { $0.isIncome }
+        let expenses  = entry.expenses.filter { !$0.isDeposit && !$0.isIncome }
+        let savings   = entry.expenses.filter { $0.isDeposit }
+        let isEmpty   = entry.expenses.isEmpty
+
+        return Group {
+            if isEmpty {
+                EmptySectionView(section: .expenseTracker,
+                                 message: "Tap a button above to log income or expenses")
+            } else {
+                VStack(spacing: 6) {
+                    if !incomes.isEmpty {
+                        SectionGroupLabel(title: "Income", color: Color(red: 0.1, green: 0.65, blue: 0.35))
+                        ForEach(incomes) { item in
+                            TransactionRow(expense: item, sym: sym) {
+                                deleteTransaction(item)
+                            }
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                    if !expenses.isEmpty {
+                        SectionGroupLabel(title: "Expenses", color: .red)
+                        ForEach(expenses) { item in
+                            TransactionRow(expense: item, sym: sym) {
+                                deleteTransaction(item)
+                            }
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                    if !savings.isEmpty {
+                        SectionGroupLabel(title: "Savings", color: Color(red: 0.3, green: 0.5, blue: 0.95))
+                        ForEach(savings) { item in
+                            TransactionRow(expense: item, sym: sym) {
+                                deleteTransaction(item)
+                            }
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func deleteTransaction(_ item: Expense) {
+        if let i = vm.currentEntry.expenses.firstIndex(where: { $0.id == item.id }) {
+            vm.deleteExpense(at: IndexSet([i]))
+        }
+    }
+}
+
+// MARK: - Today Finance Card
+
+struct TodayFinanceCard: View {
+    let title: String
+    let amount: Double
+    let icon: String
+    let gradient: [Color]
+    let sym: String
+
+    @State private var appear = false
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(.white.opacity(0.2))
+                    .frame(width: 36, height: 36)
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            Text("\(sym)\(String(format: "%.2f", amount))")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.white)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            Text(title)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+        .cornerRadius(16)
+        .shadow(color: gradient[0].opacity(0.4), radius: 8, y: 3)
+        .scaleEffect(appear ? 1 : 0.9)
+        .opacity(appear ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { appear = true }
+        }
+    }
+}
+
+// MARK: - Add Button
+
+struct FinanceAddButton: View {
+    let label: String
+    let icon: String
+    let bg: Color
+    let fg: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(label, systemImage: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 11)
+                .background(bg)
+                .foregroundColor(fg)
+                .cornerRadius(12)
+        }
+    }
+}
+
+// MARK: - Summary Row (Monthly overview)
+
+struct SummaryRow: View {
+    let label: String
+    let amount: Double
+    let sym: String
+    let color: Color
+    let isHeader: Bool
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: isHeader ? 15 : 13, weight: isHeader ? .bold : .regular))
+                .foregroundColor(isHeader ? .white : .white.opacity(0.75))
+            Spacer()
+            Text("\(sym)\(String(format: "%.2f", amount))")
+                .font(.system(size: isHeader ? 15 : 13, weight: isHeader ? .bold : .semibold))
+                .foregroundColor(color)
+        }
+        .padding(.vertical, isHeader ? 8 : 5)
+    }
+}
+
+// MARK: - Dashed Divider
+
+struct DashedDivider: View {
+    var body: some View {
+        GeometryReader { geo in
+            Path { path in
+                path.move(to: .init(x: 0, y: 0))
+                path.addLine(to: .init(x: geo.size.width, y: 0))
+            }
+            .stroke(Color.white.opacity(0.25),
+                    style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+        }
+        .frame(height: 1)
+    }
+}
+
+// MARK: - Transaction Row
+
+struct TransactionRow: View {
+    let expense: Expense
+    let sym: String
+    let onDelete: () -> Void
+
+    private var rowColor: Color {
+        if expense.isIncome   { return Color(red: 0.1, green: 0.65, blue: 0.35) }
+        if expense.isDeposit  { return Color(red: 0.3, green: 0.5, blue: 0.95) }
+        return .red
+    }
+
+    private var rowIcon: String {
+        if expense.isIncome  { return "arrow.down.circle.fill" }
+        if expense.isDeposit { return "banknote.fill" }
+        return expense.category.icon
+    }
+
+    private var sign: String {
+        expense.isIncome || expense.isDeposit ? "+" : "-"
+    }
+
+    private var typeLabel: String {
+        if expense.isIncome  { return "Income" }
+        if expense.isDeposit { return "Savings" }
+        return expense.category.rawValue
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(rowColor.opacity(0.12))
+                    .frame(width: 36, height: 36)
+                Image(systemName: rowIcon)
+                    .font(.system(size: 15))
+                    .foregroundColor(rowColor)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(expense.description)
+                    .font(.system(size: 13, weight: .medium))
+                Text(typeLabel)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Text("\(sign)\(sym)\(String(format: "%.2f", expense.amount))")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(rowColor)
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.caption)
+                    .foregroundColor(.secondary.opacity(0.5))
+            }
+        }
+        .padding(10)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
+    }
+}
+
+// MARK: - Add Transaction Sheet
+
+struct AddTransactionSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var amount      = ""
+    @State private var description = ""
+    @State private var category    = ExpenseCategory.other
+
+    let mode: ExpenseTrackerView.AddMode
+    let currencySymbol: String
+    let onSave: (Expense) -> Void
+
+    private var title: String {
+        switch mode {
+        case .income:  return "Add Income"
+        case .expense: return "Add Expense"
+        case .savings: return "Add Saving"
+        }
+    }
+
+    private var accentColor: Color {
+        switch mode {
+        case .income:  return Color(red: 0.1, green: 0.65, blue: 0.35)
+        case .expense: return .red
+        case .savings: return Color(red: 0.3, green: 0.5, blue: 0.95)
+        }
+    }
+
+    private var iconName: String {
+        switch mode {
+        case .income:  return "arrow.down.circle.fill"
+        case .expense: return "minus.circle.fill"
+        case .savings: return "banknote.fill"
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Colorful header banner
+                VStack(spacing: 8) {
+                    Image(systemName: iconName)
+                        .font(.system(size: 40))
+                        .foregroundColor(.white)
+                    Text(title)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 28)
+                .background(
+                    LinearGradient(colors: [accentColor, accentColor.opacity(0.7)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+
+                Form {
+                    Section("Details") {
+                        HStack(spacing: 8) {
+                            Image(systemName: iconName)
+                                .foregroundColor(accentColor)
+                                .frame(width: 24)
+                            TextField(mode == .income ? "Source (e.g. Salary, Freelance)" : "Description",
+                                      text: $description)
+                                .autocapitalization(.sentences)
+                        }
+
+                        HStack {
+                            Image(systemName: "dollarsign.circle")
+                                .foregroundColor(.secondary)
+                                .frame(width: 24)
+                            Text(currencySymbol)
+                                .foregroundColor(.secondary)
+                            TextField("0.00", text: $amount)
+                                .keyboardType(.decimalPad)
+                        }
+
+                        if mode == .expense {
+                            Picker("Category", selection: $category) {
+                                ForEach(ExpenseCategory.allCases, id: \.self) { cat in
+                                    Label(cat.rawValue, systemImage: cat.icon).tag(cat)
+                                }
+                            }
+                        }
+                    }
+
+                    Section {
+                        Button {
+                            guard let amt = Double(amount), amt > 0, !description.isEmpty else { return }
+                            let expense = Expense(
+                                amount: amt,
+                                category: mode == .expense ? category : .other,
+                                description: description,
+                                isDeposit: mode == .savings,
+                                isIncome:  mode == .income
+                            )
+                            onSave(expense)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Save \(title)")
+                                    .fontWeight(.semibold)
+                                Spacer()
+                            }
+                            .foregroundColor(.white)
+                            .padding(.vertical, 4)
+                        }
+                        .listRowBackground(
+                            description.isEmpty || Double(amount) == nil
+                                ? Color.secondary.opacity(0.3)
+                                : accentColor
+                        )
+                        .disabled(description.isEmpty || Double(amount) == nil)
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
             }
         }
     }
 }
 
-// MARK: - Finance Summary Card
+// MARK: - Finance Summary Card (kept for backward compat in Overview)
+
 struct FinanceSummaryCard: View {
     let title: String
     let amount: Double
@@ -141,174 +659,5 @@ struct FinanceSummaryCard: View {
         .padding(.vertical, 12)
         .background(color.opacity(0.08))
         .cornerRadius(12)
-    }
-}
-
-// MARK: - Category Breakdown
-struct CategoryBreakdownView: View {
-    let expenses: [Expense]
-    let currencySymbol: String
-
-    private var grouped: [(ExpenseCategory, Double)] {
-        let spentOnly = expenses.filter { !$0.isDeposit }
-        var totals: [ExpenseCategory: Double] = [:]
-        for e in spentOnly { totals[e.category, default: 0] += e.amount }
-        return totals.sorted { $0.value > $1.value }
-    }
-
-    private var totalSpent: Double { grouped.reduce(0) { $0 + $1.1 } }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Spending by Category")
-                .font(.system(size: 14, weight: .bold))
-            ForEach(grouped, id: \.0) { cat, amount in
-                HStack(spacing: 8) {
-                    Image(systemName: cat.icon)
-                        .font(.system(size: 12))
-                        .foregroundColor(cat.color)
-                        .frame(width: 20)
-                    Text(cat.rawValue).font(.caption)
-                    Spacer()
-                    ProgressView(value: totalSpent > 0 ? amount / totalSpent : 0)
-                        .tint(cat.color)
-                        .frame(width: 80)
-                    Text("\(currencySymbol)\(String(format: "%.2f", amount))")
-                        .font(.caption).fontWeight(.semibold)
-                        .frame(width: 55, alignment: .trailing)
-                }
-            }
-        }
-        .padding(14)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
-    }
-}
-
-// MARK: - Expense Row
-struct ExpenseRow: View {
-    let expense: Expense
-    let currencySymbol: String
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: expense.isDeposit ? "arrow.down.circle.fill" : expense.category.icon)
-                .font(.system(size: 16))
-                .foregroundColor(expense.isDeposit ? .green : expense.category.color)
-                .frame(width: 30)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(expense.description)
-                    .font(.system(size: 13, weight: .medium))
-                Text(expense.isDeposit ? "Savings" : expense.category.rawValue)
-                    .font(.caption2).foregroundColor(.secondary)
-            }
-            Spacer()
-            Text("\(expense.isDeposit ? "+" : "-")\(currencySymbol)\(String(format: "%.2f", expense.amount))")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(expense.isDeposit ? .green : .red)
-            Button(action: onDelete) {
-                Image(systemName: "trash").font(.caption).foregroundColor(.secondary.opacity(0.5))
-            }
-        }
-        .padding(10)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
-    }
-}
-
-// MARK: - Add Expense Sheet
-struct AddExpenseSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var amount = ""
-    @State private var description = ""
-    @State private var category = ExpenseCategory.other
-    let isDeposit: Bool
-    let currencySymbol: String
-    let onSave: (Expense) -> Void
-
-    var body: some View {
-        NavigationView {
-            Form {
-                Section(isDeposit ? "Savings Details" : "Expense Details") {
-                    TextField("Description", text: $description)
-                        .autocapitalization(.sentences)
-                    HStack {
-                        Text(currencySymbol)
-                            .foregroundColor(.secondary)
-                        TextField("0.00", text: $amount)
-                            .keyboardType(.decimalPad)
-                    }
-                    if !isDeposit {
-                        Picker("Category", selection: $category) {
-                            ForEach(ExpenseCategory.allCases, id: \.self) { cat in
-                                Label(cat.rawValue, systemImage: cat.icon).tag(cat)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle(isDeposit ? "Add Saving" : "Add Expense")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        guard let amt = Double(amount), amt > 0, !description.isEmpty else { return }
-                        onSave(Expense(amount: amt, category: isDeposit ? .other : category,
-                                       description: description, isDeposit: isDeposit))
-                        dismiss()
-                    }
-                    .disabled(description.isEmpty || Double(amount) == nil)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Savings Target Sheet
-struct SavingsTargetSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var amountText: String
-    let currencySymbol: String
-    let onSave: (Double) -> Void
-
-    init(current: Double, currencySymbol: String, onSave: @escaping (Double) -> Void) {
-        self._amountText = State(initialValue: current > 0 ? String(format: "%.2f", current) : "")
-        self.currencySymbol = currencySymbol
-        self.onSave = onSave
-    }
-
-    var body: some View {
-        NavigationView {
-            Form {
-                Section("Future Fund Amount") {
-                    HStack {
-                        Text(currencySymbol)
-                            .foregroundColor(.secondary)
-                        TextField("0.00", text: $amountText)
-                            .keyboardType(.decimalPad)
-                    }
-                }
-                Section {
-                    Text("Set aside money for future goals, investments, or emergencies.")
-                        .font(.caption).foregroundColor(.secondary)
-                }
-            }
-            .navigationTitle("Future Fund")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let val = Double(amountText) ?? 0
-                        onSave(val)
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }

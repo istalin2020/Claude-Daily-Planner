@@ -5,9 +5,10 @@ struct SettingsView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @Environment(\.dismiss) var dismiss
 
-    @State private var showTimePicker   = false
-    @State private var pickerTime       = defaultPickerTime()
-    @State private var permissionDenied = false
+    @State private var showTimePicker     = false
+    @State private var pickerTime         = defaultPickerTime()
+    @State private var permissionDenied   = false
+    @State private var monthlyIncomeText  = ""
 
     // Suggested messages shown to the user for awareness
     private let reminderMessages = NotificationManager.reminderMessages
@@ -132,10 +133,25 @@ struct SettingsView: View {
                     } label: {
                         Label("Currency", systemImage: "dollarsign.circle.fill")
                     }
+
+                    HStack(spacing: 8) {
+                        Label("Monthly Salary", systemImage: "banknote.fill")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text(vm.settings.currency.symbol)
+                            .foregroundColor(.secondary)
+                        TextField("0.00", text: $monthlyIncomeText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 100)
+                            .onChange(of: monthlyIncomeText) { _, val in
+                                vm.settings.monthlyIncome = Double(val) ?? 0
+                            }
+                    }
                 } header: {
                     Text("Finance")
                 } footer: {
-                    Text("The selected currency symbol appears in the Expense Tracker.")
+                    Text("Monthly salary is used in the monthly income summary in Expense Tracker. The currency symbol applies throughout the app.")
                 }
 
                 // ── TASK MANAGEMENT ────────────────────────────────────
@@ -179,6 +195,11 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                if vm.settings.monthlyIncome > 0 {
+                    monthlyIncomeText = String(format: "%.2f", vm.settings.monthlyIncome)
+                }
+            }
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }

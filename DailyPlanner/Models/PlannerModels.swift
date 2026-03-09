@@ -116,18 +116,21 @@ struct Expense: Identifiable, Codable {
     var amount: Double
     var category: ExpenseCategory = .other
     var description: String
-    var isDeposit: Bool = false
+    var isDeposit: Bool = false  // savings
+    var isIncome: Bool = false   // income entry
 
     init(id: UUID = UUID(),
          amount: Double,
          category: ExpenseCategory = .other,
          description: String,
-         isDeposit: Bool = false) {
+         isDeposit: Bool = false,
+         isIncome: Bool = false) {
         self.id = id
         self.amount = amount
         self.category = category
         self.description = description
         self.isDeposit = isDeposit
+        self.isIncome = isIncome
     }
 
     init(from decoder: Decoder) throws {
@@ -137,6 +140,7 @@ struct Expense: Identifiable, Codable {
         category    = try c.decodeIfPresent(ExpenseCategory.self, forKey: .category)    ?? .other
         description = try c.decode(String.self,                    forKey: .description)
         isDeposit   = try c.decodeIfPresent(Bool.self,            forKey: .isDeposit)   ?? false
+        isIncome    = try c.decodeIfPresent(Bool.self,            forKey: .isIncome)    ?? false
     }
 }
 
@@ -527,6 +531,9 @@ struct AppSettings: Codable {
     var notificationTone: NotificationTone = .defaultTone
     var currency: Currency = .usd
 
+    // MARK: - Finance
+    var monthlyIncome: Double = 0   // monthly salary / recurring income
+
     // MARK: - Health & Fitness daily targets
     var workoutTarget: Int  = 30    // minutes
     var walkingTarget: Int  = 30    // minutes
@@ -539,6 +546,7 @@ struct AppSettings: Codable {
          notificationTimes: [Date] = [],
          notificationTone: NotificationTone = .defaultTone,
          currency: Currency = .usd,
+         monthlyIncome: Double = 0,
          workoutTarget: Int = 30,
          walkingTarget: Int = 30,
          stepsTarget: Int = 5000,
@@ -549,6 +557,7 @@ struct AppSettings: Codable {
         self.notificationTimes = notificationTimes
         self.notificationTone = notificationTone
         self.currency = currency
+        self.monthlyIncome = monthlyIncome
         self.workoutTarget = workoutTarget
         self.walkingTarget = walkingTarget
         self.stepsTarget = stepsTarget
@@ -563,6 +572,7 @@ struct AppSettings: Codable {
         notificationTimes    = try c.decodeIfPresent([Date].self,           forKey: .notificationTimes)    ?? []
         notificationTone     = try c.decodeIfPresent(NotificationTone.self, forKey: .notificationTone)     ?? .defaultTone
         currency             = try c.decodeIfPresent(Currency.self,         forKey: .currency)             ?? .usd
+        monthlyIncome        = try c.decodeIfPresent(Double.self,           forKey: .monthlyIncome)        ?? 0
         workoutTarget        = try c.decodeIfPresent(Int.self,              forKey: .workoutTarget)        ?? 30
         walkingTarget        = try c.decodeIfPresent(Int.self,              forKey: .walkingTarget)        ?? 30
         stepsTarget          = try c.decodeIfPresent(Int.self,              forKey: .stepsTarget)          ?? 5000
@@ -617,8 +627,9 @@ struct DailyEntry: Codable {
         rating        = try c.decodeIfPresent(DayRating.self,       forKey: .rating)        ?? DayRating()
     }
 
-    var totalExpenses: Double { expenses.filter { !$0.isDeposit }.reduce(0) { $0 + $1.amount } }
+    var totalExpenses: Double { expenses.filter { !$0.isDeposit && !$0.isIncome }.reduce(0) { $0 + $1.amount } }
     var totalDeposits: Double { expenses.filter { $0.isDeposit }.reduce(0) { $0 + $1.amount } }
+    var totalIncome: Double   { expenses.filter { $0.isIncome }.reduce(0) { $0 + $1.amount } }
     var allTasksCount: Int { topPriorities.count + toDoLists.count + callsEmails.count + personalTodo.count }
     var completedTasksCount: Int {
         topPriorities.filter(\.isCompleted).count +

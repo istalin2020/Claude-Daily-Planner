@@ -513,6 +513,49 @@ class PlannerViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Monthly Finance Aggregation
+
+    func monthlyEntries(for date: Date) -> [DailyEntry] {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: date)
+        return entries.values.filter {
+            let ec = cal.dateComponents([.year, .month], from: $0.date)
+            return ec.year == comps.year && ec.month == comps.month
+        }
+    }
+
+    func monthlyTotalIncome(for date: Date) -> Double {
+        let fromEntries = monthlyEntries(for: date)
+            .flatMap { $0.expenses }
+            .filter { $0.isIncome }
+            .reduce(0) { $0 + $1.amount }
+        return settings.monthlyIncome + fromEntries
+    }
+
+    func monthlyExpensesByCategory(for date: Date) -> [(ExpenseCategory, Double)] {
+        let all = monthlyEntries(for: date)
+            .flatMap { $0.expenses }
+            .filter { !$0.isDeposit && !$0.isIncome }
+        var totals: [ExpenseCategory: Double] = [:]
+        for e in all { totals[e.category, default: 0] += e.amount }
+        return totals.sorted { $0.value > $1.value }
+    }
+
+    func monthlyTotalExpenses(for date: Date) -> Double {
+        monthlyExpensesByCategory(for: date).reduce(0) { $0 + $1.1 }
+    }
+
+    func monthlyBalance(for date: Date) -> Double {
+        monthlyTotalIncome(for: date) - monthlyTotalExpenses(for: date)
+    }
+
+    func monthlyTotalSavings(for date: Date) -> Double {
+        monthlyEntries(for: date)
+            .flatMap { $0.expenses }
+            .filter { $0.isDeposit }
+            .reduce(0) { $0 + $1.amount }
+    }
+
     // MARK: - Rating
     func updateRating(_ rating: DayRating) {
         var e = currentEntry
