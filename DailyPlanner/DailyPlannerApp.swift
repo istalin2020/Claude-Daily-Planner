@@ -17,6 +17,9 @@ struct DailyPlannerApp: App {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                // Roll over incomplete tasks whenever the day has changed —
+                // runs purely locally, no network required.
+                viewModel.checkRolloverIfNeeded()
                 viewModel.syncHealthKitForToday()
             case .background, .inactive:
                 viewModel.saveDataNow()

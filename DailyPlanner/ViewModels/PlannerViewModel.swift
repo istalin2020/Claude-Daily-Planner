@@ -8,6 +8,12 @@ class PlannerViewModel: ObservableObject {
     @Published var selectedSection: AppSection = .overview
     @Published var settings: AppSettings = AppSettings()
 
+    // Tracks the calendar day on which we last ran rollover.
+    // Stored in UserDefaults so it survives app kills.
+    private var lastRolloverDateKey: String {
+        UserDefaults.standard.string(forKey: "lastRolloverDate") ?? ""
+    }
+
     // Legacy UserDefaults key kept only for one-time migration
     private let legacyStorageKey = "DailyPlannerEntries_v1"
     private var cancellables = Set<AnyCancellable>()
@@ -23,6 +29,12 @@ class PlannerViewModel: ObservableObject {
         loadSettings()
         loadData()
         checkForRollover()
+        // Record today so checkRolloverIfNeeded skips a redundant run
+        // when the app first foregrounds after a cold launch.
+        UserDefaults.standard.set(
+            dateKey(for: Calendar.current.startOfDay(for: Date())),
+            forKey: "lastRolloverDate"
+        )
         setupAutoSave()
         // Re-apply notifications on launch in case they were cleared
         if settings.notificationsEnabled {
@@ -664,6 +676,16 @@ class PlannerViewModel: ObservableObject {
             entries = updatedEntries
             saveData()
         }
+    }
+
+    /// Called every time the app enters the foreground. Runs rollover only when
+    /// the calendar day has advanced since the last run — works regardless of
+    /// network, WiFi, or cellular state because everything is local.
+    func checkRolloverIfNeeded() {
+        let todayKey = dateKey(for: Calendar.current.startOfDay(for: Date()))
+        guard todayKey != lastRolloverDateKey else { return }
+        checkForRollover()
+        UserDefaults.standard.set(todayKey, forKey: "lastRolloverDate")
     }
 
     /// Manual rollover trigger (e.g. from Settings). Delegates to checkForRollover
