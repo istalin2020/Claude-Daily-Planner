@@ -139,6 +139,14 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    func updateTopPriority(_ original: PlannerTask, with updated: PlannerTask) {
+        var e = currentEntry
+        if let i = e.topPriorities.firstIndex(where: { $0.id == original.id }) {
+            e.topPriorities[i] = updated
+        }
+        currentEntry = e
+    }
+
     func deleteTopPriority(_ task: PlannerTask) {
         var e = currentEntry
         e.topPriorities.removeAll { $0.id == task.id }
@@ -185,6 +193,14 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.toDoLists.firstIndex(where: { $0.id == task.id }) {
             e.toDoLists[i].title = trimmed
+        }
+        currentEntry = e
+    }
+
+    func updateToDoListItem(_ original: PlannerTask, with updated: PlannerTask) {
+        var e = currentEntry
+        if let i = e.toDoLists.firstIndex(where: { $0.id == original.id }) {
+            e.toDoLists[i] = updated
         }
         currentEntry = e
     }
@@ -271,6 +287,14 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    func updateCallEmail(_ original: PlannerTask, with updated: PlannerTask) {
+        var e = currentEntry
+        if let i = e.callsEmails.firstIndex(where: { $0.id == original.id }) {
+            e.callsEmails[i] = updated
+        }
+        currentEntry = e
+    }
+
     func deleteCallEmail(_ task: PlannerTask) {
         var e = currentEntry
         e.callsEmails.removeAll { $0.id == task.id }
@@ -342,6 +366,14 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.personalTodo.firstIndex(where: { $0.id == task.id }) {
             e.personalTodo[i].title = trimmed
+        }
+        currentEntry = e
+    }
+
+    func updatePersonalTodo(_ original: PlannerTask, with updated: PlannerTask) {
+        var e = currentEntry
+        if let i = e.personalTodo.firstIndex(where: { $0.id == original.id }) {
+            e.personalTodo[i] = updated
         }
         currentEntry = e
     }
@@ -655,6 +687,50 @@ class PlannerViewModel: ObservableObject {
             if streak > 365 { break }
         }
         return streak
+    }
+
+    // MARK: - Sleep
+    func updateSleep(_ sleep: SleepEntry) {
+        var e = currentEntry
+        e.sleep = sleep
+        currentEntry = e
+    }
+
+    // MARK: - Medications
+    private let medLogsKey = "medication_logs"
+
+    func medicationLogsForToday() -> Set<UUID> {
+        let key = dateKey(for: Date())
+        guard let data = UserDefaults.standard.data(forKey: "\(medLogsKey)_\(key)"),
+              let ids = try? JSONDecoder().decode(Set<UUID>.self, from: data) else { return [] }
+        return ids
+    }
+
+    func toggleMedicationTaken(_ med: Medication) {
+        let key = dateKey(for: Date())
+        var logs = medicationLogsForToday()
+        if logs.contains(med.id) { logs.remove(med.id) } else { logs.insert(med.id) }
+        if let data = try? JSONEncoder().encode(logs) {
+            UserDefaults.standard.set(data, forKey: "\(medLogsKey)_\(key)")
+        }
+        objectWillChange.send()
+    }
+
+    func addMedication(_ med: Medication) {
+        settings.medications.append(med)
+        saveSettings()
+    }
+
+    func deleteMedication(_ med: Medication) {
+        settings.medications.removeAll { $0.id == med.id }
+        saveSettings()
+    }
+
+    func toggleMedicationActive(_ med: Medication) {
+        if let i = settings.medications.firstIndex(where: { $0.id == med.id }) {
+            settings.medications[i].isActive.toggle()
+            saveSettings()
+        }
     }
 
     // MARK: - Budget

@@ -48,6 +48,9 @@ struct ContentView: View {
         case .notes:           NotesView()
         case .expenseTracker:  ExpenseTrackerView()
         case .rateYourDay:     RateYourDayView()
+        case .habits:          HabitTrackerView()
+        case .sleepTracker:    SleepTrackerView()
+        case .medications:     MedicationTrackerView()
         }
     }
 }

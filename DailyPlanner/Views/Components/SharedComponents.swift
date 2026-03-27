@@ -124,6 +124,12 @@ struct TaskRowCard: View {
                             .foregroundColor(.orange)
                         }
                         RecurrenceBadge(recurrence: task.recurrence)
+                        SubtaskBadge(subtasks: task.subtasks, color: color)
+                        if !task.notes.isEmpty {
+                            Image(systemName: "note.text")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
 
@@ -171,81 +177,135 @@ struct TaskRowCard: View {
     }
 }
 
-// MARK: - Edit Task Sheet
+// MARK: - Edit Task Sheet  (supports title, notes, subtasks)
 struct EditTaskSheet: View {
     @Environment(\.dismiss) var dismiss
-    @State private var text: String
-    @FocusState private var focused: Bool
+    @State private var titleText: String
+    @State private var notesText: String
+    @State private var subtasks: [SubTask]
+    @State private var newSubtask: String = ""
+    @FocusState private var titleFocused: Bool
 
     let task: PlannerTask
     let accentColor: Color
     let icon: String
-    let onSave: (String) -> Void
+    let onSave: (PlannerTask) -> Void
 
-    init(task: PlannerTask, accentColor: Color, icon: String, onSave: @escaping (String) -> Void) {
-        self._text = State(initialValue: task.title)
+    init(task: PlannerTask, accentColor: Color, icon: String, onSave: @escaping (PlannerTask) -> Void) {
         self.task = task
         self.accentColor = accentColor
         self.icon = icon
         self.onSave = onSave
+        _titleText = State(initialValue: task.title)
+        _notesText = State(initialValue: task.notes)
+        _subtasks  = State(initialValue: task.subtasks)
     }
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // Header
-                VStack(spacing: 8) {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundColor(accentColor)
-                    Text("Edit Task")
-                        .font(.title3).fontWeight(.bold)
+            Form {
+                Section("Title") {
+                    TextField("Task title", text: $titleText, axis: .vertical)
+                        .focused($titleFocused)
+                        .lineLimit(2...5)
                 }
-                .padding(.top, 20)
 
-                // Text field — pre-filled with current title
-                TextField("Task title", text: $text, axis: .vertical)
-                    .focused($focused)
-                    .font(.body)
-                    .padding(14)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(14)
-                    .lineLimit(3...6)
-                    .padding(.horizontal, 20)
-
-                // Save button
-                Button(action: {
-                    let trimmed = text.trimmingCharacters(in: .whitespaces)
-                    guard !trimmed.isEmpty else { return }
-                    onSave(trimmed)
-                    dismiss()
-                }) {
-                    Text("Save Changes")
-                        .font(.system(size: 16, weight: .bold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            text.trimmingCharacters(in: .whitespaces).isEmpty
-                                ? Color.secondary.opacity(0.3)
-                                : accentColor
+                Section("Notes") {
+                    TextEditor(text: $notesText)
+                        .frame(minHeight: 70)
+                        .overlay(
+                            Group {
+                                if notesText.isEmpty {
+                                    Text("Add notes...")
+                                        .foregroundColor(.secondary)
+                                        .padding(.top, 8).padding(.leading, 4)
+                                        .allowsHitTesting(false)
+                                }
+                            }, alignment: .topLeading
                         )
-                        .foregroundColor(.white)
-                        .cornerRadius(14)
                 }
-                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
-                .padding(.horizontal, 20)
 
-                Spacer()
+                Section {
+                    ForEach(subtasks.indices, id: \.self) { i in
+                        HStack(spacing: 10) {
+                            Button(action: { subtasks[i].isCompleted.toggle() }) {
+                                Image(systemName: subtasks[i].isCompleted ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(subtasks[i].isCompleted ? accentColor : .secondary)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            TextField("Subtask", text: $subtasks[i].title)
+                                .strikethrough(subtasks[i].isCompleted, color: .secondary)
+                                .foregroundColor(subtasks[i].isCompleted ? .secondary : .primary)
+                        }
+                    }
+                    .onDelete { subtasks.remove(atOffsets: $0) }
+
+                    HStack(spacing: 10) {
+                        Image(systemName: "plus.circle").foregroundColor(accentColor)
+                        TextField("Add subtask…", text: $newSubtask)
+                            .onSubmit { addSubtask() }
+                    }
+                } header: {
+                    HStack {
+                        Text("Subtasks")
+                        Spacer()
+                        if !subtasks.isEmpty {
+                            Text("\(subtasks.filter(\.isCompleted).count)/\(subtasks.count)")
+                                .font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                }
             }
+            .navigationTitle("Edit Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let trimmed = titleText.trimmingCharacters(in: .whitespaces)
+                        guard !trimmed.isEmpty else { return }
+                        var updated = task
+                        updated.title    = trimmed
+                        updated.notes    = notesText
+                        updated.subtasks = subtasks
+                        onSave(updated)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(titleText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            .onAppear { focused = true }
+            .onAppear { titleFocused = true }
         }
-        .presentationDetents([.medium])
+    }
+
+    private func addSubtask() {
+        let t = newSubtask.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty else { return }
+        subtasks.append(SubTask(title: t))
+        newSubtask = ""
+    }
+}
+
+// MARK: - Subtask Progress Badge (used in task rows)
+struct SubtaskBadge: View {
+    let subtasks: [SubTask]
+    let color: Color
+
+    var completed: Int { subtasks.filter(\.isCompleted).count }
+
+    var body: some View {
+        if !subtasks.isEmpty {
+            HStack(spacing: 4) {
+                Image(systemName: "list.bullet").font(.system(size: 9))
+                Text("\(completed)/\(subtasks.count)")
+                    .font(.system(size: 10))
+            }
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(completed == subtasks.count ? color.opacity(0.15) : Color(.systemGray5))
+            .foregroundColor(completed == subtasks.count ? color : .secondary)
+            .cornerRadius(8)
+        }
     }
 }
 

@@ -104,8 +104,8 @@ struct TopPrioritiesView: View {
                     task: task,
                     accentColor: AppSection.topPriorities.color,
                     icon: AppSection.topPriorities.icon
-                ) { newTitle in
-                    vm.updateTopPriority(task, newTitle: newTitle)
+                ) { updatedTask in
+                    vm.updateTopPriority(task, with: updatedTask)
                 }
             }
             .alert("Delete Priority?", isPresented: Binding(

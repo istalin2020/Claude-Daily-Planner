@@ -103,8 +103,8 @@ struct PersonalTodoView: View {
                     task: task,
                     accentColor: AppSection.personalTodo.color,
                     icon: AppSection.personalTodo.icon
-                ) { newTitle in
-                    vm.updatePersonalTodo(task, newTitle: newTitle)
+                ) { updatedTask in
+                    vm.updatePersonalTodo(task, with: updatedTask)
                 }
             }
             .alert("Delete Task?", isPresented: Binding(

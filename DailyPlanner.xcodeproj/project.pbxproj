@@ -37,6 +37,11 @@
 		AA510000000000000000001A /* PomodoroTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA500000000000000000001A /* PomodoroTimerView.swift */; };
 		AA530000000000000000001A /* HabitTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA520000000000000000001A /* HabitTrackerView.swift */; };
 		AA550000000000000000001A /* BudgetSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA540000000000000000001A /* BudgetSettingsView.swift */; };
+		AA560000000000000000001A /* SleepTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA570000000000000000001A /* SleepTrackerView.swift */; };
+		AA580000000000000000001A /* WeeklySummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA590000000000000000001A /* WeeklySummaryView.swift */; };
+		AA5A0000000000000000001A /* AppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5B0000000000000000001A /* AppShortcuts.swift */; };
+		AA5C0000000000000000001A /* SpendingTrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D0000000000000000001A /* SpendingTrendsView.swift */; };
+		AA5E0000000000000000001A /* MedicationTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5F0000000000000000001A /* MedicationTrackerView.swift */; };
 		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
 		BB810000000000000000001A /* DailyPlannerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB900000000000000000001A /* DailyPlannerWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -75,6 +80,11 @@
 		AA500000000000000000001A /* PomodoroTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroTimerView.swift; sourceTree = "<group>"; };
 		AA520000000000000000001A /* HabitTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitTrackerView.swift; sourceTree = "<group>"; };
 		AA540000000000000000001A /* BudgetSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetSettingsView.swift; sourceTree = "<group>"; };
+		AA570000000000000000001A /* SleepTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTrackerView.swift; sourceTree = "<group>"; };
+		AA590000000000000000001A /* WeeklySummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummaryView.swift; sourceTree = "<group>"; };
+		AA5B0000000000000000001A /* AppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShortcuts.swift; sourceTree = "<group>"; };
+		AA5D0000000000000000001A /* SpendingTrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingTrendsView.swift; sourceTree = "<group>"; };
+		AA5F0000000000000000001A /* MedicationTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTrackerView.swift; sourceTree = "<group>"; };
 		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
 		BB110000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB120000000000000000001A /* DailyPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlannerWidget.entitlements; sourceTree = "<group>"; };
@@ -117,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				AA0F0000000000000000001A /* DailyPlannerApp.swift */,
+				AA5B0000000000000000001A /* AppShortcuts.swift */,
 				AA380000000000000000001A /* Models */,
 				AA390000000000000000001A /* ViewModels */,
 				AA450000000000000000001A /* Services */,
@@ -187,6 +198,10 @@
 				AA500000000000000000001A /* PomodoroTimerView.swift */,
 				AA520000000000000000001A /* HabitTrackerView.swift */,
 				AA540000000000000000001A /* BudgetSettingsView.swift */,
+				AA570000000000000000001A /* SleepTrackerView.swift */,
+				AA590000000000000000001A /* WeeklySummaryView.swift */,
+				AA5D0000000000000000001A /* SpendingTrendsView.swift */,
+				AA5F0000000000000000001A /* MedicationTrackerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -368,6 +383,11 @@
 				AA510000000000000000001A /* PomodoroTimerView.swift in Sources */,
 				AA530000000000000000001A /* HabitTrackerView.swift in Sources */,
 				AA550000000000000000001A /* BudgetSettingsView.swift in Sources */,
+				AA560000000000000000001A /* SleepTrackerView.swift in Sources */,
+				AA580000000000000000001A /* WeeklySummaryView.swift in Sources */,
+				AA5A0000000000000000001A /* AppShortcuts.swift in Sources */,
+				AA5C0000000000000000001A /* SpendingTrendsView.swift in Sources */,
+				AA5E0000000000000000001A /* MedicationTrackerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

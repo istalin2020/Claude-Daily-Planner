@@ -103,8 +103,8 @@ struct ToDoListsView: View {
                     task: task,
                     accentColor: AppSection.toDoLists.color,
                     icon: AppSection.toDoLists.icon
-                ) { newTitle in
-                    vm.updateToDoListItem(task, newTitle: newTitle)
+                ) { updatedTask in
+                    vm.updateToDoListItem(task, with: updatedTask)
                 }
             }
 

@@ -103,8 +103,8 @@ struct CallsEmailsView: View {
                     task: task,
                     accentColor: AppSection.callsEmails.color,
                     icon: AppSection.callsEmails.icon
-                ) { newTitle in
-                    vm.updateCallEmail(task, newTitle: newTitle)
+                ) { updatedTask in
+                    vm.updateCallEmail(task, with: updatedTask)
                 }
             }
             .alert("Delete Entry?", isPresented: Binding(

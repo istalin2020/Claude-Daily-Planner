@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var permissionDenied   = false
     @State private var monthlyIncomeText  = ""
     @State private var showExport         = false
+    @State private var showSpendingTrends = false
+    @State private var showWeeklySummary  = false
 
     // Suggested messages shown to the user for awareness
     private let reminderMessages = NotificationManager.reminderMessages
@@ -176,6 +178,44 @@ struct SettingsView: View {
                     Text("Task Management")
                 }
 
+                // ── APPEARANCE ─────────────────────────────────────────
+                Section("Appearance") {
+                    HStack {
+                        Label("Color Theme", systemImage: "paintpalette.fill")
+                        Spacer()
+                        Text(vm.settings.themeColor.rawValue)
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
+                        ForEach(ThemeColor.allCases) { theme in
+                            Button(action: {
+                                vm.settings.themeColor = theme
+                                vm.saveSettings()
+                            }) {
+                                VStack(spacing: 4) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(LinearGradient(colors: [theme.primary, theme.secondary],
+                                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                                            .frame(width: 36, height: 36)
+                                        if vm.settings.themeColor == theme {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    Text(theme.rawValue)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(vm.settings.themeColor == theme ? theme.primary : .secondary)
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 // ── SYNC ───────────────────────────────────────────────
                 Section {
                     HStack {
@@ -222,6 +262,18 @@ struct SettingsView: View {
                         Label("Export Data", systemImage: "square.and.arrow.up.fill")
                             .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
                     }
+                    Button {
+                        showSpendingTrends = true
+                    } label: {
+                        Label("Spending Trends", systemImage: "chart.bar.fill")
+                            .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
+                    }
+                    Button {
+                        showWeeklySummary = true
+                    } label: {
+                        Label("Weekly / Monthly Summary", systemImage: "calendar.badge.clock")
+                            .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                    }
                 }
             }
             .navigationTitle("Settings")
@@ -247,6 +299,12 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showExport) {
                 ExportView().environmentObject(vm)
+            }
+            .sheet(isPresented: $showSpendingTrends) {
+                SpendingTrendsView().environmentObject(vm)
+            }
+            .sheet(isPresented: $showWeeklySummary) {
+                WeeklySummaryView().environmentObject(vm)
             }
         }
     }

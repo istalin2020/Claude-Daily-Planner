@@ -36,6 +36,24 @@ enum ExpenseCategory: String, Codable, CaseIterable {
     }
 }
 
+// MARK: - SubTask
+struct SubTask: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var title: String
+    var isCompleted: Bool = false
+
+    init(id: UUID = UUID(), title: String, isCompleted: Bool = false) {
+        self.id = id; self.title = title; self.isCompleted = isCompleted
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decodeIfPresent(UUID.self,  forKey: .id)          ?? UUID()
+        title       = try c.decode(String.self,          forKey: .title)
+        isCompleted = try c.decodeIfPresent(Bool.self,  forKey: .isCompleted) ?? false
+    }
+}
+
 // MARK: - Recurrence
 enum Recurrence: String, Codable, CaseIterable, Identifiable {
     case none       = "None"
@@ -66,6 +84,7 @@ struct PlannerTask: Identifiable, Codable, Equatable {
     var originalDate: Date? = nil
     var notes: String = ""
     var recurrence: Recurrence = .none
+    var subtasks: [SubTask] = []
 
     // Robust decoder: any field that might be absent in older saved JSON
     // falls back to its default rather than throwing a keyNotFound error.
@@ -75,7 +94,8 @@ struct PlannerTask: Identifiable, Codable, Equatable {
          isRolledOver: Bool = false,
          originalDate: Date? = nil,
          notes: String = "",
-         recurrence: Recurrence = .none) {
+         recurrence: Recurrence = .none,
+         subtasks: [SubTask] = []) {
         self.id = id
         self.title = title
         self.isCompleted = isCompleted
@@ -83,6 +103,7 @@ struct PlannerTask: Identifiable, Codable, Equatable {
         self.originalDate = originalDate
         self.notes = notes
         self.recurrence = recurrence
+        self.subtasks = subtasks
     }
 
     init(from decoder: Decoder) throws {
@@ -94,6 +115,7 @@ struct PlannerTask: Identifiable, Codable, Equatable {
         originalDate = try c.decodeIfPresent(Date.self,       forKey: .originalDate)
         notes        = try c.decodeIfPresent(String.self,     forKey: .notes)        ?? ""
         recurrence   = try c.decodeIfPresent(Recurrence.self, forKey: .recurrence)   ?? .none
+        subtasks     = try c.decodeIfPresent([SubTask].self,  forKey: .subtasks)     ?? []
     }
 }
 
@@ -354,6 +376,134 @@ struct DayRating: Codable {
         mood         = try c.decodeIfPresent(Int.self,    forKey: .mood)         ?? 0
         health       = try c.decodeIfPresent(Int.self,    forKey: .health)       ?? 0
         notes        = try c.decodeIfPresent(String.self, forKey: .notes)        ?? ""
+    }
+}
+
+// MARK: - Sleep Entry
+struct SleepEntry: Codable {
+    var bedtime: Date? = nil
+    var wakeTime: Date? = nil
+    var quality: Int = 0   // 0 = not rated, 1-5 stars
+    var notes: String = ""
+
+    init(bedtime: Date? = nil, wakeTime: Date? = nil, quality: Int = 0, notes: String = "") {
+        self.bedtime = bedtime; self.wakeTime = wakeTime
+        self.quality = quality; self.notes = notes
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        bedtime  = try c.decodeIfPresent(Date.self,   forKey: .bedtime)
+        wakeTime = try c.decodeIfPresent(Date.self,   forKey: .wakeTime)
+        quality  = try c.decodeIfPresent(Int.self,    forKey: .quality)  ?? 0
+        notes    = try c.decodeIfPresent(String.self, forKey: .notes)    ?? ""
+    }
+
+    var durationHours: Double? {
+        guard let b = bedtime, let w = wakeTime else { return nil }
+        let diff = w.timeIntervalSince(b)
+        return diff > 0 ? diff / 3600 : (diff + 86400) / 3600
+    }
+
+    var durationString: String {
+        guard let h = durationHours else { return "--" }
+        let hrs = Int(h); let mins = Int((h - Double(hrs)) * 60)
+        return mins > 0 ? "\(hrs)h \(mins)m" : "\(hrs)h"
+    }
+}
+
+// MARK: - Medication
+struct Medication: Identifiable, Codable {
+    var id = UUID()
+    var name: String
+    var dosage: String = ""
+    var times: [Date] = []
+    var isActive: Bool = true
+    var notes: String = ""
+    var color: String = "blue"
+
+    var swiftUIColor: Color {
+        switch color {
+        case "red":    return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green":  return Color(red: 0.1, green: 0.65, blue: 0.35)
+        case "purple": return Color(red: 0.45, green: 0.25, blue: 0.85)
+        case "pink":   return .pink
+        case "teal":   return Color(red: 0.1, green: 0.65, blue: 0.7)
+        default:       return .blue
+        }
+    }
+
+    init(id: UUID = UUID(), name: String, dosage: String = "", times: [Date] = [],
+         isActive: Bool = true, notes: String = "", color: String = "blue") {
+        self.id = id; self.name = name; self.dosage = dosage
+        self.times = times; self.isActive = isActive
+        self.notes = notes; self.color = color
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id       = try c.decodeIfPresent(UUID.self,   forKey: .id)       ?? UUID()
+        name     = try c.decode(String.self,           forKey: .name)
+        dosage   = try c.decodeIfPresent(String.self, forKey: .dosage)   ?? ""
+        times    = try c.decodeIfPresent([Date].self,  forKey: .times)    ?? []
+        isActive = try c.decodeIfPresent(Bool.self,   forKey: .isActive) ?? true
+        notes    = try c.decodeIfPresent(String.self, forKey: .notes)    ?? ""
+        color    = try c.decodeIfPresent(String.self, forKey: .color)    ?? "blue"
+    }
+}
+
+// MARK: - Theme Color
+enum ThemeColor: String, Codable, CaseIterable, Identifiable {
+    case purple = "Purple"
+    case blue   = "Blue"
+    case green  = "Green"
+    case orange = "Orange"
+    case red    = "Red"
+    case teal   = "Teal"
+    case pink   = "Pink"
+    case indigo = "Indigo"
+
+    var id: String { rawValue }
+
+    var primary: Color {
+        switch self {
+        case .purple: return Color(red: 0.45, green: 0.25, blue: 0.85)
+        case .blue:   return Color(red: 0.15, green: 0.45, blue: 0.95)
+        case .green:  return Color(red: 0.10, green: 0.65, blue: 0.35)
+        case .orange: return Color(red: 0.95, green: 0.50, blue: 0.10)
+        case .red:    return Color(red: 0.88, green: 0.18, blue: 0.22)
+        case .teal:   return Color(red: 0.10, green: 0.65, blue: 0.70)
+        case .pink:   return Color(red: 0.92, green: 0.25, blue: 0.58)
+        case .indigo: return Color(red: 0.30, green: 0.20, blue: 0.80)
+        }
+    }
+
+    var secondary: Color {
+        switch self {
+        case .purple: return Color(red: 0.55, green: 0.25, blue: 0.90)
+        case .blue:   return Color(red: 0.25, green: 0.60, blue: 1.00)
+        case .green:  return Color(red: 0.20, green: 0.80, blue: 0.45)
+        case .orange: return Color(red: 1.00, green: 0.65, blue: 0.20)
+        case .red:    return Color(red: 1.00, green: 0.35, blue: 0.35)
+        case .teal:   return Color(red: 0.20, green: 0.80, blue: 0.85)
+        case .pink:   return Color(red: 1.00, green: 0.45, blue: 0.70)
+        case .indigo: return Color(red: 0.45, green: 0.35, blue: 0.95)
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .purple: return "circle.fill"
+        case .blue:   return "circle.fill"
+        case .green:  return "circle.fill"
+        case .orange: return "circle.fill"
+        case .red:    return "circle.fill"
+        case .teal:   return "circle.fill"
+        case .pink:   return "circle.fill"
+        case .indigo: return "circle.fill"
+        }
     }
 }
 
@@ -625,6 +775,12 @@ struct AppSettings: Codable {
     // MARK: - Budget
     var categoryBudgets: [String: Double] = [:]
 
+    // MARK: - Theme
+    var themeColor: ThemeColor = .purple
+
+    // MARK: - Medications
+    var medications: [Medication] = []
+
     init(isDarkMode: Bool = false,
          autoRollover: Bool = true,
          notificationsEnabled: Bool = false,
@@ -638,7 +794,9 @@ struct AppSettings: Codable {
          caloriesTarget: Int = 500,
          habits: [Habit] = [],
          habitLogs: [String: HabitLog] = [:],
-         categoryBudgets: [String: Double] = [:]) {
+         categoryBudgets: [String: Double] = [:],
+         themeColor: ThemeColor = .purple,
+         medications: [Medication] = []) {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
         self.notificationsEnabled = notificationsEnabled
@@ -653,6 +811,8 @@ struct AppSettings: Codable {
         self.habits = habits
         self.habitLogs = habitLogs
         self.categoryBudgets = categoryBudgets
+        self.themeColor = themeColor
+        self.medications = medications
     }
 
     init(from decoder: Decoder) throws {
@@ -671,6 +831,8 @@ struct AppSettings: Codable {
         habits               = try c.decodeIfPresent([Habit].self,                    forKey: .habits)               ?? []
         habitLogs            = try c.decodeIfPresent([String: HabitLog].self,         forKey: .habitLogs)            ?? [:]
         categoryBudgets      = try c.decodeIfPresent([String: Double].self,           forKey: .categoryBudgets)      ?? [:]
+        themeColor           = try c.decodeIfPresent(ThemeColor.self,                 forKey: .themeColor)           ?? .purple
+        medications          = try c.decodeIfPresent([Medication].self,               forKey: .medications)          ?? []
     }
 }
 
@@ -697,6 +859,7 @@ struct DailyEntry: Codable {
     var savings: Double = 0.0
 
     var rating: DayRating = DayRating()
+    var sleep: SleepEntry = SleepEntry()
 
     init(date: Date = Date()) {
         self.date = date
@@ -719,6 +882,7 @@ struct DailyEntry: Codable {
         expenses      = try c.decodeIfPresent([Expense].self,       forKey: .expenses)      ?? []
         savings       = try c.decodeIfPresent(Double.self,          forKey: .savings)       ?? 0.0
         rating        = try c.decodeIfPresent(DayRating.self,       forKey: .rating)        ?? DayRating()
+        sleep         = try c.decodeIfPresent(SleepEntry.self,      forKey: .sleep)         ?? SleepEntry()
     }
 
     var totalExpenses: Double { expenses.filter { !$0.isDeposit && !$0.isIncome }.reduce(0) { $0 + $1.amount } }
@@ -753,6 +917,8 @@ enum AppSection: String, CaseIterable, Identifiable {
     case expenseTracker = "Expenses"
     case rateYourDay = "Rate Your Day"
     case habits = "Habit Tracker"
+    case sleepTracker = "Sleep Tracker"
+    case medications = "Medications"
 
     var id: String { rawValue }
 
@@ -772,6 +938,8 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .expenseTracker: return "dollarsign.circle.fill"
         case .rateYourDay: return "heart.fill"
         case .habits: return "checkmark.circle.fill"
+        case .sleepTracker: return "moon.zzz.fill"
+        case .medications: return "pill.fill"
         }
     }
 
@@ -791,6 +959,8 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .expenseTracker: return Color(red: 0.1, green: 0.65, blue: 0.35)
         case .rateYourDay: return Color(red: 0.9, green: 0.3, blue: 0.5)
         case .habits: return Color(red: 0.45, green: 0.25, blue: 0.85)
+        case .sleepTracker: return Color(red: 0.25, green: 0.15, blue: 0.65)
+        case .medications: return Color(red: 0.1, green: 0.6, blue: 0.65)
         }
     }
 }
