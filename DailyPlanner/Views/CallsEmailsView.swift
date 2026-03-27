@@ -89,13 +89,13 @@ struct CallsEmailsView: View {
                 }
             }
             .sheet(isPresented: $showAddSheet) {
-                AddItemSheet(
+                AddItemWithRecurrenceSheet(
                     title: "Add Call or Email",
                     placeholder: "Who to call or email?",
                     accentColor: AppSection.callsEmails.color,
                     icon: AppSection.callsEmails.icon
-                ) { text in
-                    vm.addCallEmail(text)
+                ) { text, recurrence in
+                    vm.addCallEmail(text, recurrence: recurrence)
                 }
             }
             .sheet(item: $editingTask) { task in

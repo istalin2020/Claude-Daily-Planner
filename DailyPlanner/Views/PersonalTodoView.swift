@@ -89,13 +89,13 @@ struct PersonalTodoView: View {
                 }
             }
             .sheet(isPresented: $showAddSheet) {
-                AddItemSheet(
+                AddItemWithRecurrenceSheet(
                     title: "Add Personal Task",
                     placeholder: "What do you need to do?",
                     accentColor: AppSection.personalTodo.color,
                     icon: AppSection.personalTodo.icon
-                ) { text in
-                    vm.addPersonalTodo(text)
+                ) { text, recurrence in
+                    vm.addPersonalTodo(text, recurrence: recurrence)
                 }
             }
             .sheet(item: $editingTask) { task in

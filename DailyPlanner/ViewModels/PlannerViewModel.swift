@@ -1,12 +1,14 @@
 import Foundation
 import SwiftUI
 import Combine
+import WidgetKit
 
 class PlannerViewModel: ObservableObject {
     @Published var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     @Published var entries: [String: DailyEntry] = [:]
     @Published var selectedSection: AppSection = .overview
     @Published var settings: AppSettings = AppSettings()
+    @Published var iCloudAvailable = false
 
     // Tracks the calendar day on which we last ran rollover.
     // Stored in UserDefaults so it survives app kills.
@@ -17,6 +19,9 @@ class PlannerViewModel: ObservableObject {
     // Legacy UserDefaults key kept only for one-time migration
     private let legacyStorageKey = "DailyPlannerEntries_v1"
     private var cancellables = Set<AnyCancellable>()
+    private var cloudDocsURL: URL?
+    private let iCloudContainerID = "iCloud.com.istalin.DailyPlanner"
+    private var metadataQuery: NSMetadataQuery?
 
     // MARK: - Documents URLs (data survives Xcode rebuilds on device)
     private var docsDir: URL {
@@ -25,9 +30,18 @@ class PlannerViewModel: ObservableObject {
     private var entriesURL: URL { docsDir.appendingPathComponent("planner_entries.json") }
     private var settingsURL: URL { docsDir.appendingPathComponent("planner_settings.json") }
 
+    // MARK: - Active URLs (prefer iCloud when available)
+    private var activeEntriesURL: URL {
+        cloudDocsURL?.appendingPathComponent("planner_entries.json") ?? entriesURL
+    }
+    private var activeSettingsURL: URL {
+        cloudDocsURL?.appendingPathComponent("planner_settings.json") ?? settingsURL
+    }
+
     init() {
         loadSettings()
         loadData()
+        setupiCloud()
         checkForRollover()
         // Record today so checkRolloverIfNeeded skips a redundant run
         // when the app first foregrounds after a cold launch.
@@ -88,10 +102,10 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Top Priorities
-    func addTopPriority(_ title: String) {
+    func addTopPriority(_ title: String, recurrence: Recurrence = .none) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces), recurrence: recurrence)
         if let idx = e.topPriorities.firstIndex(where: { $0.isCompleted }) {
             e.topPriorities.insert(task, at: idx)
         } else {
@@ -112,6 +126,7 @@ class PlannerViewModel: ObservableObject {
         // Propagate completion back to the original past-day entry so the
         // rollover engine never re-picks up an already-handled task.
         syncTaskCompletion(taskId: task.id, isCompleted: newState)
+        if let t = e.topPriorities.first(where: { $0.id == task.id }) { scheduleNextRecurrence(task: t, in: \.topPriorities) }
     }
 
     func updateTopPriority(_ task: PlannerTask, newTitle: String) {
@@ -137,10 +152,10 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - To-Do Lists
-    func addToDoListItem(_ title: String) {
+    func addToDoListItem(_ title: String, recurrence: Recurrence = .none) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces), recurrence: recurrence)
         // Insert before the first completed fresh (non-rolled-over) task so the
         // new item always lands below open tasks and above completed tasks.
         if let idx = e.toDoLists.firstIndex(where: { $0.isCompleted }) {
@@ -161,6 +176,7 @@ class PlannerViewModel: ObservableObject {
         e.toDoLists = sortedByCompletion(e.toDoLists) { $0.isCompleted }
         currentEntry = e
         syncTaskCompletion(taskId: task.id, isCompleted: newState)
+        if let t = e.toDoLists.first(where: { $0.id == task.id }) { scheduleNextRecurrence(task: t, in: \.toDoLists) }
     }
 
     func updateToDoListItem(_ task: PlannerTask, newTitle: String) {
@@ -186,10 +202,10 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Calls & Emails
-    func addCallEmail(_ title: String) {
+    func addCallEmail(_ title: String, recurrence: Recurrence = .none) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces), recurrence: recurrence)
         if let idx = e.callsEmails.firstIndex(where: { $0.isCompleted }) {
             e.callsEmails.insert(task, at: idx)
         } else {
@@ -208,6 +224,41 @@ class PlannerViewModel: ObservableObject {
         e.callsEmails = sortedByCompletion(e.callsEmails) { $0.isCompleted }
         currentEntry = e
         syncTaskCompletion(taskId: task.id, isCompleted: newState)
+        if let t = e.callsEmails.first(where: { $0.id == task.id }) { scheduleNextRecurrence(task: t, in: \.callsEmails) }
+    }
+
+    // MARK: - Recurring Task Helper
+    /// When a task with recurrence is completed, create its next occurrence
+    /// on the appropriate future date and insert it at the top of the list.
+    private func scheduleNextRecurrence(task: PlannerTask, in section: WritableKeyPath<DailyEntry, [PlannerTask]>) {
+        guard task.recurrence != .none, task.isCompleted else { return }
+        guard let nextDate = nextRecurrenceDate(from: selectedDate, recurrence: task.recurrence) else { return }
+        let nextKey = dateKey(for: nextDate)
+        var nextEntry = entries[nextKey] ?? DailyEntry(date: nextDate)
+        // Don't add if already exists (same UUID)
+        guard !nextEntry[keyPath: section].contains(where: { $0.id == task.id }) else { return }
+        var newTask = task
+        newTask.id = UUID()
+        newTask.isCompleted = false
+        newTask.isRolledOver = false
+        newTask.originalDate = nextDate
+        nextEntry[keyPath: section].insert(newTask, at: 0)
+        entries[nextKey] = nextEntry
+    }
+
+    private func nextRecurrenceDate(from date: Date, recurrence: Recurrence) -> Date? {
+        let cal = Calendar.current
+        switch recurrence {
+        case .none:      return nil
+        case .daily:     return cal.date(byAdding: .day, value: 1, to: date)
+        case .monthly:   return cal.date(byAdding: .month, value: 1, to: date)
+        case .biweekly:  return cal.date(byAdding: .day, value: 14, to: date)
+        case .weekly:    return cal.date(byAdding: .day, value: 7, to: date)
+        case .weekdays:
+            var d = cal.date(byAdding: .day, value: 1, to: date)!
+            while cal.isDateInWeekend(d) { d = cal.date(byAdding: .day, value: 1, to: d)! }
+            return d
+        }
     }
 
     func updateCallEmail(_ task: PlannerTask, newTitle: String) {
@@ -233,10 +284,10 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Personal To-Do
-    func addPersonalTodo(_ title: String) {
+    func addPersonalTodo(_ title: String, recurrence: Recurrence = .none) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces))
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces), recurrence: recurrence)
         if let idx = e.personalTodo.firstIndex(where: { $0.isCompleted }) {
             e.personalTodo.insert(task, at: idx)
         } else {
@@ -255,6 +306,7 @@ class PlannerViewModel: ObservableObject {
         e.personalTodo = sortedByCompletion(e.personalTodo) { $0.isCompleted }
         currentEntry = e
         syncTaskCompletion(taskId: task.id, isCompleted: newState)
+        if let t = e.personalTodo.first(where: { $0.id == task.id }) { scheduleNextRecurrence(task: t, in: \.personalTodo) }
     }
 
     /// Propagates a completion-state change to every other entry that contains
@@ -568,6 +620,61 @@ class PlannerViewModel: ObservableObject {
             .reduce(0) { $0 + $1.amount }
     }
 
+    // MARK: - Habits
+    func addHabit(_ habit: Habit) {
+        settings.habits.append(habit)
+    }
+    func deleteHabit(_ habit: Habit) {
+        settings.habits.removeAll { $0.id == habit.id }
+    }
+    func toggleHabit(_ habit: Habit, for date: Date) {
+        let key = dateKey(for: date)
+        var log = settings.habitLogs[key] ?? HabitLog()
+        if log.completedIDs.contains(habit.id) {
+            log.completedIDs.remove(habit.id)
+        } else {
+            log.completedIDs.insert(habit.id)
+        }
+        settings.habitLogs[key] = log
+        objectWillChange.send()
+    }
+    func isHabitCompleted(_ habit: Habit, for date: Date) -> Bool {
+        settings.habitLogs[dateKey(for: date)]?.completedIDs.contains(habit.id) ?? false
+    }
+    func habitStreak(_ habit: Habit) -> Int {
+        var streak = 0
+        var date = Calendar.current.startOfDay(for: Date())
+        while true {
+            if isHabitCompleted(habit, for: date) {
+                streak += 1
+            } else if streak > 0 {
+                break
+            }
+            guard let prev = Calendar.current.date(byAdding: .day, value: -1, to: date) else { break }
+            date = prev
+            if streak > 365 { break }
+        }
+        return streak
+    }
+
+    // MARK: - Budget
+    func budget(for category: ExpenseCategory) -> Double? {
+        settings.categoryBudgets[category.rawValue]
+    }
+    func setBudget(_ amount: Double?, for category: ExpenseCategory) {
+        if let amount = amount, amount > 0 {
+            settings.categoryBudgets[category.rawValue] = amount
+        } else {
+            settings.categoryBudgets.removeValue(forKey: category.rawValue)
+        }
+    }
+    func monthlySpent(for category: ExpenseCategory, date: Date) -> Double {
+        monthlyEntries(for: date)
+            .flatMap { $0.expenses }
+            .filter { !$0.isDeposit && !$0.isIncome && $0.category == category }
+            .reduce(0) { $0 + $1.amount }
+    }
+
     // MARK: - Rating
     func updateRating(_ rating: DayRating) {
         var e = currentEntry
@@ -713,7 +820,7 @@ class PlannerViewModel: ObservableObject {
     /// Asynchronous write — called automatically on every `entries` change.
     func saveData() {
         let snapshot = entries
-        let url = entriesURL
+        let url = activeEntriesURL
         saveQueue.async {
             guard let data = try? JSONEncoder().encode(snapshot) else { return }
             try? data.write(to: url, options: .atomic)
@@ -725,11 +832,17 @@ class PlannerViewModel: ObservableObject {
     /// data survives an imminent SIGKILL from Xcode or the OS.
     func saveDataNow() {
         guard let data = try? JSONEncoder().encode(entries) else { return }
-        try? data.write(to: entriesURL, options: .atomic)
+        try? data.write(to: activeEntriesURL, options: .atomic)
     }
 
     func loadData() {
-        // Primary: Documents directory
+        // Primary: cloud if available, otherwise local Documents directory
+        if let data = try? Data(contentsOf: activeEntriesURL),
+           let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
+            entries = decoded
+            return
+        }
+        // Secondary: local Documents directory (when cloud is not yet available)
         if let data = try? Data(contentsOf: entriesURL),
            let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
             entries = decoded
@@ -746,7 +859,7 @@ class PlannerViewModel: ObservableObject {
 
     func saveSettings() {
         guard let data = try? JSONEncoder().encode(settings) else { return }
-        try? data.write(to: settingsURL, options: .atomic)
+        try? data.write(to: activeSettingsURL, options: .atomic)
         // Sync notifications
         if settings.notificationsEnabled {
             NotificationManager.shared.scheduleNotifications(
@@ -757,7 +870,7 @@ class PlannerViewModel: ObservableObject {
     }
 
     func loadSettings() {
-        guard let data = try? Data(contentsOf: settingsURL),
+        guard let data = try? Data(contentsOf: activeSettingsURL),
               let decoded = try? JSONDecoder().decode(AppSettings.self, from: data)
         else { return }
         settings = decoded
@@ -769,7 +882,10 @@ class PlannerViewModel: ObservableObject {
         // time (which would just re-save the data we just loaded).
         $entries
             .dropFirst()
-            .sink { [weak self] _ in self?.saveData() }
+            .sink { [weak self] _ in
+                self?.saveData()
+                self?.updateWidgetData()
+            }
             .store(in: &cancellables)
 
         // Settings are small; a short debounce avoids redundant writes when
@@ -780,6 +896,106 @@ class PlannerViewModel: ObservableObject {
             .debounce(for: .milliseconds(200), scheduler: saveQueue)
             .sink { [weak self] _ in self?.saveSettings() }
             .store(in: &cancellables)
+    }
+
+    // MARK: - iCloud Sync
+
+    private func setupiCloud() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            guard let containerURL = FileManager.default.url(forUbiquityContainerIdentifier: self.iCloudContainerID) else {
+                DispatchQueue.main.async { self.iCloudAvailable = false }
+                return
+            }
+            let docsURL = containerURL.appendingPathComponent("Documents")
+            try? FileManager.default.createDirectory(at: docsURL, withIntermediateDirectories: true)
+            DispatchQueue.main.async {
+                self.cloudDocsURL = docsURL
+                self.iCloudAvailable = true
+                self.migrateLocalToCloudIfNeeded()
+                self.setupMetadataQuery()
+            }
+        }
+    }
+
+    private func migrateLocalToCloudIfNeeded() {
+        guard let cloudDocs = cloudDocsURL else { return }
+        let cloudEntries = cloudDocs.appendingPathComponent("planner_entries.json")
+        let cloudSettings = cloudDocs.appendingPathComponent("planner_settings.json")
+        // Copy local → cloud only if cloud file doesn't exist yet
+        if !FileManager.default.fileExists(atPath: cloudEntries.path),
+           FileManager.default.fileExists(atPath: entriesURL.path) {
+            try? FileManager.default.copyItem(at: entriesURL, to: cloudEntries)
+        }
+        if !FileManager.default.fileExists(atPath: cloudSettings.path),
+           FileManager.default.fileExists(atPath: settingsURL.path) {
+            try? FileManager.default.copyItem(at: settingsURL, to: cloudSettings)
+        }
+        // Reload from cloud
+        loadData()
+        loadSettings()
+    }
+
+    private func setupMetadataQuery() {
+        let query = NSMetadataQuery()
+        query.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
+        query.predicate = NSPredicate(format: "%K LIKE '*.json'", NSMetadataItemFSNameKey)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(cloudFilesChanged),
+            name: .NSMetadataQueryDidUpdate, object: query)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(cloudFilesChanged),
+            name: .NSMetadataQueryDidFinishGathering, object: query)
+        query.start()
+        metadataQuery = query
+    }
+
+    @objc private func cloudFilesChanged(_ notification: Notification) {
+        metadataQuery?.disableUpdates()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.loadData()
+            self?.metadataQuery?.enableUpdates()
+        }
+    }
+
+    // MARK: - Widget Shared Data Model (mirrors WidgetSharedData in the widget extension)
+
+    struct WidgetSharedData: Codable {
+        var dateKey: String
+        var tasksDone: Int
+        var tasksTotal: Int
+        var topPriorities: [String]
+        var spending: Double
+        var currencySymbol: String
+        var steps: Int
+        var waterGlasses: Int
+        var waterGoal: Int
+    }
+
+    // MARK: - Widget Data
+
+    func updateWidgetData() {
+        let suiteName = "group.com.istalin.DailyPlanner"
+        guard let defaults = UserDefaults(suiteName: suiteName) else { return }
+        let today = Calendar.current.startOfDay(for: Date())
+        let key = dateKey(for: today)
+        let entry = entries[key] ?? DailyEntry(date: today)
+        let priorities = entry.topPriorities.filter { !$0.isCompleted }.prefix(3).map { $0.title }
+        let shared = WidgetSharedData(
+            dateKey: key,
+            tasksDone: entry.completedTasksCount,
+            tasksTotal: entry.allTasksCount,
+            topPriorities: Array(priorities),
+            spending: entry.totalExpenses,
+            currencySymbol: settings.currency.symbol,
+            steps: entry.fitness.displaySteps,
+            waterGlasses: entry.waterGlasses,
+            waterGoal: entry.waterGoal
+        )
+        if let data = try? JSONEncoder().encode(shared) {
+            defaults.set(data, forKey: "widget_data")
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - Summary helpers

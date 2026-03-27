@@ -114,13 +114,16 @@ struct TaskRowCard: View {
                         .strikethrough(task.isCompleted, color: .secondary)
                         .foregroundColor(task.isCompleted ? .secondary : .primary)
 
-                    if task.isRolledOver, let originalDate = task.originalDate {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.uturn.right").font(.system(size: 9))
-                            Text("Rolled from \(shortDate(originalDate))")
-                                .font(.system(size: 10))
+                    HStack(spacing: 4) {
+                        if task.isRolledOver, let originalDate = task.originalDate {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.uturn.right").font(.system(size: 9))
+                                Text("Rolled from \(shortDate(originalDate))")
+                                    .font(.system(size: 10))
+                            }
+                            .foregroundColor(.orange)
                         }
-                        .foregroundColor(.orange)
+                        RecurrenceBadge(recurrence: task.recurrence)
                     }
                 }
 
@@ -376,6 +379,88 @@ struct AddItemSheet: View {
                 Button(action: {
                     guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                     onSave(text.trimmingCharacters(in: .whitespaces))
+                    text = ""
+                    dismiss()
+                }) {
+                    Text("Add")
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(text.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary.opacity(0.3) : accentColor)
+                        .foregroundColor(.white)
+                        .cornerRadius(14)
+                }
+                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                .padding(.horizontal, 20)
+
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .onAppear { focused = true }
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+// MARK: - Add Item With Recurrence Sheet
+struct AddItemWithRecurrenceSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var text = ""
+    @State private var recurrence: Recurrence = .none
+    @FocusState private var focused: Bool
+
+    let title: String
+    let placeholder: String
+    let accentColor: Color
+    let icon: String
+    let onSave: (String, Recurrence) -> Void
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: icon)
+                        .font(.system(size: 36))
+                        .foregroundColor(accentColor)
+                    Text(title)
+                        .font(.title3).fontWeight(.bold)
+                }
+                .padding(.top, 20)
+
+                // Text field
+                VStack(alignment: .leading, spacing: 6) {
+                    TextField(placeholder, text: $text, axis: .vertical)
+                        .focused($focused)
+                        .font(.body)
+                        .padding(14)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(14)
+                        .lineLimit(3...6)
+                }
+                .padding(.horizontal, 20)
+
+                // Recurrence picker
+                VStack(alignment: .leading, spacing: 6) {
+                    RecurrencePicker(recurrence: $recurrence)
+                        .pickerStyle(.menu)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(14)
+                }
+                .padding(.horizontal, 20)
+
+                // Save button
+                Button(action: {
+                    guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                    onSave(text.trimmingCharacters(in: .whitespaces), recurrence)
                     text = ""
                     dismiss()
                 }) {

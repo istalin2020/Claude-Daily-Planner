@@ -89,13 +89,13 @@ struct ToDoListsView: View {
                 }
             }
             .sheet(isPresented: $showAddSheet) {
-                AddItemSheet(
+                AddItemWithRecurrenceSheet(
                     title: "Add To-Do",
                     placeholder: "What do you need to do?",
                     accentColor: AppSection.toDoLists.color,
                     icon: AppSection.toDoLists.icon
-                ) { text in
-                    vm.addToDoListItem(text)
+                ) { text, recurrence in
+                    vm.addToDoListItem(text, recurrence: recurrence)
                 }
             }
             .sheet(item: $editingTask) { task in

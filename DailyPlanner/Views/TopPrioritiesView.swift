@@ -6,6 +6,7 @@ struct TopPrioritiesView: View {
     @State private var editingTask: PlannerTask? = nil
     @State private var taskToDelete: PlannerTask? = nil
     @State private var showPopper = false
+    @State private var recurrence: Recurrence = .none
 
     var entry: DailyEntry { vm.currentEntry }
 
@@ -89,13 +90,13 @@ struct TopPrioritiesView: View {
                 }
             }
             .sheet(isPresented: $showAddSheet) {
-                AddItemSheet(
+                AddItemWithRecurrenceSheet(
                     title: "Add Top Priority",
                     placeholder: "What's your top priority?",
                     accentColor: AppSection.topPriorities.color,
                     icon: AppSection.topPriorities.icon
-                ) { text in
-                    vm.addTopPriority(text)
+                ) { text, recurrence in
+                    vm.addTopPriority(text, recurrence: recurrence)
                 }
             }
             .sheet(item: $editingTask) { task in

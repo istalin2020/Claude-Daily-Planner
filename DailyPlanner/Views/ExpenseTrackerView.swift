@@ -7,6 +7,7 @@ struct ExpenseTrackerView: View {
     @State private var showAddSheet     = false
     @State private var addMode: AddMode = .expense
     @State private var summaryMonthOffset = 0
+    @State private var showBudgets = false
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -46,6 +47,31 @@ struct ExpenseTrackerView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 20)
 
+                // ── Budget Alerts ──────────────────────────────────────
+                let alerts = budgetAlerts()
+                if !alerts.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.orange)
+                            Text("Budget Alerts").font(.system(size: 14, weight: .bold))
+                        }
+                        .padding(.horizontal, 16)
+                        ForEach(alerts, id: \.category.rawValue) { alert in
+                            BudgetAlertRow(alert: alert, sym: sym)
+                                .padding(.horizontal, 16)
+                        }
+                    }
+                    .padding(.top, 16)
+                }
+
+                Button { showBudgets = true } label: {
+                    Label("Manage Budgets", systemImage: "chart.bar.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                        .background(Color.orange.opacity(0.1)).foregroundColor(.orange).cornerRadius(12)
+                }
+                .padding(.horizontal, 16).padding(.top, 8)
+
                 // ── Today's Transactions ───────────────────────────────
                 todayTransactionsList
                     .padding(.top, 16)
@@ -57,6 +83,18 @@ struct ExpenseTrackerView: View {
             AddTransactionSheet(mode: addMode, currencySymbol: sym) { transaction in
                 vm.addExpense(transaction)
             }
+        }
+        .sheet(isPresented: $showBudgets) {
+            BudgetSettingsView().environmentObject(vm)
+        }
+    }
+
+    private func budgetAlerts() -> [BudgetAlert] {
+        ExpenseCategory.allCases.compactMap { cat in
+            guard let budget = vm.budget(for: cat), budget > 0 else { return nil }
+            let spent = vm.monthlySpent(for: cat, date: vm.selectedDate)
+            guard spent / budget >= 0.8 else { return nil }
+            return BudgetAlert(category: cat, spent: spent, budget: budget)
         }
     }
 
@@ -634,6 +672,37 @@ struct AddTransactionSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Budget Alert
+
+struct BudgetAlert {
+    let category: ExpenseCategory
+    let spent: Double
+    let budget: Double
+    var percent: Double { spent / budget }
+}
+
+struct BudgetAlertRow: View {
+    let alert: BudgetAlert
+    let sym: String
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: alert.category.icon)
+                .font(.system(size: 13)).foregroundColor(alert.category.color).frame(width: 20)
+            Text(alert.category.rawValue).font(.system(size: 12))
+            Spacer()
+            ProgressView(value: alert.percent)
+                .tint(alert.percent >= 1.0 ? .red : .orange).frame(width: 60)
+            Text("\(Int(alert.percent * 100))%")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(alert.percent >= 1.0 ? .red : .orange)
+        }
+        .padding(10)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
     }
 }
 

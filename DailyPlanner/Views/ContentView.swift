@@ -3,11 +3,12 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showSettings = false
+    @State private var showSearch = false
 
     var body: some View {
         VStack(spacing: 0) {
             // App Header
-            AppHeaderView(showSettings: $showSettings)
+            AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
 
             // Date Scroller
             DateScrollerView()
@@ -25,6 +26,9 @@ struct ContentView: View {
         .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showSettings) {
             SettingsView()
+        }
+        .sheet(isPresented: $showSearch) {
+            SearchView().environmentObject(vm)
         }
     }
 
@@ -52,6 +56,7 @@ struct ContentView: View {
 struct AppHeaderView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @Binding var showSettings: Bool
+    @Binding var showSearch: Bool
 
     private var greeting: String {
         let h = Calendar.current.component(.hour, from: Date())
@@ -78,6 +83,12 @@ struct AppHeaderView: View {
                     .background(Color.white.opacity(0.25))
                     .foregroundColor(.white)
                     .cornerRadius(12)
+            }
+            Button(action: { showSearch = true }) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.leading, 8)
             }
             Button(action: { showSettings = true }) {
                 Image(systemName: "gearshape.fill")

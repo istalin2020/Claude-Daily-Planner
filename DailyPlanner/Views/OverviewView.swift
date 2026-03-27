@@ -349,6 +349,7 @@ struct OverviewTaskRow: View {
                     .foregroundColor(.orange)
                     .cornerRadius(4)
             }
+            RecurrenceBadge(recurrence: task.recurrence)
             Spacer()
         }
     }

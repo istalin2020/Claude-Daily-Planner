@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var pickerTime         = defaultPickerTime()
     @State private var permissionDenied   = false
     @State private var monthlyIncomeText  = ""
+    @State private var showExport         = false
 
     // Suggested messages shown to the user for awareness
     private let reminderMessages = NotificationManager.reminderMessages
@@ -175,6 +176,30 @@ struct SettingsView: View {
                     Text("Task Management")
                 }
 
+                // ── SYNC ───────────────────────────────────────────────
+                Section {
+                    HStack {
+                        Label("iCloud Sync", systemImage: "icloud.fill")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if vm.iCloudAvailable {
+                            Label("On", systemImage: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        } else {
+                            Label("Off — Sign in to iCloud", systemImage: "xmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Sync")
+                } footer: {
+                    Text(vm.iCloudAvailable
+                         ? "Your data is syncing across all your Apple devices via iCloud."
+                         : "Sign in to iCloud in iOS Settings to enable cross-device sync.")
+                }
+
                 // ── ABOUT ──────────────────────────────────────────────
                 Section("About") {
                     HStack {
@@ -190,6 +215,12 @@ struct SettingsView: View {
                         Text("On Device")
                             .foregroundColor(.secondary)
                             .font(.caption)
+                    }
+                    Button {
+                        showExport = true
+                    } label: {
+                        Label("Export Data", systemImage: "square.and.arrow.up.fill")
+                            .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
                     }
                 }
             }
@@ -213,6 +244,9 @@ struct SettingsView: View {
                     NotificationManager.shared.scheduleNotifications(
                         times: vm.settings.notificationTimes)
                 }
+            }
+            .sheet(isPresented: $showExport) {
+                ExportView().environmentObject(vm)
             }
         }
     }

@@ -36,6 +36,27 @@ enum ExpenseCategory: String, Codable, CaseIterable {
     }
 }
 
+// MARK: - Recurrence
+enum Recurrence: String, Codable, CaseIterable, Identifiable {
+    case none       = "None"
+    case daily      = "Daily"
+    case weekdays   = "Weekdays"
+    case weekly     = "Weekly"
+    case biweekly   = "Every 2 Weeks"
+    case monthly    = "Monthly"
+    var id: String { rawValue }
+    var icon: String {
+        switch self {
+        case .none:      return "slash.circle"
+        case .daily:     return "arrow.clockwise"
+        case .weekdays:  return "briefcase.fill"
+        case .weekly:    return "calendar"
+        case .biweekly:  return "calendar.badge.plus"
+        case .monthly:   return "calendar.circle.fill"
+        }
+    }
+}
+
 // MARK: - Planner Task
 struct PlannerTask: Identifiable, Codable, Equatable {
     var id = UUID()
@@ -44,6 +65,7 @@ struct PlannerTask: Identifiable, Codable, Equatable {
     var isRolledOver: Bool = false
     var originalDate: Date? = nil
     var notes: String = ""
+    var recurrence: Recurrence = .none
 
     // Robust decoder: any field that might be absent in older saved JSON
     // falls back to its default rather than throwing a keyNotFound error.
@@ -52,23 +74,26 @@ struct PlannerTask: Identifiable, Codable, Equatable {
          isCompleted: Bool = false,
          isRolledOver: Bool = false,
          originalDate: Date? = nil,
-         notes: String = "") {
+         notes: String = "",
+         recurrence: Recurrence = .none) {
         self.id = id
         self.title = title
         self.isCompleted = isCompleted
         self.isRolledOver = isRolledOver
         self.originalDate = originalDate
         self.notes = notes
+        self.recurrence = recurrence
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        id           = try c.decodeIfPresent(UUID.self,   forKey: .id)           ?? UUID()
-        title        = try c.decode(String.self,           forKey: .title)
-        isCompleted  = try c.decodeIfPresent(Bool.self,   forKey: .isCompleted)  ?? false
-        isRolledOver = try c.decodeIfPresent(Bool.self,   forKey: .isRolledOver) ?? false
-        originalDate = try c.decodeIfPresent(Date.self,   forKey: .originalDate)
-        notes        = try c.decodeIfPresent(String.self, forKey: .notes)        ?? ""
+        id           = try c.decodeIfPresent(UUID.self,       forKey: .id)           ?? UUID()
+        title        = try c.decode(String.self,               forKey: .title)
+        isCompleted  = try c.decodeIfPresent(Bool.self,       forKey: .isCompleted)  ?? false
+        isRolledOver = try c.decodeIfPresent(Bool.self,       forKey: .isRolledOver) ?? false
+        originalDate = try c.decodeIfPresent(Date.self,       forKey: .originalDate)
+        notes        = try c.decodeIfPresent(String.self,     forKey: .notes)        ?? ""
+        recurrence   = try c.decodeIfPresent(Recurrence.self, forKey: .recurrence)   ?? .none
     }
 }
 
@@ -522,6 +547,59 @@ enum Currency: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Habit
+struct Habit: Identifiable, Codable {
+    var id = UUID()
+    var name: String
+    var icon: String = "star.fill"
+    var color: String = "purple"  // stored as string for Codable
+    var targetDays: [Int] = [1,2,3,4,5,6,7] // weekdays 1=Sun … 7=Sat
+    var reminderTime: Date? = nil
+    var createdDate: Date = Date()
+
+    var swiftUIColor: Color {
+        switch color {
+        case "red":    return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green":  return Color(red: 0.1, green: 0.65, blue: 0.35)
+        case "blue":   return .blue
+        case "indigo": return .indigo
+        case "pink":   return .pink
+        default:       return Color(red: 0.45, green: 0.25, blue: 0.85)
+        }
+    }
+
+    init(id: UUID = UUID(), name: String, icon: String = "star.fill",
+         color: String = "purple", targetDays: [Int] = [1,2,3,4,5,6,7],
+         reminderTime: Date? = nil, createdDate: Date = Date()) {
+        self.id = id; self.name = name; self.icon = icon
+        self.color = color; self.targetDays = targetDays
+        self.reminderTime = reminderTime; self.createdDate = createdDate
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decodeIfPresent(UUID.self,   forKey: .id)          ?? UUID()
+        name        = try c.decode(String.self,           forKey: .name)
+        icon        = try c.decodeIfPresent(String.self, forKey: .icon)        ?? "star.fill"
+        color       = try c.decodeIfPresent(String.self, forKey: .color)       ?? "purple"
+        targetDays  = try c.decodeIfPresent([Int].self,  forKey: .targetDays)  ?? [1,2,3,4,5,6,7]
+        reminderTime = try c.decodeIfPresent(Date.self,  forKey: .reminderTime)
+        createdDate = try c.decodeIfPresent(Date.self,   forKey: .createdDate) ?? Date()
+    }
+}
+
+// HabitLog: date-keyed set of completed habit IDs
+struct HabitLog: Codable {
+    var completedIDs: Set<UUID> = []
+    init(completedIDs: Set<UUID> = []) { self.completedIDs = completedIDs }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        completedIDs = try c.decodeIfPresent(Set<UUID>.self, forKey: .completedIDs) ?? []
+    }
+}
+
 // MARK: - App Settings
 struct AppSettings: Codable {
     var isDarkMode: Bool = false
@@ -540,6 +618,13 @@ struct AppSettings: Codable {
     var stepsTarget: Int    = 5000
     var caloriesTarget: Int = 500
 
+    // MARK: - Habits
+    var habits: [Habit] = []
+    var habitLogs: [String: HabitLog] = [:]
+
+    // MARK: - Budget
+    var categoryBudgets: [String: Double] = [:]
+
     init(isDarkMode: Bool = false,
          autoRollover: Bool = true,
          notificationsEnabled: Bool = false,
@@ -550,7 +635,10 @@ struct AppSettings: Codable {
          workoutTarget: Int = 30,
          walkingTarget: Int = 30,
          stepsTarget: Int = 5000,
-         caloriesTarget: Int = 500) {
+         caloriesTarget: Int = 500,
+         habits: [Habit] = [],
+         habitLogs: [String: HabitLog] = [:],
+         categoryBudgets: [String: Double] = [:]) {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
         self.notificationsEnabled = notificationsEnabled
@@ -562,6 +650,9 @@ struct AppSettings: Codable {
         self.walkingTarget = walkingTarget
         self.stepsTarget = stepsTarget
         self.caloriesTarget = caloriesTarget
+        self.habits = habits
+        self.habitLogs = habitLogs
+        self.categoryBudgets = categoryBudgets
     }
 
     init(from decoder: Decoder) throws {
@@ -577,6 +668,9 @@ struct AppSettings: Codable {
         walkingTarget        = try c.decodeIfPresent(Int.self,              forKey: .walkingTarget)        ?? 30
         stepsTarget          = try c.decodeIfPresent(Int.self,              forKey: .stepsTarget)          ?? 5000
         caloriesTarget       = try c.decodeIfPresent(Int.self,              forKey: .caloriesTarget)       ?? 500
+        habits               = try c.decodeIfPresent([Habit].self,                    forKey: .habits)               ?? []
+        habitLogs            = try c.decodeIfPresent([String: HabitLog].self,         forKey: .habitLogs)            ?? [:]
+        categoryBudgets      = try c.decodeIfPresent([String: Double].self,           forKey: .categoryBudgets)      ?? [:]
     }
 }
 
@@ -658,6 +752,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     case notes = "Notes"
     case expenseTracker = "Expenses"
     case rateYourDay = "Rate Your Day"
+    case habits = "Habit Tracker"
 
     var id: String { rawValue }
 
@@ -676,6 +771,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .notes: return "note.text"
         case .expenseTracker: return "dollarsign.circle.fill"
         case .rateYourDay: return "heart.fill"
+        case .habits: return "checkmark.circle.fill"
         }
     }
 
@@ -694,6 +790,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .notes: return Color(red: 0.6, green: 0.4, blue: 0.2)
         case .expenseTracker: return Color(red: 0.1, green: 0.65, blue: 0.35)
         case .rateYourDay: return Color(red: 0.9, green: 0.3, blue: 0.5)
+        case .habits: return Color(red: 0.45, green: 0.25, blue: 0.85)
         }
     }
 }
