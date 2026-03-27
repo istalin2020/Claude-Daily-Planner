@@ -9,21 +9,22 @@ struct AddTaskIntent: AppIntent {
     @Parameter(title: "Task Title")
     var taskTitle: String
 
-    @Parameter(title: "Section", default: "Top Priorities")
+    @Parameter(title: "Section", default: TaskSectionOption.topPriorities)
     var section: TaskSectionOption
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Add \(\.$taskTitle) to \(\.$section)")
+        Summary("Add \(\.$taskTitle) to \(\.$section)") as Summary<AddTaskIntent>
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         // AppIntents run out-of-process; we write to shared UserDefaults so the app picks it up
         let pendingKey = "shortcut_pending_task"
-        let payload: [String: String] = ["title": taskTitle, "section": section.rawValue]
+        let sectionValue = section.rawValue
+        let payload: [String: String] = ["title": taskTitle, "section": sectionValue]
         if let data = try? JSONEncoder().encode(payload) {
             UserDefaults(suiteName: "group.com.istalin.DailyPlanner")?.set(data, forKey: pendingKey)
         }
-        return .result(dialog: "Added '\(taskTitle)' to \(section.rawValue).")
+        return .result(dialog: "Added '\(taskTitle)' to \(sectionValue).")
     }
 }
 
