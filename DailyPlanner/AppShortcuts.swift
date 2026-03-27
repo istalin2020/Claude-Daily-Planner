@@ -64,7 +64,7 @@ struct CheckTodayHabitsIntent: AppIntent {
             return .result(dialog: "Open Daily Planner to sync habit data.")
         }
         let pct = Int(widgetData.completionRate * 100)
-        return .result(dialog: "You've completed \(pct)% of today's tasks and habits. Keep it up!")
+        return .result(dialog: "You've completed \(pct)% of today's tasks (\(widgetData.tasksDone)/\(widgetData.tasksTotal)). Keep it up!")
     }
 }
 
@@ -102,14 +102,20 @@ struct DailyPlannerShortcuts: AppShortcutsProvider {
     }
 }
 
-// Codable mirror of WidgetSharedData for use from AppIntents
+// Codable mirror of WidgetSharedData — must match PlannerViewModel.updateWidgetData()
 private struct WidgetSharedData: Codable {
-    var completionRate: Double
-    var taskCount: Int
-    var completedCount: Int
+    var dateKey: String
+    var tasksDone: Int
+    var tasksTotal: Int
+    var topPriorities: [String]
+    var spending: Double
+    var currencySymbol: String
     var steps: Int
     var waterGlasses: Int
-    var topTasks: [String]
-    var totalSpending: Double
-    var currencySymbol: String
+    var waterGoal: Int
+
+    var completionRate: Double {
+        guard tasksTotal > 0 else { return 0 }
+        return Double(tasksDone) / Double(tasksTotal)
+    }
 }

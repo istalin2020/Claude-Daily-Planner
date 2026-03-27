@@ -271,8 +271,10 @@ class PlannerViewModel: ObservableObject {
         case .biweekly:  return cal.date(byAdding: .day, value: 14, to: date)
         case .weekly:    return cal.date(byAdding: .day, value: 7, to: date)
         case .weekdays:
-            var d = cal.date(byAdding: .day, value: 1, to: date)!
-            while cal.isDateInWeekend(d) { d = cal.date(byAdding: .day, value: 1, to: d)! }
+            var d = cal.date(byAdding: .day, value: 1, to: date) ?? date
+            while cal.isDateInWeekend(d) {
+                d = cal.date(byAdding: .day, value: 1, to: d) ?? d
+            }
             return d
         }
     }
@@ -912,24 +914,51 @@ class PlannerViewModel: ObservableObject {
     }
 
     func loadData() {
-        // Primary: cloud if available, otherwise local Documents directory
-        if let data = try? Data(contentsOf: activeEntriesURL),
+        // Try to load from every source and pick the richest data set.
+        // This prevents an empty or not-yet-downloaded iCloud file from
+        // silently wiping valid local data on first launch after reinstall.
+
+        var cloudDecoded: [String: DailyEntry]?
+        var localDecoded: [String: DailyEntry]?
+
+        // Cloud (only attempted when cloudDocsURL is set)
+        if cloudDocsURL != nil,
+           let data = try? Data(contentsOf: activeEntriesURL),
            let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
-            entries = decoded
-            return
+            cloudDecoded = decoded
         }
-        // Secondary: local Documents directory (when cloud is not yet available)
+
+        // Local Documents directory
         if let data = try? Data(contentsOf: entriesURL),
            let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
-            entries = decoded
-            return
+            localDecoded = decoded
         }
-        // Fallback: one-time migration from UserDefaults (legacy)
-        if let data = UserDefaults.standard.data(forKey: legacyStorageKey),
-           let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
-            entries = decoded
-            saveDataNow()
-            UserDefaults.standard.removeObject(forKey: legacyStorageKey)
+
+        switch (cloudDecoded, localDecoded) {
+        case (.some(let cloud), .some(let local)):
+            // Both sources available — merge, preferring the source with more data.
+            // Cloud wins on key conflicts; local-only keys are also preserved.
+            if cloud.count >= local.count {
+                var merged = local
+                for (k, v) in cloud { merged[k] = v }
+                entries = merged
+            } else {
+                var merged = cloud
+                for (k, v) in local where merged[k] == nil { merged[k] = v }
+                entries = merged
+            }
+        case (.some(let cloud), .none):
+            entries = cloud
+        case (.none, .some(let local)):
+            entries = local
+        case (.none, .none):
+            // Fallback: one-time migration from UserDefaults (legacy)
+            if let data = UserDefaults.standard.data(forKey: legacyStorageKey),
+               let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
+                entries = decoded
+                saveDataNow()
+                UserDefaults.standard.removeObject(forKey: legacyStorageKey)
+            }
         }
     }
 
@@ -998,6 +1027,7 @@ class PlannerViewModel: ObservableObject {
         guard let cloudDocs = cloudDocsURL else { return }
         let cloudEntries = cloudDocs.appendingPathComponent("planner_entries.json")
         let cloudSettings = cloudDocs.appendingPathComponent("planner_settings.json")
+
         // Copy local → cloud only if cloud file doesn't exist yet
         if !FileManager.default.fileExists(atPath: cloudEntries.path),
            FileManager.default.fileExists(atPath: entriesURL.path) {
@@ -1007,9 +1037,27 @@ class PlannerViewModel: ObservableObject {
            FileManager.default.fileExists(atPath: settingsURL.path) {
             try? FileManager.default.copyItem(at: settingsURL, to: cloudSettings)
         }
-        // Reload from cloud
-        loadData()
-        loadSettings()
+
+        // Merge cloud entries with current (locally-loaded) entries.
+        // If cloud is empty or not-yet-synced we keep local data intact.
+        if let data = try? Data(contentsOf: cloudEntries),
+           let cloudDecoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data),
+           !cloudDecoded.isEmpty {
+            var merged = entries           // start from locally-loaded entries
+            for (k, v) in cloudDecoded { merged[k] = v }   // cloud wins on conflict
+            entries = merged
+        }
+        // Always save the merged result back to both locations for consistency
+        saveDataNow()
+        if let localData = try? JSONEncoder().encode(entries) {
+            try? localData.write(to: entriesURL, options: .atomic)
+        }
+
+        // Settings: prefer cloud when available
+        if let data = try? Data(contentsOf: cloudSettings),
+           let decoded = try? JSONDecoder().decode(AppSettings.self, from: data) {
+            settings = decoded
+        }
     }
 
     private func setupMetadataQuery() {
@@ -1029,8 +1077,19 @@ class PlannerViewModel: ObservableObject {
     @objc private func cloudFilesChanged(_ notification: Notification) {
         metadataQuery?.disableUpdates()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.loadData()
-            self?.metadataQuery?.enableUpdates()
+            guard let self else { return }
+            // Use the merge-aware loadData so a transient empty-cloud state
+            // never wipes the user's in-memory (or local-file) data.
+            let before = self.entries
+            self.loadData()
+            // If loadData produced fewer entries than we had before
+            // (e.g. iCloud file hasn't fully downloaded yet), restore.
+            if self.entries.count < before.count {
+                var restored = self.entries
+                for (k, v) in before where restored[k] == nil { restored[k] = v }
+                self.entries = restored
+            }
+            self.metadataQuery?.enableUpdates()
         }
     }
 
@@ -1111,11 +1170,10 @@ class PlannerViewModel: ObservableObject {
     func availableDates(monthOffset: Int) -> [Date] {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
-        guard let startOfMonth = cal.date(from: cal.dateComponents(
-            [.year, .month],
-            from: cal.date(byAdding: .month, value: monthOffset, to: today)!
-        )) else { return [] }
-        let range = cal.range(of: .day, in: .month, for: startOfMonth)!
+        guard let offsetDate = cal.date(byAdding: .month, value: monthOffset, to: today),
+              let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: offsetDate)),
+              let range = cal.range(of: .day, in: .month, for: startOfMonth)
+        else { return [] }
         return range.compactMap { day -> Date? in
             var comps = cal.dateComponents([.year, .month], from: startOfMonth)
             comps.day = day

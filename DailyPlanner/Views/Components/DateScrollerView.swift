@@ -9,7 +9,7 @@ struct DateScrollerView: View {
     private let maxFutureMonths = 12
 
     private var currentMonthDate: Date {
-        cal.date(byAdding: .month, value: monthOffset, to: cal.startOfDay(for: Date()))!
+        cal.date(byAdding: .month, value: monthOffset, to: cal.startOfDay(for: Date())) ?? Date()
     }
 
     private var monthYear: String {
@@ -178,7 +178,7 @@ struct MonthYearPickerView: View {
         self._monthOffset = monthOffset
         self.maxFuture    = maxFuture
         let cal    = Calendar.current
-        let target = cal.date(byAdding: .month, value: monthOffset.wrappedValue, to: Date())!
+        let target = cal.date(byAdding: .month, value: monthOffset.wrappedValue, to: Date()) ?? Date()
         _selectedMonthIdx = State(initialValue: cal.component(.month, from: target) - 1)
         _selectedYear     = State(initialValue: cal.component(.year,  from: target))
     }
