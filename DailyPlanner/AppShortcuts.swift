@@ -13,7 +13,7 @@ struct AddTaskIntent: AppIntent {
     var section: TaskSectionOption
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Add \(\.$taskTitle) to \(\.$section)") as Summary<AddTaskIntent>
+        Summary("Add \(\.$taskTitle) to \(\.$section)")
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {

@@ -276,7 +276,8 @@ struct SpendingTrendsView: View {
                 }
             }
             .chartForegroundStyleScale(
-                Dictionary(uniqueKeysWithValues: top3.map { ($0.category.rawValue, $0.category.color) })
+                domain: top3.map { $0.category.rawValue },
+                range: top3.map { $0.category.color }
             )
             .frame(height: 180)
             .padding()
