@@ -2,8 +2,10 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     @State private var showSettings = false
-    @State private var showSearch = false
+    @State private var showSearch   = false
+    @State private var showUpgrade  = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,10 +27,17 @@ struct ContentView: View {
         }
         .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            SettingsView().environmentObject(pro)
         }
         .sheet(isPresented: $showSearch) {
-            SearchView().environmentObject(vm)
+            if pro.isPro {
+                SearchView().environmentObject(vm)
+            } else {
+                ProUpgradeView().environmentObject(pro)
+            }
+        }
+        .sheet(isPresented: $showUpgrade) {
+            ProUpgradeView().environmentObject(pro)
         }
     }
 
@@ -48,9 +57,18 @@ struct ContentView: View {
         case .notes:           NotesView()
         case .expenseTracker:  ExpenseTrackerView()
         case .rateYourDay:     RateYourDayView()
-        case .habits:          HabitTrackerView()
-        case .sleepTracker:    SleepTrackerView()
-        case .medications:     MedicationTrackerView()
+        case .habits:
+            ProGate(featureName: "Habit Tracker", featureIcon: "checkmark.circle.fill") {
+                HabitTrackerView()
+            }
+        case .sleepTracker:
+            ProGate(featureName: "Sleep Tracker", featureIcon: "moon.zzz.fill") {
+                SleepTrackerView()
+            }
+        case .medications:
+            ProGate(featureName: "Medication Reminders", featureIcon: "pill.fill") {
+                MedicationTrackerView()
+            }
         }
     }
 }
@@ -58,6 +76,7 @@ struct ContentView: View {
 // MARK: - App Header
 struct AppHeaderView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     @Binding var showSettings: Bool
     @Binding var showSearch: Bool
 
@@ -87,17 +106,20 @@ struct AppHeaderView: View {
                     .foregroundColor(.white)
                     .cornerRadius(12)
             }
+            // Crown / PRO button
+            CrownButton().environmentObject(pro)
+
             Button(action: { showSearch = true }) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white.opacity(0.9))
-                    .padding(.leading, 8)
+                    .padding(.leading, 4)
             }
             Button(action: { showSettings = true }) {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white.opacity(0.9))
-                    .padding(.leading, 8)
+                    .padding(.leading, 4)
             }
         }
         .padding(.horizontal, 16)

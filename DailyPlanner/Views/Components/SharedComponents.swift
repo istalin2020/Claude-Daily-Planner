@@ -180,10 +180,12 @@ struct TaskRowCard: View {
 // MARK: - Edit Task Sheet  (supports title, notes, subtasks)
 struct EditTaskSheet: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject private var pro: ProManager
     @State private var titleText: String
     @State private var notesText: String
     @State private var subtasks: [SubTask]
     @State private var newSubtask: String = ""
+    @State private var showProUpgrade = false
     @FocusState private var titleFocused: Bool
 
     let task: PlannerTask
@@ -210,50 +212,62 @@ struct EditTaskSheet: View {
                         .lineLimit(2...5)
                 }
 
-                Section("Notes") {
-                    TextEditor(text: $notesText)
-                        .frame(minHeight: 70)
-                        .overlay(
-                            Group {
-                                if notesText.isEmpty {
-                                    Text("Add notes...")
-                                        .foregroundColor(.secondary)
-                                        .padding(.top, 8).padding(.leading, 4)
-                                        .allowsHitTesting(false)
-                                }
-                            }, alignment: .topLeading
-                        )
-                }
+                Section {
+                    if pro.isPro {
+                        TextEditor(text: $notesText)
+                            .frame(minHeight: 70)
+                            .overlay(
+                                Group {
+                                    if notesText.isEmpty {
+                                        Text("Add notes...")
+                                            .foregroundColor(.secondary)
+                                            .padding(.top, 8).padding(.leading, 4)
+                                            .allowsHitTesting(false)
+                                    }
+                                }, alignment: .topLeading
+                            )
+                    } else {
+                        proLockedRow(label: "Notes require PRO")
+                    }
+                } header: { Text("Notes") }
 
                 Section {
-                    ForEach(subtasks.indices, id: \.self) { i in
-                        HStack(spacing: 10) {
-                            Button(action: { subtasks[i].isCompleted.toggle() }) {
-                                Image(systemName: subtasks[i].isCompleted ? "checkmark.circle.fill" : "circle")
-                                    .foregroundColor(subtasks[i].isCompleted ? accentColor : .secondary)
+                    if pro.isPro {
+                        ForEach(subtasks.indices, id: \.self) { i in
+                            HStack(spacing: 10) {
+                                Button(action: { subtasks[i].isCompleted.toggle() }) {
+                                    Image(systemName: subtasks[i].isCompleted ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(subtasks[i].isCompleted ? accentColor : .secondary)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                TextField("Subtask", text: $subtasks[i].title)
+                                    .strikethrough(subtasks[i].isCompleted, color: .secondary)
+                                    .foregroundColor(subtasks[i].isCompleted ? .secondary : .primary)
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            TextField("Subtask", text: $subtasks[i].title)
-                                .strikethrough(subtasks[i].isCompleted, color: .secondary)
-                                .foregroundColor(subtasks[i].isCompleted ? .secondary : .primary)
                         }
-                    }
-                    .onDelete { subtasks.remove(atOffsets: $0) }
+                        .onDelete { subtasks.remove(atOffsets: $0) }
 
-                    HStack(spacing: 10) {
-                        Image(systemName: "plus.circle").foregroundColor(accentColor)
-                        TextField("Add subtask…", text: $newSubtask)
-                            .onSubmit { addSubtask() }
+                        HStack(spacing: 10) {
+                            Image(systemName: "plus.circle").foregroundColor(accentColor)
+                            TextField("Add subtask…", text: $newSubtask)
+                                .onSubmit { addSubtask() }
+                        }
+                    } else {
+                        proLockedRow(label: "Subtasks require PRO")
                     }
                 } header: {
                     HStack {
                         Text("Subtasks")
+                        if !pro.isPro { ProInlineBadge() }
                         Spacer()
-                        if !subtasks.isEmpty {
+                        if pro.isPro && !subtasks.isEmpty {
                             Text("\(subtasks.filter(\.isCompleted).count)/\(subtasks.count)")
                                 .font(.caption).foregroundColor(.secondary)
                         }
                     }
+                }
+                .sheet(isPresented: $showProUpgrade) {
+                    ProUpgradeView().environmentObject(pro)
                 }
             }
             .navigationTitle("Edit Task")
@@ -284,6 +298,21 @@ struct EditTaskSheet: View {
         guard !t.isEmpty else { return }
         subtasks.append(SubTask(title: t))
         newSubtask = ""
+    }
+
+    @ViewBuilder
+    private func proLockedRow(label: String) -> some View {
+        Button(action: { showProUpgrade = true }) {
+            HStack(spacing: 10) {
+                Image(systemName: "lock.fill")
+                    .foregroundColor(Color(red: 1.0, green: 0.65, blue: 0.0))
+                Text(label)
+                    .foregroundColor(.secondary)
+                Spacer()
+                ProInlineBadge()
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -470,8 +499,10 @@ struct AddItemSheet: View {
 // MARK: - Add Item With Recurrence Sheet
 struct AddItemWithRecurrenceSheet: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject private var pro: ProManager
     @State private var text = ""
     @State private var recurrence: Recurrence = .none
+    @State private var showProUpgrade = false
     @FocusState private var focused: Bool
 
     let title: String
@@ -505,17 +536,31 @@ struct AddItemWithRecurrenceSheet: View {
                 }
                 .padding(.horizontal, 20)
 
-                // Recurrence picker
+                // Recurrence picker (PRO feature 3)
                 VStack(alignment: .leading, spacing: 6) {
-                    RecurrencePicker(recurrence: $recurrence)
-                        .pickerStyle(.menu)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.secondarySystemBackground))
-                        .cornerRadius(14)
+                    HStack(spacing: 8) {
+                        RecurrencePicker(recurrence: $recurrence)
+                            .pickerStyle(.menu)
+                            .disabled(!pro.isPro)
+                            .opacity(pro.isPro ? 1 : 0.5)
+                        if !pro.isPro {
+                            ProInlineBadge()
+                            Spacer()
+                            Button(action: { showProUpgrade = true }) {
+                                Text("Unlock").font(.caption).foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(14)
                 }
                 .padding(.horizontal, 20)
+                .sheet(isPresented: $showProUpgrade) {
+                    ProUpgradeView().environmentObject(pro)
+                }
 
                 // Save button
                 Button(action: {

@@ -3,22 +3,19 @@ import SwiftUI
 @main
 struct DailyPlannerApp: App {
     @StateObject private var viewModel = PlannerViewModel()
+    @StateObject private var proManager = ProManager.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(viewModel)
+                .environmentObject(proManager)
                 .preferredColorScheme(viewModel.settings.isDarkMode ? .dark : .light)
         }
-        // Sync HealthKit whenever the app enters the foreground so data is
-        // always up-to-date regardless of which tab the user is viewing.
-        // Also flush data to disk on every background/inactive transition.
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
-                // Roll over incomplete tasks whenever the day has changed —
-                // runs purely locally, no network required.
                 viewModel.checkRolloverIfNeeded()
                 viewModel.syncHealthKitForToday()
             case .background, .inactive:

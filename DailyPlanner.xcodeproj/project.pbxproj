@@ -42,6 +42,8 @@
 		AA5A0000000000000000001A /* AppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5B0000000000000000001A /* AppShortcuts.swift */; };
 		AA5C0000000000000000001A /* SpendingTrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D0000000000000000001A /* SpendingTrendsView.swift */; };
 		AA5E0000000000000000001A /* MedicationTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5F0000000000000000001A /* MedicationTrackerView.swift */; };
+		AA600000000000000000001A /* ProManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA610000000000000000001A /* ProManager.swift */; };
+		AA620000000000000000001A /* ProUpgradeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA630000000000000000001A /* ProUpgradeView.swift */; };
 		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
 		BB810000000000000000001A /* DailyPlannerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB900000000000000000001A /* DailyPlannerWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -85,6 +87,8 @@
 		AA5B0000000000000000001A /* AppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShortcuts.swift; sourceTree = "<group>"; };
 		AA5D0000000000000000001A /* SpendingTrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingTrendsView.swift; sourceTree = "<group>"; };
 		AA5F0000000000000000001A /* MedicationTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTrackerView.swift; sourceTree = "<group>"; };
+		AA610000000000000000001A /* ProManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProManager.swift; sourceTree = "<group>"; };
+		AA630000000000000000001A /* ProUpgradeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUpgradeView.swift; sourceTree = "<group>"; };
 		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
 		BB110000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB120000000000000000001A /* DailyPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlannerWidget.entitlements; sourceTree = "<group>"; };
@@ -170,6 +174,7 @@
 			isa = PBXGroup;
 			children = (
 				AA460000000000000000001A /* HealthKitManager.swift */,
+				AA610000000000000000001A /* ProManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -202,6 +207,7 @@
 				AA590000000000000000001A /* WeeklySummaryView.swift */,
 				AA5D0000000000000000001A /* SpendingTrendsView.swift */,
 				AA5F0000000000000000001A /* MedicationTrackerView.swift */,
+				AA630000000000000000001A /* ProUpgradeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -388,6 +394,8 @@
 				AA5A0000000000000000001A /* AppShortcuts.swift in Sources */,
 				AA5C0000000000000000001A /* SpendingTrendsView.swift in Sources */,
 				AA5E0000000000000000001A /* MedicationTrackerView.swift in Sources */,
+				AA600000000000000000001A /* ProManager.swift in Sources */,
+				AA620000000000000000001A /* ProUpgradeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

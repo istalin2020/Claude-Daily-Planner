@@ -3,6 +3,7 @@ import UserNotifications
 
 struct SettingsView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     @Environment(\.dismiss) var dismiss
 
     @State private var showTimePicker     = false
@@ -12,6 +13,8 @@ struct SettingsView: View {
     @State private var showExport         = false
     @State private var showSpendingTrends = false
     @State private var showWeeklySummary  = false
+    @State private var showPomodoro       = false
+    @State private var showProUpgrade     = false
 
     // Suggested messages shown to the user for awareness
     private let reminderMessages = NotificationManager.reminderMessages
@@ -119,8 +122,8 @@ struct SettingsView: View {
                     }
                 }
 
-                // ── APPEARANCE ─────────────────────────────────────────
-                Section("Appearance") {
+                // ── DISPLAY ─────────────────────────────────────────────
+                Section("Display") {
                     Toggle(isOn: $vm.settings.isDarkMode) {
                         Label("Dark Mode", systemImage: vm.settings.isDarkMode ? "moon.fill" : "sun.max.fill")
                     }
@@ -178,42 +181,94 @@ struct SettingsView: View {
                     Text("Task Management")
                 }
 
+                // ── PRO UPGRADE BANNER ─────────────────────────────────
+                if !pro.isPro {
+                    Section {
+                        Button(action: { showProUpgrade = true }) {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(LinearGradient(
+                                            colors: [Color(red: 1.0, green: 0.78, blue: 0.0),
+                                                     Color(red: 1.0, green: 0.45, blue: 0.0)],
+                                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "crown.fill")
+                                        .foregroundColor(.white).font(.system(size: 18))
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Upgrade to PRO")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.primary)
+                                    Text("₹99/month · ₹999/year · Unlock all 15 features")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .sheet(isPresented: $showProUpgrade) {
+                        ProUpgradeView().environmentObject(pro)
+                    }
+                }
+
                 // ── APPEARANCE ─────────────────────────────────────────
-                Section("Appearance") {
+                Section {
                     HStack {
                         Label("Color Theme", systemImage: "paintpalette.fill")
                         Spacer()
-                        Text(vm.settings.themeColor.rawValue)
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                    }
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
-                        ForEach(ThemeColor.allCases) { theme in
-                            Button(action: {
-                                vm.settings.themeColor = theme
-                                vm.saveSettings()
-                            }) {
-                                VStack(spacing: 4) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(LinearGradient(colors: [theme.primary, theme.secondary],
-                                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
-                                            .frame(width: 36, height: 36)
-                                        if vm.settings.themeColor == theme {
-                                            Image(systemName: "checkmark")
-                                                .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(.white)
-                                        }
-                                    }
-                                    Text(theme.rawValue)
-                                        .font(.system(size: 10))
-                                        .foregroundColor(vm.settings.themeColor == theme ? theme.primary : .secondary)
-                                }
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                        if pro.isPro {
+                            Text(vm.settings.themeColor.rawValue)
+                                .foregroundColor(.secondary).font(.caption)
+                        } else {
+                            ProInlineBadge()
                         }
                     }
-                    .padding(.vertical, 4)
+                    if pro.isPro {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
+                            ForEach(ThemeColor.allCases) { theme in
+                                Button(action: {
+                                    vm.settings.themeColor = theme
+                                    vm.saveSettings()
+                                }) {
+                                    VStack(spacing: 4) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(LinearGradient(colors: [theme.primary, theme.secondary],
+                                                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                                                .frame(width: 36, height: 36)
+                                            if vm.settings.themeColor == theme {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundColor(.white)
+                                            }
+                                        }
+                                        Text(theme.rawValue)
+                                            .font(.system(size: 10))
+                                            .foregroundColor(vm.settings.themeColor == theme ? theme.primary : .secondary)
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } else {
+                        Button(action: { showProUpgrade = true }) {
+                            HStack {
+                                Text("Unlock 8 color themes with PRO")
+                                    .font(.caption).foregroundColor(.secondary)
+                                Spacer()
+                                Text("Upgrade →").font(.caption).foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                } header: {
+                    Text("Appearance")
                 }
 
                 // ── SYNC ───────────────────────────────────────────────
@@ -222,22 +277,37 @@ struct SettingsView: View {
                         Label("iCloud Sync", systemImage: "icloud.fill")
                             .foregroundColor(.primary)
                         Spacer()
-                        if vm.iCloudAvailable {
+                        if !pro.isPro {
+                            ProInlineBadge()
+                        } else if vm.iCloudAvailable {
                             Label("On", systemImage: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundColor(.green)
+                                .font(.caption).foregroundColor(.green)
                         } else {
                             Label("Off — Sign in to iCloud", systemImage: "xmark.circle.fill")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(.caption).foregroundColor(.secondary)
                         }
                     }
+                    .onTapGesture { if !pro.isPro { showProUpgrade = true } }
                 } header: {
                     Text("Sync")
                 } footer: {
-                    Text(vm.iCloudAvailable
-                         ? "Your data is syncing across all your Apple devices via iCloud."
-                         : "Sign in to iCloud in iOS Settings to enable cross-device sync.")
+                    Text(pro.isPro
+                         ? (vm.iCloudAvailable ? "Your data syncs across all Apple devices." : "Sign in to iCloud in iOS Settings.")
+                         : "iCloud Sync is a PRO feature.")
+                }
+
+                // ── TOOLS ──────────────────────────────────────────────
+                Section("Tools") {
+                    Button {
+                        if pro.isPro { showPomodoro = true } else { showProUpgrade = true }
+                    } label: {
+                        HStack {
+                            Label("Pomodoro Timer", systemImage: "timer")
+                                .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.5))
+                            Spacer()
+                            if !pro.isPro { ProInlineBadge() }
+                        }
+                    }
                 }
 
                 // ── ABOUT ──────────────────────────────────────────────
@@ -245,34 +315,51 @@ struct SettingsView: View {
                     HStack {
                         Text("Daily Planner")
                         Spacer()
-                        Text("Version 1.0")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
+                        if pro.isPro {
+                            HStack(spacing: 4) {
+                                Image(systemName: "crown.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.0))
+                                Text("PRO").font(.caption).foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.0)).fontWeight(.bold)
+                            }
+                        } else {
+                            Text("Free").foregroundColor(.secondary).font(.caption)
+                        }
                     }
                     HStack {
-                        Text("Data Storage")
+                        Text("Version")
                         Spacer()
-                        Text("On Device")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
+                        Text("1.0").foregroundColor(.secondary).font(.caption)
                     }
                     Button {
-                        showExport = true
+                        if pro.isPro { showExport = true } else { showProUpgrade = true }
                     } label: {
-                        Label("Export Data", systemImage: "square.and.arrow.up.fill")
-                            .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                        HStack {
+                            Label("Export Data", systemImage: "square.and.arrow.up.fill")
+                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            Spacer()
+                            if !pro.isPro { ProInlineBadge() }
+                        }
                     }
                     Button {
-                        showSpendingTrends = true
+                        if pro.isPro { showSpendingTrends = true } else { showProUpgrade = true }
                     } label: {
-                        Label("Spending Trends", systemImage: "chart.bar.fill")
-                            .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
+                        HStack {
+                            Label("Spending Trends", systemImage: "chart.bar.fill")
+                                .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
+                            Spacer()
+                            if !pro.isPro { ProInlineBadge() }
+                        }
                     }
                     Button {
-                        showWeeklySummary = true
+                        if pro.isPro { showWeeklySummary = true } else { showProUpgrade = true }
                     } label: {
-                        Label("Weekly / Monthly Summary", systemImage: "calendar.badge.clock")
-                            .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                        HStack {
+                            Label("Weekly / Monthly Summary", systemImage: "calendar.badge.clock")
+                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            Spacer()
+                            if !pro.isPro { ProInlineBadge() }
+                        }
                     }
                 }
             }
@@ -305,6 +392,12 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showWeeklySummary) {
                 WeeklySummaryView().environmentObject(vm)
+            }
+            .sheet(isPresented: $showPomodoro) {
+                PomodoroTimerView()
+            }
+            .sheet(isPresented: $showProUpgrade) {
+                ProUpgradeView().environmentObject(pro)
             }
         }
     }

@@ -4,10 +4,12 @@ import SwiftUI
 
 struct ExpenseTrackerView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     @State private var showAddSheet     = false
     @State private var addMode: AddMode = .expense
     @State private var summaryMonthOffset = 0
     @State private var showBudgets = false
+    @State private var showProUpgrade = false
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -64,13 +66,21 @@ struct ExpenseTrackerView: View {
                     .padding(.top, 16)
                 }
 
-                Button { showBudgets = true } label: {
-                    Label("Manage Budgets", systemImage: "chart.bar.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(Color.orange.opacity(0.1)).foregroundColor(.orange).cornerRadius(12)
+                Button {
+                    if pro.isPro { showBudgets = true } else { showProUpgrade = true }
+                } label: {
+                    HStack(spacing: 6) {
+                        Label("Manage Budgets", systemImage: "chart.bar.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                        if !pro.isPro { ProInlineBadge() }
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .background(Color.orange.opacity(0.1)).foregroundColor(.orange).cornerRadius(12)
                 }
                 .padding(.horizontal, 16).padding(.top, 8)
+                .sheet(isPresented: $showProUpgrade) {
+                    ProUpgradeView().environmentObject(pro)
+                }
 
                 // ── Today's Transactions ───────────────────────────────
                 todayTransactionsList
