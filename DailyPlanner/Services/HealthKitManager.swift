@@ -21,6 +21,12 @@ final class HealthKitManager {
     /// false on Simulator — HealthKit is only available on real iPhone/Apple Watch
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
+    /// true when the user has explicitly denied step-count access in Settings.
+    var isStepCountAuthDenied: Bool {
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return false }
+        return store.authorizationStatus(for: stepType) == .sharingDenied
+    }
+
     /// Prevents two simultaneous requestAuthorization calls from colliding.
     private var isAuthorizing = false
 

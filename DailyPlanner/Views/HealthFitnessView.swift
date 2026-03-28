@@ -1,5 +1,4 @@
 import SwiftUI
-import HealthKit
 
 // MARK: - Main View
 
@@ -200,12 +199,7 @@ struct HealthFitnessView: View {
 
         // Check if user has previously denied all HealthKit access.
         // If so, direct them to Settings instead of silently failing.
-        let store = HKHealthStore()
-        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
-            isSyncing = false
-            return
-        }
-        if store.authorizationStatus(for: stepType) == .sharingDenied {
+        if HealthKitManager.shared.isStepCountAuthDenied {
             showSettingsAlert = true
             return
         }
