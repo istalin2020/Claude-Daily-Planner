@@ -1038,13 +1038,24 @@ class PlannerViewModel: ObservableObject {
             try? FileManager.default.copyItem(at: settingsURL, to: cloudSettings)
         }
 
-        // Merge cloud entries with current (locally-loaded) entries.
+        // Merge cloud entries with current (locally-loaded + any just-added) entries.
         // If cloud is empty or not-yet-synced we keep local data intact.
+        // We union task lists per entry so tasks added between app launch and
+        // iCloud setup completing are never overwritten by older cloud data.
         if let data = try? Data(contentsOf: cloudEntries),
            let cloudDecoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data),
            !cloudDecoded.isEmpty {
-            var merged = entries           // start from locally-loaded entries
-            for (k, v) in cloudDecoded { merged[k] = v }   // cloud wins on conflict
+            var merged = entries           // start from locally-loaded + in-memory entries
+            for (k, v) in cloudDecoded {
+                if merged[k] == nil {
+                    merged[k] = v          // date only in cloud — take it as-is
+                } else {
+                    // Merge at the task level: cloud is treated as "disk" (may
+                    // have edits from other devices) while the in-memory version
+                    // may have tasks added since launch that aren't on disk yet.
+                    merged[k] = Self.mergeEntries(disk: v, memory: merged[k]!)
+                }
+            }
             entries = merged
         }
         // Always save the merged result back to both locations for consistency
@@ -1078,19 +1089,49 @@ class PlannerViewModel: ObservableObject {
         metadataQuery?.disableUpdates()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self else { return }
-            // Use the merge-aware loadData so a transient empty-cloud state
-            // never wipes the user's in-memory (or local-file) data.
+            // Snapshot the current in-memory state BEFORE reloading from disk.
+            // saveData() is async so the on-disk file may lag behind in-memory
+            // state (e.g. a task the user just added is in memory but not on
+            // disk yet). After loadData() we union the two snapshots so no
+            // in-memory task is ever silently dropped.
             let before = self.entries
             self.loadData()
-            // If loadData produced fewer entries than we had before
-            // (e.g. iCloud file hasn't fully downloaded yet), restore.
-            if self.entries.count < before.count {
-                var restored = self.entries
-                for (k, v) in before where restored[k] == nil { restored[k] = v }
-                self.entries = restored
+            var merged = self.entries
+            for (key, beforeEntry) in before {
+                if merged[key] == nil {
+                    // Date entry exists in memory but not on disk yet — keep it.
+                    merged[key] = beforeEntry
+                } else {
+                    // Date entry exists in both — union the task lists so any
+                    // task present in memory but absent from the disk snapshot
+                    // (because the async save hadn't flushed yet) is restored.
+                    merged[key] = Self.mergeEntries(disk: merged[key]!, memory: beforeEntry)
+                }
             }
+            self.entries = merged
             self.metadataQuery?.enableUpdates()
         }
+    }
+
+    /// Returns a DailyEntry that contains every task from both `disk` and
+    /// `memory`.  For tasks present in both, the `disk` version is kept (it
+    /// reflects any edits made on other devices).  Tasks that exist only in
+    /// `memory` (i.e. the async save hasn't flushed yet) are appended so they
+    /// are never silently dropped by a cloud-triggered reload.
+    private static func mergeEntries(disk: DailyEntry, memory: DailyEntry) -> DailyEntry {
+        var result = disk
+
+        let diskTopIDs      = Set(disk.topPriorities.map(\.id))
+        let diskTodoIDs     = Set(disk.toDoLists.map(\.id))
+        let diskCallsIDs    = Set(disk.callsEmails.map(\.id))
+        let diskPersonalIDs = Set(disk.personalTodo.map(\.id))
+
+        for task in memory.topPriorities  where !diskTopIDs.contains(task.id)      { result.topPriorities.append(task) }
+        for task in memory.toDoLists      where !diskTodoIDs.contains(task.id)     { result.toDoLists.append(task) }
+        for task in memory.callsEmails    where !diskCallsIDs.contains(task.id)    { result.callsEmails.append(task) }
+        for task in memory.personalTodo   where !diskPersonalIDs.contains(task.id) { result.personalTodo.append(task) }
+
+        return result
     }
 
     // MARK: - Widget Shared Data Model (mirrors WidgetSharedData in the widget extension)
