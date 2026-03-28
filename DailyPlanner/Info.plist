@@ -53,5 +53,7 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is not required for Daily Planner.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Daily Planner reads your steps, calories, exercise time, and workouts from Apple Health to display your daily fitness summary.</string>
 </dict>
 </plist>
