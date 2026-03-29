@@ -858,6 +858,11 @@ struct DailyEntry: Codable {
     var dailySchedule: [ScheduleBlock] = []
     var appointments: [Appointment] = []
 
+    /// Persistent sets of UUIDs that have been explicitly deleted by the user.
+    /// Prevents the merge engine from resurrecting them from an older disk/iCloud snapshot.
+    var deletedScheduleBlockIDs: Set<UUID> = []
+    var deletedAppointmentIDs: Set<UUID> = []
+
     var notes: String = ""
 
     var expenses: [Expense] = []
@@ -882,8 +887,10 @@ struct DailyEntry: Codable {
         waterGlasses   = try c.decodeIfPresent(Int.self,             forKey: .waterGlasses)   ?? 0
         waterGoal      = try c.decodeIfPresent(Int.self,             forKey: .waterGoal)      ?? 8
         meals          = try c.decodeIfPresent(MealEntry.self,       forKey: .meals)          ?? MealEntry()
-        dailySchedule  = try c.decodeIfPresent([ScheduleBlock].self, forKey: .dailySchedule)  ?? []
-        appointments   = try c.decodeIfPresent([Appointment].self,   forKey: .appointments)   ?? []
+        dailySchedule           = try c.decodeIfPresent([ScheduleBlock].self, forKey: .dailySchedule)           ?? []
+        appointments            = try c.decodeIfPresent([Appointment].self,   forKey: .appointments)            ?? []
+        deletedScheduleBlockIDs = try c.decodeIfPresent(Set<UUID>.self,       forKey: .deletedScheduleBlockIDs) ?? []
+        deletedAppointmentIDs   = try c.decodeIfPresent(Set<UUID>.self,       forKey: .deletedAppointmentIDs)   ?? []
         notes          = try c.decodeIfPresent(String.self,          forKey: .notes)          ?? ""
         expenses       = try c.decodeIfPresent([Expense].self,       forKey: .expenses)       ?? []
         savings        = try c.decodeIfPresent(Double.self,          forKey: .savings)        ?? 0.0

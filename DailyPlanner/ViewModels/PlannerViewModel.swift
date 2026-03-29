@@ -527,7 +527,9 @@ class PlannerViewModel: ObservableObject {
     func deleteScheduleBlock(at offsets: IndexSet) {
         var e = currentEntry
         for idx in offsets {
-            NotificationManager.shared.cancelItemReminder(id: e.dailySchedule[idx].id.uuidString)
+            let id = e.dailySchedule[idx].id
+            NotificationManager.shared.cancelItemReminder(id: id.uuidString)
+            e.deletedScheduleBlockIDs.insert(id)
         }
         e.dailySchedule.remove(atOffsets: offsets)
         currentEntry = e
@@ -536,6 +538,7 @@ class PlannerViewModel: ObservableObject {
     func deleteScheduleBlock(_ block: ScheduleBlock) {
         var e = currentEntry
         NotificationManager.shared.cancelItemReminder(id: block.id.uuidString)
+        e.deletedScheduleBlockIDs.insert(block.id)
         e.dailySchedule.removeAll { $0.id == block.id }
         currentEntry = e
     }
@@ -582,7 +585,9 @@ class PlannerViewModel: ObservableObject {
     func deleteAppointment(at offsets: IndexSet) {
         var e = currentEntry
         for idx in offsets {
-            NotificationManager.shared.cancelItemReminder(id: e.appointments[idx].id.uuidString)
+            let id = e.appointments[idx].id
+            NotificationManager.shared.cancelItemReminder(id: id.uuidString)
+            e.deletedAppointmentIDs.insert(id)
         }
         e.appointments.remove(atOffsets: offsets)
         currentEntry = e
@@ -591,6 +596,7 @@ class PlannerViewModel: ObservableObject {
     func deleteAppointment(_ appointment: Appointment) {
         var e = currentEntry
         NotificationManager.shared.cancelItemReminder(id: appointment.id.uuidString)
+        e.deletedAppointmentIDs.insert(appointment.id)
         e.appointments.removeAll { $0.id == appointment.id }
         currentEntry = e
     }
@@ -1343,9 +1349,18 @@ class PlannerViewModel: ObservableObject {
         // Day rating — memory wins.
         result.rating = memory.rating
 
-        // Daily schedule & appointments — union.
+        // Daily schedule & appointments — union deleted-ID sets first so that
+        // items explicitly removed on this device are never resurrected from an
+        // older disk/iCloud snapshot.
+        let allDeletedBlockIDs = disk.deletedScheduleBlockIDs.union(memory.deletedScheduleBlockIDs)
+        let allDeletedApptIDs  = disk.deletedAppointmentIDs.union(memory.deletedAppointmentIDs)
+        result.deletedScheduleBlockIDs = allDeletedBlockIDs
+        result.deletedAppointmentIDs   = allDeletedApptIDs
+
         result.dailySchedule = union(result.dailySchedule, memory.dailySchedule)
-        result.appointments  = union(result.appointments,  memory.appointments)
+            .filter { !allDeletedBlockIDs.contains($0.id) }
+        result.appointments  = union(result.appointments, memory.appointments)
+            .filter { !allDeletedApptIDs.contains($0.id) }
 
         return result
     }
