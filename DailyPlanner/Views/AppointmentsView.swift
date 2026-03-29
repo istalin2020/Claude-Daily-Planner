@@ -3,6 +3,7 @@ import SwiftUI
 struct AppointmentsView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet = false
+    @State private var editingAppt: Appointment? = nil
 
     var entry: DailyEntry { vm.currentEntry }
 
@@ -27,9 +28,11 @@ struct AppointmentsView: View {
                 } else {
                     VStack(spacing: 8) {
                         ForEach(entry.appointments) { appt in
-                            AppointmentCard(appointment: appt) {
-                                vm.toggleAppointment(appt)
-                            }
+                            AppointmentCard(appointment: appt,
+                                onToggle: { vm.toggleAppointment(appt) },
+                                onEdit:   { editingAppt = appt },
+                                onDelete: { vm.deleteAppointment(appt) }
+                            )
                             .padding(.horizontal, 16)
                         }
                     }
@@ -44,6 +47,11 @@ struct AppointmentsView: View {
                 vm.addAppointment(appt)
             }
         }
+        .sheet(item: $editingAppt) { appt in
+            EditAppointmentSheet(appointment: appt) { updated in
+                vm.updateAppointment(updated)
+            }
+        }
     }
 }
 
@@ -51,6 +59,8 @@ struct AppointmentsView: View {
 struct AppointmentCard: View {
     let appointment: Appointment
     let onToggle: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
 
     private var timeString: String {
         let fmt = DateFormatter()
@@ -98,10 +108,27 @@ struct AppointmentCard: View {
 
             Spacer()
 
-            Button(action: onToggle) {
-                Image(systemName: appointment.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 24))
-                    .foregroundColor(appointment.isCompleted ? AppSection.appointments.color : .secondary.opacity(0.3))
+            VStack(spacing: 10) {
+                // Edit button
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                // Delete button
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.red.opacity(0.7))
+                }
+
+                // Toggle button
+                Button(action: onToggle) {
+                    Image(systemName: appointment.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 24))
+                        .foregroundColor(appointment.isCompleted ? AppSection.appointments.color : .secondary.opacity(0.3))
+                }
             }
         }
         .padding(12)
@@ -170,6 +197,86 @@ struct AddAppointmentSheet: View {
                         guard !title.isEmpty else { return }
                         onSave(Appointment(time: time, title: title, location: location,
                                            notes: notes, reminderOffset: reminderOffset))
+                        dismiss()
+                    }
+                    .disabled(title.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Edit Appointment Sheet
+struct EditAppointmentSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var title: String
+    @State private var location: String
+    @State private var notes: String
+    @State private var time: Date
+    @State private var reminderOffset: ReminderOffset
+
+    let appointment: Appointment
+    let onSave: (Appointment) -> Void
+
+    init(appointment: Appointment, onSave: @escaping (Appointment) -> Void) {
+        self.appointment = appointment
+        self.onSave = onSave
+        _title = State(initialValue: appointment.title)
+        _location = State(initialValue: appointment.location)
+        _notes = State(initialValue: appointment.notes)
+        _time = State(initialValue: appointment.time)
+        _reminderOffset = State(initialValue: appointment.reminderOffset)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Appointment Details") {
+                    TextField("Title (e.g. Doctor Appointment)", text: $title)
+                        .autocapitalization(.words)
+                    TextField("Location (optional)", text: $location)
+                        .autocapitalization(.words)
+                }
+                Section("Time") {
+                    DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .datePickerStyle(.wheel)
+                        .frame(maxHeight: 150)
+                }
+                Section {
+                    Picker(selection: $reminderOffset) {
+                        ForEach(ReminderOffset.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
+                    } label: {
+                        Label("Reminder", systemImage: "bell.badge")
+                    }
+                } header: {
+                    Text("Reminder")
+                } footer: {
+                    if reminderOffset != .none {
+                        Text("You will receive a notification \(reminderOffset.rawValue.lowercased()) the appointment time.")
+                    }
+                }
+                Section("Notes (optional)") {
+                    TextEditor(text: $notes)
+                        .frame(height: 80)
+                }
+            }
+            .navigationTitle("Edit Appointment")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard !title.isEmpty else { return }
+                        var updated = appointment
+                        updated.title = title
+                        updated.location = location
+                        updated.notes = notes
+                        updated.time = time
+                        updated.reminderOffset = reminderOffset
+                        onSave(updated)
                         dismiss()
                     }
                     .disabled(title.isEmpty)

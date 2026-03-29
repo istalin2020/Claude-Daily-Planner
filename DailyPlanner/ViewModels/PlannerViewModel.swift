@@ -533,6 +533,26 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    func deleteScheduleBlock(_ block: ScheduleBlock) {
+        var e = currentEntry
+        NotificationManager.shared.cancelItemReminder(id: block.id.uuidString)
+        e.dailySchedule.removeAll { $0.id == block.id }
+        currentEntry = e
+    }
+
+    func updateScheduleBlock(_ block: ScheduleBlock) {
+        var e = currentEntry
+        if let i = e.dailySchedule.firstIndex(where: { $0.id == block.id }) {
+            NotificationManager.shared.cancelItemReminder(id: block.id.uuidString)
+            e.dailySchedule[i] = block
+            if block.reminderOffset != .none {
+                NotificationManager.shared.scheduleBlockReminder(
+                    block: block, date: selectedDate, tone: settings.notificationTone)
+            }
+        }
+        currentEntry = e
+    }
+
     // MARK: - Appointments
     func addAppointment(_ appointment: Appointment) {
         var e = currentEntry
@@ -565,6 +585,27 @@ class PlannerViewModel: ObservableObject {
             NotificationManager.shared.cancelItemReminder(id: e.appointments[idx].id.uuidString)
         }
         e.appointments.remove(atOffsets: offsets)
+        currentEntry = e
+    }
+
+    func deleteAppointment(_ appointment: Appointment) {
+        var e = currentEntry
+        NotificationManager.shared.cancelItemReminder(id: appointment.id.uuidString)
+        e.appointments.removeAll { $0.id == appointment.id }
+        currentEntry = e
+    }
+
+    func updateAppointment(_ appointment: Appointment) {
+        var e = currentEntry
+        if let i = e.appointments.firstIndex(where: { $0.id == appointment.id }) {
+            NotificationManager.shared.cancelItemReminder(id: appointment.id.uuidString)
+            e.appointments[i] = appointment
+            if appointment.reminderOffset != .none {
+                NotificationManager.shared.scheduleAppointmentReminder(
+                    appointment: appointment, date: selectedDate, tone: settings.notificationTone)
+            }
+        }
+        e.appointments.sort { $0.time < $1.time }
         currentEntry = e
     }
 
