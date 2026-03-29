@@ -623,11 +623,33 @@ class PlannerViewModel: ObservableObject {
     /// Silently syncs HealthKit data for today. Called on every app foreground
     /// so data is always fresh regardless of which tab the user is on.
     /// Always targets today's actual calendar date — never selectedDate.
+    /// On the first call it also registers HKObserverQuery + enables background
+    /// delivery so future Apple Health changes trigger an automatic re-sync.
     func syncHealthKitForToday() {
         guard HealthKitManager.shared.isAvailable else { return }
         let today = Calendar.current.startOfDay(for: Date())
         HealthKitManager.shared.requestAuthorization { [weak self] in
             guard let self else { return }
+
+            // Start live observer queries once after the first successful auth.
+            // startObservingHealthData() is idempotent — safe to call every time.
+            HealthKitManager.shared.startObservingHealthData { [weak self] in
+                guard let self else { return }
+                let liveToday = Calendar.current.startOfDay(for: Date())
+                HealthKitManager.shared.fetchAllHealthData(for: liveToday) { [weak self] data in
+                    guard let self else { return }
+                    self.syncHealthKitData(
+                        for: liveToday,
+                        steps: data.steps,
+                        calories: data.calories,
+                        workoutMins: data.workoutMinutes,
+                        walkingMins: data.walkingMinutes,
+                        workouts: data.workouts
+                    )
+                }
+            }
+
+            // Immediate fetch so today's data is current right now.
             HealthKitManager.shared.fetchAllHealthData(for: today) { [weak self] data in
                 guard let self else { return }
                 self.syncHealthKitData(

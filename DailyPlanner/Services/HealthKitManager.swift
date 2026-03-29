@@ -27,8 +27,11 @@ final class HealthKitManager {
         return store.authorizationStatus(for: stepType) == .sharingDenied
     }
 
-    /// Prevents two simultaneous requestAuthorization calls from colliding.
-    private var isAuthorizing = false
+    // Active observer queries — kept so they can be stopped if needed.
+    private var observerQueries: [HKQuery] = []
+
+    // Lock protecting concurrent writes inside fetchAllHealthData callbacks.
+    private let dataLock = NSLock()
 
     // MARK: - Read permission types
     private var readTypes: Set<HKObjectType> {
@@ -48,18 +51,58 @@ final class HealthKitManager {
 
     // MARK: - Request authorisation
     /// Requests HealthKit access and always calls completion on the main thread.
-    /// If a request is already in flight the new call is dropped — the in-flight
-    /// request will trigger the fetch when it completes.
+    /// Safe to call multiple times — HealthKit is idempotent once authorised.
     func requestAuthorization(completion: @escaping () -> Void) {
         guard isAvailable else { DispatchQueue.main.async { completion() }; return }
-        guard !isAuthorizing else { return }
-        isAuthorizing = true
-        store.requestAuthorization(toShare: nil, read: readTypes) { [weak self] _, _ in
+        store.requestAuthorization(toShare: nil, read: readTypes) { _, _ in
             // Ignore success/error — always proceed. HealthKit returns empty
             // data for denied types; attempting the fetch is always safe.
-            self?.isAuthorizing = false
             DispatchQueue.main.async { completion() }
         }
+    }
+
+    // MARK: - Observer Queries + Background Delivery
+    /// Registers HKObserverQuery for every tracked data type so the app
+    /// receives a callback whenever Apple Health data changes — including
+    /// updates from the Health app, Apple Watch, or third-party apps.
+    /// Also enables background delivery so updates arrive while backgrounded.
+    /// Safe to call multiple times (stops existing observers first).
+    func startObservingHealthData(onUpdate: @escaping () -> Void) {
+        guard isAvailable else { return }
+
+        // Stop any previously registered observers before creating new ones.
+        for query in observerQueries { store.stop(query) }
+        observerQueries.removeAll()
+
+        let quantityIds: [HKQuantityTypeIdentifier] = [
+            .stepCount, .activeEnergyBurned, .appleExerciseTime, .distanceWalkingRunning
+        ]
+
+        for id in quantityIds {
+            guard let sampleType = HKQuantityType.quantityType(forIdentifier: id) else { continue }
+
+            // Enable background delivery so we get woken up when data arrives
+            // even if the app has been suspended by the OS.
+            store.enableBackgroundDelivery(for: sampleType, frequency: .immediate) { _, _ in }
+
+            let observer = HKObserverQuery(sampleType: sampleType, predicate: nil) { _, completionHandler, error in
+                defer { completionHandler() }
+                guard error == nil else { return }
+                DispatchQueue.main.async { onUpdate() }
+            }
+            store.execute(observer)
+            observerQueries.append(observer)
+        }
+
+        // Observe workout-type samples separately (not a quantity type).
+        store.enableBackgroundDelivery(for: .workoutType(), frequency: .immediate) { _, _ in }
+        let workoutObserver = HKObserverQuery(sampleType: .workoutType(), predicate: nil) { _, completionHandler, error in
+            defer { completionHandler() }
+            guard error == nil else { return }
+            DispatchQueue.main.async { onUpdate() }
+        }
+        store.execute(workoutObserver)
+        observerQueries.append(workoutObserver)
     }
 
     // MARK: - Fetch all data for one calendar day
@@ -69,45 +112,52 @@ final class HealthKitManager {
         var data = HealthKitDayData()
         let group = DispatchGroup()
 
-        // Collect walking sub-results separately to combine safely in notify.
+        // Intermediate values used to derive walkingMinutes in the notify block.
         var walkingFromSessions: Int = 0
         var walkingDistanceKm: Double = 0
 
         // Steps
         group.enter()
-        fetchSum(.stepCount, unit: .count(), date: date) {
-            data.steps = Int($0); group.leave()
+        fetchSum(.stepCount, unit: .count(), date: date) { [weak self] value in
+            self?.dataLock.lock(); data.steps = Int(value); self?.dataLock.unlock()
+            group.leave()
         }
 
         // Active calories
         group.enter()
-        fetchSum(.activeEnergyBurned, unit: .kilocalorie(), date: date) {
-            data.calories = Int($0); group.leave()
+        fetchSum(.activeEnergyBurned, unit: .kilocalorie(), date: date) { [weak self] value in
+            self?.dataLock.lock(); data.calories = Int(value); self?.dataLock.unlock()
+            group.leave()
         }
 
         // Apple Exercise Time — matches the Exercise ring in Apple Health exactly.
         // Covers brisk walks, workouts, and any activity ≥ 3 METs even when
         // no explicit HKWorkout session was saved (e.g. iPhone passive tracking).
         group.enter()
-        fetchSum(.appleExerciseTime, unit: .minute(), date: date) {
-            data.workoutMinutes = Int($0); group.leave()
+        fetchSum(.appleExerciseTime, unit: .minute(), date: date) { [weak self] value in
+            self?.dataLock.lock(); data.workoutMinutes = Int(value); self?.dataLock.unlock()
+            group.leave()
         }
 
         // Walking/running distance — used to estimate walking time when no
         // formal walking workout session exists (iPhone passive step tracking).
         group.enter()
-        fetchSum(.distanceWalkingRunning, unit: .meterUnit(with: .kilo), date: date) { km in
-            walkingDistanceKm = km; group.leave()
+        fetchSum(.distanceWalkingRunning, unit: .meterUnit(with: .kilo), date: date) { [weak self] km in
+            self?.dataLock.lock(); walkingDistanceKm = km; self?.dataLock.unlock()
+            group.leave()
         }
 
         // Workout samples — drives the "From Apple Health" list and session-based
         // walking minutes (Apple Watch auto-detected walks).
         group.enter()
-        fetchWorkoutSamples(date: date) { workouts in
-            data.workouts = workouts
-            walkingFromSessions = workouts
+        fetchWorkoutSamples(date: date) { [weak self] workouts in
+            let walking = workouts
                 .filter { $0.activityType.lowercased().contains("walk") }
                 .reduce(0) { $0 + $1.durationMinutes }
+            self?.dataLock.lock()
+            data.workouts = workouts
+            walkingFromSessions = walking
+            self?.dataLock.unlock()
             group.leave()
         }
 
@@ -134,15 +184,18 @@ final class HealthKitManager {
             completion(0); return
         }
         let (start, end) = dayBounds(date)
-        let pred = HKQuery.predicateForSamples(withStart: start, end: end)
+        // .strictStartDate ensures samples that started before midnight are excluded,
+        // preventing double-counting across day boundaries.
+        let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
         let q = HKStatisticsQuery(
             quantityType: type,
             quantitySamplePredicate: pred,
             options: .cumulativeSum
         ) { _, result, _ in
-            DispatchQueue.main.async {
-                completion(result?.sumQuantity()?.doubleValue(for: unit) ?? 0)
-            }
+            // Call completion directly on the HealthKit background thread.
+            // group.leave() will be called there; group.notify(queue:.main) still
+            // delivers the final result on the main thread.
+            completion(result?.sumQuantity()?.doubleValue(for: unit) ?? 0)
         }
         store.execute(q)
     }
@@ -153,7 +206,7 @@ final class HealthKitManager {
         completion: @escaping ([HealthWorkout]) -> Void
     ) {
         let (start, end) = dayBounds(date)
-        let pred = HKQuery.predicateForSamples(withStart: start, end: end)
+        let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
         let sort = [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
         let q = HKSampleQuery(
             sampleType: .workoutType(),
@@ -171,7 +224,7 @@ final class HealthKitManager {
                     startTime:    w.startDate
                 )
             }
-            DispatchQueue.main.async { completion(result) }
+            completion(result)
         }
         store.execute(q)
     }

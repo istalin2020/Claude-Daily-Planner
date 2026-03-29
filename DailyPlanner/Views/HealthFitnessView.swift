@@ -176,18 +176,14 @@ struct HealthFitnessView: View {
             Text("Please go to Settings → Privacy & Security → Health → Daily Planner and enable all health data categories.")
         }
         .onAppear { autoSync() }
+        .onChange(of: vm.selectedDate) { _, _ in autoSync() }
     }
 
     // MARK: - Sync Logic
 
     private func autoSync() {
         guard HealthKitManager.shared.isAvailable else { return }
-        // Only auto-sync if this date has never been synced or hasn't been
-        // synced today — the app-level foreground sync handles the common case.
-        let lastSync = fitness.hkSyncedAt
-        let needsSync = lastSync == nil ||
-            !Calendar.current.isDateInToday(lastSync!)
-        guard needsSync else { return }
+        guard !isSyncing else { return }
         syncFromAppleHealth()
     }
 
@@ -197,11 +193,11 @@ struct HealthFitnessView: View {
             return
         }
 
-        // Check if user has previously denied all HealthKit access.
-        // If so, direct them to Settings instead of silently failing.
+        // If step-count access was explicitly denied, prompt the user to fix it
+        // in Settings — but still attempt to fetch whatever data IS available
+        // (calories, workouts, exercise time) so the UI is never left empty.
         if HealthKitManager.shared.isStepCountAuthDenied {
             showSettingsAlert = true
-            return
         }
 
         isSyncing = true
