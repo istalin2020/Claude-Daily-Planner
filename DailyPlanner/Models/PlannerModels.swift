@@ -845,6 +845,11 @@ struct DailyEntry: Codable {
     var callsEmails: [PlannerTask] = []
     var personalTodo: [PlannerTask] = []
 
+    /// Persistent set of task UUIDs that the user has explicitly deleted.
+    /// Survives disk serialisation and iCloud sync so the merge engine never
+    /// re-adds a deleted task from an older snapshot.
+    var deletedTaskIDs: Set<UUID> = []
+
     var fitness: FitnessEntry = FitnessEntry()
     var waterGlasses: Int = 0
     var waterGoal: Int = 8
@@ -867,22 +872,23 @@ struct DailyEntry: Codable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        date          = try c.decodeIfPresent(Date.self,            forKey: .date)          ?? Date()
-        topPriorities = try c.decodeIfPresent([PlannerTask].self,   forKey: .topPriorities) ?? []
-        toDoLists     = try c.decodeIfPresent([PlannerTask].self,   forKey: .toDoLists)     ?? []
-        callsEmails   = try c.decodeIfPresent([PlannerTask].self,   forKey: .callsEmails)   ?? []
-        personalTodo  = try c.decodeIfPresent([PlannerTask].self,   forKey: .personalTodo)  ?? []
-        fitness       = try c.decodeIfPresent(FitnessEntry.self,    forKey: .fitness)       ?? FitnessEntry()
-        waterGlasses  = try c.decodeIfPresent(Int.self,             forKey: .waterGlasses)  ?? 0
-        waterGoal     = try c.decodeIfPresent(Int.self,             forKey: .waterGoal)     ?? 8
-        meals         = try c.decodeIfPresent(MealEntry.self,       forKey: .meals)         ?? MealEntry()
-        dailySchedule = try c.decodeIfPresent([ScheduleBlock].self, forKey: .dailySchedule) ?? []
-        appointments  = try c.decodeIfPresent([Appointment].self,   forKey: .appointments)  ?? []
-        notes         = try c.decodeIfPresent(String.self,          forKey: .notes)         ?? ""
-        expenses      = try c.decodeIfPresent([Expense].self,       forKey: .expenses)      ?? []
-        savings       = try c.decodeIfPresent(Double.self,          forKey: .savings)       ?? 0.0
-        rating        = try c.decodeIfPresent(DayRating.self,       forKey: .rating)        ?? DayRating()
-        sleep         = try c.decodeIfPresent(SleepEntry.self,      forKey: .sleep)         ?? SleepEntry()
+        date           = try c.decodeIfPresent(Date.self,            forKey: .date)           ?? Date()
+        topPriorities  = try c.decodeIfPresent([PlannerTask].self,   forKey: .topPriorities)  ?? []
+        toDoLists      = try c.decodeIfPresent([PlannerTask].self,   forKey: .toDoLists)      ?? []
+        callsEmails    = try c.decodeIfPresent([PlannerTask].self,   forKey: .callsEmails)    ?? []
+        personalTodo   = try c.decodeIfPresent([PlannerTask].self,   forKey: .personalTodo)   ?? []
+        deletedTaskIDs = try c.decodeIfPresent(Set<UUID>.self,       forKey: .deletedTaskIDs) ?? []
+        fitness        = try c.decodeIfPresent(FitnessEntry.self,    forKey: .fitness)        ?? FitnessEntry()
+        waterGlasses   = try c.decodeIfPresent(Int.self,             forKey: .waterGlasses)   ?? 0
+        waterGoal      = try c.decodeIfPresent(Int.self,             forKey: .waterGoal)      ?? 8
+        meals          = try c.decodeIfPresent(MealEntry.self,       forKey: .meals)          ?? MealEntry()
+        dailySchedule  = try c.decodeIfPresent([ScheduleBlock].self, forKey: .dailySchedule)  ?? []
+        appointments   = try c.decodeIfPresent([Appointment].self,   forKey: .appointments)   ?? []
+        notes          = try c.decodeIfPresent(String.self,          forKey: .notes)          ?? ""
+        expenses       = try c.decodeIfPresent([Expense].self,       forKey: .expenses)       ?? []
+        savings        = try c.decodeIfPresent(Double.self,          forKey: .savings)        ?? 0.0
+        rating         = try c.decodeIfPresent(DayRating.self,       forKey: .rating)         ?? DayRating()
+        sleep          = try c.decodeIfPresent(SleepEntry.self,      forKey: .sleep)          ?? SleepEntry()
     }
 
     var totalExpenses: Double { expenses.filter { !$0.isDeposit && !$0.isIncome }.reduce(0) { $0 + $1.amount } }

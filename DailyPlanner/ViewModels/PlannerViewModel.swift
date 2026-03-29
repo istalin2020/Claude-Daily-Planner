@@ -148,15 +148,12 @@ class PlannerViewModel: ObservableObject {
     }
 
     func deleteTopPriority(_ task: PlannerTask) {
-        var e = currentEntry
-        e.topPriorities.removeAll { $0.id == task.id }
-        currentEntry = e
+        syncTaskDeletion(taskId: task.id)
     }
 
     func deleteTopPriority(at offsets: IndexSet) {
-        var e = currentEntry
-        e.topPriorities.remove(atOffsets: offsets)
-        currentEntry = e
+        let ids = offsets.map { currentEntry.topPriorities[$0].id }
+        for id in ids { syncTaskDeletion(taskId: id) }
     }
 
     // MARK: - To-Do Lists
@@ -206,15 +203,12 @@ class PlannerViewModel: ObservableObject {
     }
 
     func deleteToDoListItem(_ task: PlannerTask) {
-        var e = currentEntry
-        e.toDoLists.removeAll { $0.id == task.id }
-        currentEntry = e
+        syncTaskDeletion(taskId: task.id)
     }
 
     func deleteToDoListItem(at offsets: IndexSet) {
-        var e = currentEntry
-        e.toDoLists.remove(atOffsets: offsets)
-        currentEntry = e
+        let ids = offsets.map { currentEntry.toDoLists[$0].id }
+        for id in ids { syncTaskDeletion(taskId: id) }
     }
 
     // MARK: - Calls & Emails
@@ -298,15 +292,12 @@ class PlannerViewModel: ObservableObject {
     }
 
     func deleteCallEmail(_ task: PlannerTask) {
-        var e = currentEntry
-        e.callsEmails.removeAll { $0.id == task.id }
-        currentEntry = e
+        syncTaskDeletion(taskId: task.id)
     }
 
     func deleteCallEmail(at offsets: IndexSet) {
-        var e = currentEntry
-        e.callsEmails.remove(atOffsets: offsets)
-        currentEntry = e
+        let ids = offsets.map { currentEntry.callsEmails[$0].id }
+        for id in ids { syncTaskDeletion(taskId: id) }
     }
 
     // MARK: - Personal To-Do
@@ -362,6 +353,49 @@ class PlannerViewModel: ObservableObject {
         }
     }
 
+    /// Permanently removes a task from every date entry and records its UUID in
+    /// each entry's `deletedTaskIDs` set.  This makes deletions durable across
+    /// iCloud syncs: the merge engine will never re-add a task whose UUID
+    /// appears in `deletedTaskIDs`, even when an older cloud snapshot still
+    /// contains the task.  The rollover engine also honours `deletedTaskIDs`
+    /// so deleted tasks are never carried forward to future dates.
+    private func syncTaskDeletion(taskId: UUID) {
+        var updated = entries
+        // Also ensure the deletion is recorded in the current (selected) date
+        // entry even if no existing entry matches — this handles the case where
+        // the entry hasn't been persisted to the dictionary yet.
+        let currentKey = selectedDateKey
+        if updated[currentKey] == nil {
+            updated[currentKey] = DailyEntry(date: selectedDate)
+        }
+        for key in updated.keys {
+            guard var entry = updated[key] else { continue }
+            var changed = false
+            if entry.topPriorities.contains(where: { $0.id == taskId }) {
+                entry.topPriorities.removeAll { $0.id == taskId }
+                changed = true
+            }
+            if entry.toDoLists.contains(where: { $0.id == taskId }) {
+                entry.toDoLists.removeAll { $0.id == taskId }
+                changed = true
+            }
+            if entry.callsEmails.contains(where: { $0.id == taskId }) {
+                entry.callsEmails.removeAll { $0.id == taskId }
+                changed = true
+            }
+            if entry.personalTodo.contains(where: { $0.id == taskId }) {
+                entry.personalTodo.removeAll { $0.id == taskId }
+                changed = true
+            }
+            if !entry.deletedTaskIDs.contains(taskId) {
+                entry.deletedTaskIDs.insert(taskId)
+                changed = true
+            }
+            if changed { updated[key] = entry }
+        }
+        entries = updated  // Single assignment — triggers auto-save once
+    }
+
     func updatePersonalTodo(_ task: PlannerTask, newTitle: String) {
         let trimmed = newTitle.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
@@ -381,15 +415,12 @@ class PlannerViewModel: ObservableObject {
     }
 
     func deletePersonalTodo(_ task: PlannerTask) {
-        var e = currentEntry
-        e.personalTodo.removeAll { $0.id == task.id }
-        currentEntry = e
+        syncTaskDeletion(taskId: task.id)
     }
 
     func deletePersonalTodo(at offsets: IndexSet) {
-        var e = currentEntry
-        e.personalTodo.remove(atOffsets: offsets)
-        currentEntry = e
+        let ids = offsets.map { currentEntry.personalTodo[$0].id }
+        for id in ids { syncTaskDeletion(taskId: id) }
     }
 
     // MARK: - Water Tracker
@@ -772,6 +803,13 @@ class PlannerViewModel: ObservableObject {
         let tKey  = dateKey(for: today)
         var te    = entries[tKey] ?? DailyEntry(date: today)
 
+        // Accumulate every deleted task UUID from all stored entries so that a
+        // task deleted from any day is permanently suppressed from rollover —
+        // even when today's entry is brand-new (e.g. first open of a new day).
+        var allDeletedIDs: Set<UUID> = te.deletedTaskIDs
+        for (_, entry) in entries { allDeletedIDs.formUnion(entry.deletedTaskIDs) }
+        te.deletedTaskIDs = allDeletedIDs
+
         // Build a set of task IDs already present in today's entry so we never
         // add the same task twice, even across multiple rollover passes.
         var existingIDs: Set<UUID> = Set(
@@ -793,18 +831,19 @@ class PlannerViewModel: ObservableObject {
 
             guard var pastEntry = updatedEntries[pastKey] else { continue }
 
-            // Collect tasks that are still incomplete and not yet in today.
+            // Collect tasks that are still incomplete, not yet in today,
+            // and have NOT been explicitly deleted by the user.
             let missingPriorities = pastEntry.topPriorities.filter {
-                !$0.isCompleted && !existingIDs.contains($0.id)
+                !$0.isCompleted && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
             }
             let missingTodos = pastEntry.toDoLists.filter {
-                !$0.isCompleted && !existingIDs.contains($0.id)
+                !$0.isCompleted && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
             }
             let missingCalls = pastEntry.callsEmails.filter {
-                !$0.isCompleted && !existingIDs.contains($0.id)
+                !$0.isCompleted && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
             }
             let missingPersonal = pastEntry.personalTodo.filter {
-                !$0.isCompleted && !existingIDs.contains($0.id)
+                !$0.isCompleted && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
             }
 
             guard !missingPriorities.isEmpty || !missingTodos.isEmpty
@@ -936,17 +975,26 @@ class PlannerViewModel: ObservableObject {
 
         switch (cloudDecoded, localDecoded) {
         case (.some(let cloud), .some(let local)):
-            // Both sources available — merge, preferring the source with more data.
-            // Cloud wins on key conflicts; local-only keys are also preserved.
-            if cloud.count >= local.count {
-                var merged = local
-                for (k, v) in cloud { merged[k] = v }
-                entries = merged
-            } else {
-                var merged = cloud
-                for (k, v) in local where merged[k] == nil { merged[k] = v }
-                entries = merged
+            // Both sources available: perform a task-level merge for every date.
+            // Local is treated as "memory" (has most-recent mutations: deletes,
+            // completions, edits).  Cloud is treated as "disk" (may have data
+            // from another device).  mergeEntries honours deletedTaskIDs from
+            // both sides so nothing is accidentally resurrected.
+            var merged: [String: DailyEntry] = [:]
+            let allKeys = Set(cloud.keys).union(Set(local.keys))
+            for key in allKeys {
+                switch (cloud[key], local[key]) {
+                case (.some(let c), .some(let l)):
+                    merged[key] = Self.mergeEntries(disk: c, memory: l)
+                case (.some(let c), .none):
+                    merged[key] = c
+                case (.none, .some(let l)):
+                    merged[key] = l
+                default:
+                    break
+                }
             }
+            entries = merged
         case (.some(let cloud), .none):
             entries = cloud
         case (.none, .some(let local)):
@@ -1040,20 +1088,19 @@ class PlannerViewModel: ObservableObject {
 
         // Merge cloud entries with current (locally-loaded + any just-added) entries.
         // If cloud is empty or not-yet-synced we keep local data intact.
-        // We union task lists per entry so tasks added between app launch and
-        // iCloud setup completing are never overwritten by older cloud data.
+        // mergeEntries handles deletedTaskIDs so neither source can restore a
+        // task the user has already permanently deleted.
         if let data = try? Data(contentsOf: cloudEntries),
            let cloudDecoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data),
            !cloudDecoded.isEmpty {
             var merged = entries           // start from locally-loaded + in-memory entries
-            for (k, v) in cloudDecoded {
-                if merged[k] == nil {
-                    merged[k] = v          // date only in cloud — take it as-is
+            for (k, cloudEntry) in cloudDecoded {
+                if let localEntry = merged[k] {
+                    // Merge: cloud is "disk" (may have edits from other devices),
+                    // local/in-memory is "memory" (most recent mutations on this device).
+                    merged[k] = Self.mergeEntries(disk: cloudEntry, memory: localEntry)
                 } else {
-                    // Merge at the task level: cloud is treated as "disk" (may
-                    // have edits from other devices) while the in-memory version
-                    // may have tasks added since launch that aren't on disk yet.
-                    merged[k] = Self.mergeEntries(disk: v, memory: merged[k]!)
+                    merged[k] = cloudEntry // date only in cloud — take it as-is
                 }
             }
             entries = merged
@@ -1113,23 +1160,64 @@ class PlannerViewModel: ObservableObject {
         }
     }
 
-    /// Returns a DailyEntry that contains every task from both `disk` and
-    /// `memory`.  For tasks present in both, the `disk` version is kept (it
-    /// reflects any edits made on other devices).  Tasks that exist only in
-    /// `memory` (i.e. the async save hasn't flushed yet) are appended so they
-    /// are never silently dropped by a cloud-triggered reload.
+    /// Merges two snapshots of the same DailyEntry, guaranteeing that:
+    ///
+    /// 1. **Deletions are permanent** — any task UUID present in either source's
+    ///    `deletedTaskIDs` is stripped from the result and recorded in the
+    ///    combined `deletedTaskIDs`.  An older cloud/disk snapshot can never
+    ///    resurrect a task the user already deleted.
+    ///
+    /// 2. **In-memory state wins for existing tasks** — when a task UUID exists
+    ///    in both sources, the `memory` version's mutable fields (title, notes,
+    ///    subtasks, isCompleted, isRolledOver) are applied to the `disk` base.
+    ///    This ensures that marking a task complete, editing its title, etc. is
+    ///    not overwritten by an older cloud snapshot before the async save
+    ///    has finished flushing to disk.
+    ///
+    /// 3. **New tasks from either source are preserved** — tasks that exist only
+    ///    in `memory` (pending async save) or only in `disk` (added on another
+    ///    device) are both included, as long as they are not deleted.
     private static func mergeEntries(disk: DailyEntry, memory: DailyEntry) -> DailyEntry {
+        // Union deleted IDs from both sides — deletions are permanent.
+        let allDeletedIDs = disk.deletedTaskIDs.union(memory.deletedTaskIDs)
+
+        // Start from disk; strip any task that was deleted in either source.
         var result = disk
+        result.deletedTaskIDs = allDeletedIDs
+        result.topPriorities.removeAll  { allDeletedIDs.contains($0.id) }
+        result.toDoLists.removeAll      { allDeletedIDs.contains($0.id) }
+        result.callsEmails.removeAll    { allDeletedIDs.contains($0.id) }
+        result.personalTodo.removeAll   { allDeletedIDs.contains($0.id) }
 
-        let diskTopIDs      = Set(disk.topPriorities.map(\.id))
-        let diskTodoIDs     = Set(disk.toDoLists.map(\.id))
-        let diskCallsIDs    = Set(disk.callsEmails.map(\.id))
-        let diskPersonalIDs = Set(disk.personalTodo.map(\.id))
+        // For tasks present in both, apply memory's mutable state (the most
+        // recent user-side mutations: completion, title edits, notes, subtasks).
+        func applyMemory(to list: inout [PlannerTask], from memList: [PlannerTask]) {
+            let memById = Dictionary(uniqueKeysWithValues: memList.map { ($0.id, $0) })
+            for i in list.indices {
+                guard let mem = memById[list[i].id] else { continue }
+                list[i].isCompleted  = mem.isCompleted
+                list[i].isRolledOver = mem.isRolledOver
+                list[i].title        = mem.title
+                list[i].notes        = mem.notes
+                list[i].subtasks     = mem.subtasks
+            }
+        }
+        applyMemory(to: &result.topPriorities, from: memory.topPriorities)
+        applyMemory(to: &result.toDoLists,     from: memory.toDoLists)
+        applyMemory(to: &result.callsEmails,   from: memory.callsEmails)
+        applyMemory(to: &result.personalTodo,  from: memory.personalTodo)
 
-        for task in memory.topPriorities  where !diskTopIDs.contains(task.id)      { result.topPriorities.append(task) }
-        for task in memory.toDoLists      where !diskTodoIDs.contains(task.id)     { result.toDoLists.append(task) }
-        for task in memory.callsEmails    where !diskCallsIDs.contains(task.id)    { result.callsEmails.append(task) }
-        for task in memory.personalTodo   where !diskPersonalIDs.contains(task.id) { result.personalTodo.append(task) }
+        // Append tasks that exist only in memory (e.g. added since the last
+        // async save) and haven't been deleted.
+        let resultTopIDs      = Set(result.topPriorities.map(\.id))
+        let resultTodoIDs     = Set(result.toDoLists.map(\.id))
+        let resultCallsIDs    = Set(result.callsEmails.map(\.id))
+        let resultPersonalIDs = Set(result.personalTodo.map(\.id))
+
+        for task in memory.topPriorities  where !resultTopIDs.contains(task.id)      && !allDeletedIDs.contains(task.id) { result.topPriorities.append(task) }
+        for task in memory.toDoLists      where !resultTodoIDs.contains(task.id)     && !allDeletedIDs.contains(task.id) { result.toDoLists.append(task) }
+        for task in memory.callsEmails    where !resultCallsIDs.contains(task.id)    && !allDeletedIDs.contains(task.id) { result.callsEmails.append(task) }
+        for task in memory.personalTodo   where !resultPersonalIDs.contains(task.id) && !allDeletedIDs.contains(task.id) { result.personalTodo.append(task) }
 
         return result
     }
