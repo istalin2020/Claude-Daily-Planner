@@ -1241,6 +1241,68 @@ class PlannerViewModel: ObservableObject {
         for task in memory.callsEmails    where !resultCallsIDs.contains(task.id)    && !allDeletedIDs.contains(task.id) { result.callsEmails.append(task) }
         for task in memory.personalTodo   where !resultPersonalIDs.contains(task.id) && !allDeletedIDs.contains(task.id) { result.personalTodo.append(task) }
 
+        // ── Non-task fields ────────────────────────────────────────────────────
+        // `result` was seeded from `disk`; for every field that isn't a
+        // PlannerTask list we must explicitly bring in the in-memory state,
+        // otherwise any change the user made on this device (meal logged, glass
+        // of water tapped, etc.) that hasn't been flushed to disk yet by the
+        // async saveData() will be silently discarded when iCloud fires a merge.
+
+        // Helper: union two Identifiable arrays. Memory items are always kept;
+        // disk-only items (added on another device) are appended so cross-device
+        // data is not lost. Items the user deleted on this device are naturally
+        // absent from `memory` and will not be resurrected.
+        func union<T: Identifiable>(_ disk: [T], _ memory: [T]) -> [T] where T.ID: Hashable {
+            let memIds = Set(memory.map(\.id))
+            var merged = memory
+            for item in disk where !memIds.contains(item.id) { merged.append(item) }
+            return merged
+        }
+
+        // Meals — union all four meal lists so items entered before the async
+        // save completes are never dropped.
+        result.meals.breakfastItems = union(result.meals.breakfastItems, memory.meals.breakfastItems)
+        result.meals.lunchItems     = union(result.meals.lunchItems,     memory.meals.lunchItems)
+        result.meals.dinnerItems    = union(result.meals.dinnerItems,    memory.meals.dinnerItems)
+        result.meals.snackItems     = union(result.meals.snackItems,     memory.meals.snackItems)
+
+        // Water — memory wins (last tap on this device is authoritative).
+        result.waterGlasses = memory.waterGlasses
+        result.waterGoal    = memory.waterGoal
+
+        // Fitness — union manual activities; scalar/notes from memory.
+        result.fitness.activities   = union(result.fitness.activities, memory.fitness.activities)
+        result.fitness.generalNotes = memory.fitness.generalNotes
+        result.fitness.steps        = memory.fitness.steps
+        // HealthKit data: keep whichever sync is more recent.
+        let diskHKDate = result.fitness.hkSyncedAt ?? .distantPast
+        let memHKDate  = memory.fitness.hkSyncedAt ?? .distantPast
+        if memHKDate >= diskHKDate {
+            result.fitness.hkSteps          = memory.fitness.hkSteps
+            result.fitness.hkCalories       = memory.fitness.hkCalories
+            result.fitness.hkWorkoutMinutes = memory.fitness.hkWorkoutMinutes
+            result.fitness.hkWalkingMinutes = memory.fitness.hkWalkingMinutes
+            result.fitness.hkWorkouts       = memory.fitness.hkWorkouts
+            result.fitness.hkSyncedAt       = memory.fitness.hkSyncedAt
+        }
+
+        // Sleep — memory wins (most recent log on this device).
+        result.sleep = memory.sleep
+
+        // Notes — prefer non-empty memory over empty disk.
+        if !memory.notes.isEmpty { result.notes = memory.notes }
+
+        // Expenses — union; savings scalar from memory.
+        result.expenses = union(result.expenses, memory.expenses)
+        if memory.savings != 0 { result.savings = memory.savings }
+
+        // Day rating — memory wins.
+        result.rating = memory.rating
+
+        // Daily schedule & appointments — union.
+        result.dailySchedule = union(result.dailySchedule, memory.dailySchedule)
+        result.appointments  = union(result.appointments,  memory.appointments)
+
         return result
     }
 
