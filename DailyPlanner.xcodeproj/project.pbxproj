@@ -316,9 +316,24 @@
 				TargetAttributes = {
 					AA040000000000000000001A = {
 						CreatedOnToolsVersion = 16.2;
+						DevelopmentTeam = YOURTEAMID;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+							com.apple.HealthKit = {
+								enabled = 1;
+							};
+						};
 					};
 					BB500000000000000000001A = {
 						CreatedOnToolsVersion = 16.2;
+						DevelopmentTeam = YOURTEAMID;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -419,6 +434,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = DailyPlannerWidget/DailyPlannerWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YOURTEAMID;
 				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyPlannerWidget/Info.plist;
@@ -443,6 +459,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = DailyPlannerWidget/DailyPlannerWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YOURTEAMID;
 				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyPlannerWidget/Info.plist;
@@ -585,6 +602,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DailyPlanner/DailyPlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YOURTEAMID;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
@@ -611,6 +629,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DailyPlanner/DailyPlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YOURTEAMID;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
