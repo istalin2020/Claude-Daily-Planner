@@ -1004,12 +1004,20 @@ class PlannerViewModel: ObservableObject {
     private let saveQueue = DispatchQueue(label: "com.dailyplanner.save", qos: .utility)
 
     /// Asynchronous write — called automatically on every `entries` change.
+    /// Always writes to both the active URL (iCloud when available) AND the
+    /// local Documents file so the local copy never becomes stale.  This
+    /// prevents scalar fields (water, rating, etc.) from being overwritten
+    /// by a stale local snapshot on the next launch merge.
     func saveData() {
-        let snapshot = entries
-        let url = activeEntriesURL
+        let snapshot  = entries
+        let activeUrl = activeEntriesURL
+        let localUrl  = entriesURL
         saveQueue.async {
             guard let data = try? JSONEncoder().encode(snapshot) else { return }
-            try? data.write(to: url, options: .atomic)
+            try? data.write(to: activeUrl, options: .atomic)
+            if activeUrl != localUrl {
+                try? data.write(to: localUrl, options: .atomic)
+            }
         }
     }
 
@@ -1019,6 +1027,9 @@ class PlannerViewModel: ObservableObject {
     func saveDataNow() {
         guard let data = try? JSONEncoder().encode(entries) else { return }
         try? data.write(to: activeEntriesURL, options: .atomic)
+        if activeEntriesURL != entriesURL {
+            try? data.write(to: entriesURL, options: .atomic)
+        }
     }
 
     func loadData() {
@@ -1045,16 +1056,18 @@ class PlannerViewModel: ObservableObject {
         switch (cloudDecoded, localDecoded) {
         case (.some(let cloud), .some(let local)):
             // Both sources available: perform a task-level merge for every date.
-            // Local is treated as "memory" (has most-recent mutations: deletes,
-            // completions, edits).  Cloud is treated as "disk" (may have data
-            // from another device).  mergeEntries honours deletedTaskIDs from
-            // both sides so nothing is accidentally resurrected.
+            // Cloud is treated as "memory" (most recently written — all saves go
+            // to activeEntriesURL which is the cloud file when iCloud is enabled).
+            // Local is treated as "disk" (may be a slightly older mirror).
+            // mergeEntries unions deletedTaskIDs from both sides so nothing is
+            // accidentally resurrected, and task-only-in-local entries are still
+            // preserved via the union append path.
             var merged: [String: DailyEntry] = [:]
             let allKeys = Set(cloud.keys).union(Set(local.keys))
             for key in allKeys {
                 switch (cloud[key], local[key]) {
                 case (.some(let c), .some(let l)):
-                    merged[key] = Self.mergeEntries(disk: c, memory: l)
+                    merged[key] = Self.mergeEntries(disk: l, memory: c)
                 case (.some(let c), .none):
                     merged[key] = c
                 case (.none, .some(let l)):
@@ -1159,26 +1172,31 @@ class PlannerViewModel: ObservableObject {
         // If cloud is empty or not-yet-synced we keep local data intact.
         // mergeEntries handles deletedTaskIDs so neither source can restore a
         // task the user has already permanently deleted.
+        //
+        // IMPORTANT: cloud is treated as "memory" (most-recently-written source)
+        // because all saves go to activeEntriesURL (the cloud file) when iCloud
+        // is available.  The local file loaded at init time can be stale for
+        // non-task scalar fields (waterGlasses, rating, etc.).  Treating cloud
+        // as "memory" ensures those fields are not silently reset to stale values.
+        // Tasks added only in local (shouldn't normally exist at this point, but
+        // handled safely) are still preserved via the union logic in mergeEntries.
         if let data = try? Data(contentsOf: cloudEntries),
            let cloudDecoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data),
            !cloudDecoded.isEmpty {
-            var merged = entries           // start from locally-loaded + in-memory entries
+            var merged = entries           // start from locally-loaded entries
             for (k, cloudEntry) in cloudDecoded {
                 if let localEntry = merged[k] {
-                    // Merge: cloud is "disk" (may have edits from other devices),
-                    // local/in-memory is "memory" (most recent mutations on this device).
-                    merged[k] = Self.mergeEntries(disk: cloudEntry, memory: localEntry)
+                    // Cloud = "memory" (most recently saved), local = "disk".
+                    merged[k] = Self.mergeEntries(disk: localEntry, memory: cloudEntry)
                 } else {
                     merged[k] = cloudEntry // date only in cloud — take it as-is
                 }
             }
             entries = merged
         }
-        // Always save the merged result back to both locations for consistency
+        // Always save the merged result back to both locations for consistency.
+        // saveDataNow already writes to both via the dual-write path.
         saveDataNow()
-        if let localData = try? JSONEncoder().encode(entries) {
-            try? localData.write(to: entriesURL, options: .atomic)
-        }
 
         // Settings: prefer cloud when available
         if let data = try? Data(contentsOf: cloudSettings),
