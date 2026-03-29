@@ -1158,12 +1158,14 @@ class PlannerViewModel: ObservableObject {
         metadataQuery?.disableUpdates()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self else { return }
-            // Snapshot the current in-memory state BEFORE reloading from disk.
-            // saveData() is async so the on-disk file may lag behind in-memory
-            // state (e.g. a task the user just added is in memory but not on
-            // disk yet). After loadData() we union the two snapshots so no
-            // in-memory task is ever silently dropped.
+            // Snapshot current in-memory state BEFORE touching disk.
+            // This captures any data (appointments, schedule blocks, meals, etc.)
+            // the user has entered since the last completed save.
             let before = self.entries
+            // Flush any in-flight async saveData() writes so loadData() always
+            // reads the freshest possible on-disk state.  saveQueue is serial so
+            // a no-op sync{} call drains every pending block before continuing.
+            self.saveQueue.sync { }
             self.loadData()
             var merged = self.entries
             for (key, beforeEntry) in before {
@@ -1171,9 +1173,10 @@ class PlannerViewModel: ObservableObject {
                     // Date entry exists in memory but not on disk yet — keep it.
                     merged[key] = beforeEntry
                 } else {
-                    // Date entry exists in both — union the task lists so any
-                    // task present in memory but absent from the disk snapshot
-                    // (because the async save hadn't flushed yet) is restored.
+                    // Date entry exists in both — merge so that anything the
+                    // user entered on this device (appointments, schedule blocks,
+                    // meals, tasks, etc.) is never overwritten by a stale
+                    // cloud/disk snapshot.
                     merged[key] = Self.mergeEntries(disk: merged[key]!, memory: beforeEntry)
                 }
             }
