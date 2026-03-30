@@ -46,6 +46,10 @@ final class HealthKitManager {
             if let t = HKQuantityType.quantityType(forIdentifier: id) { types.insert(t) }
         }
         types.insert(HKObjectType.workoutType())
+        // Sleep analysis
+        if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+            types.insert(sleepType)
+        }
         return types
     }
 
@@ -227,6 +231,62 @@ final class HealthKitManager {
             completion(result)
         }
         store.execute(q)
+    }
+
+    // MARK: - Sleep Data
+    /// Fetches sleep analysis data from Apple Health for the given date.
+    /// Looks at a 28-hour window (prior noon to next noon) to capture overnight sleep.
+    /// Calls completion on the main thread with (bedtime, wakeTime, totalSleepSeconds).
+    func fetchSleepData(for date: Date, completion: @escaping (Date?, Date?, TimeInterval) -> Void) {
+        guard isAvailable else { completion(nil, nil, 0); return }
+        guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
+            completion(nil, nil, 0); return
+        }
+
+        let cal = Calendar.current
+        // Window: noon the day before → noon the day after, capturing overnight sleep
+        let dayStart = cal.startOfDay(for: date)
+        let windowStart = cal.date(byAdding: .hour, value: -12, to: dayStart) ?? dayStart
+        let windowEnd   = cal.date(byAdding: .hour, value: 20, to: dayStart) ?? dayStart
+
+        let pred = HKQuery.predicateForSamples(withStart: windowStart, end: windowEnd, options: [])
+        let sort = [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+
+        let query = HKSampleQuery(
+            sampleType: sleepType,
+            predicate: pred,
+            limit: HKObjectQueryNoLimit,
+            sortDescriptors: sort
+        ) { _, samples, _ in
+            let sleepSamples = (samples as? [HKCategorySample]) ?? []
+
+            // Values that represent actual sleep (exclude just "in bed")
+            var asleepValues: Set<Int> = [HKCategoryValueSleepAnalysis.asleep.rawValue]
+            if #available(iOS 16.0, *) {
+                asleepValues.insert(HKCategoryValueSleepAnalysis.asleepCore.rawValue)
+                asleepValues.insert(HKCategoryValueSleepAnalysis.asleepDeep.rawValue)
+                asleepValues.insert(HKCategoryValueSleepAnalysis.asleepREM.rawValue)
+            }
+            let inBedValue = HKCategoryValueSleepAnalysis.inBed.rawValue
+
+            // Prefer asleep samples; fall back to in-bed if no asleep data
+            let asleepSamples = sleepSamples.filter { asleepValues.contains($0.value) }
+            let relevantSamples = asleepSamples.isEmpty
+                ? sleepSamples.filter { $0.value == inBedValue }
+                : asleepSamples
+
+            guard !relevantSamples.isEmpty else {
+                DispatchQueue.main.async { completion(nil, nil, 0) }
+                return
+            }
+
+            let bedtime  = relevantSamples.min(by: { $0.startDate < $1.startDate })?.startDate
+            let wakeTime = relevantSamples.max(by: { $0.endDate   < $1.endDate   })?.endDate
+            let totalSeconds = relevantSamples.reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+
+            DispatchQueue.main.async { completion(bedtime, wakeTime, totalSeconds) }
+        }
+        store.execute(query)
     }
 
     // MARK: - Helper

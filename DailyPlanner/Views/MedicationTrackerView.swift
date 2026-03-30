@@ -12,7 +12,14 @@ struct MedicationTrackerView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 0) {
+                // Section header with close button (consistent with other sections)
+                SectionHeader(section: .medications,
+                              subtitle: "Stay on top of your medications",
+                              completedCount: todayLogs.count,
+                              totalCount: activeMeds.count)
+
+                VStack(spacing: 16) {
                 // Summary banner
                 summaryBanner
 
@@ -37,8 +44,9 @@ struct MedicationTrackerView: View {
                     }
                     .padding(.horizontal)
                 }
+                } // end inner VStack
+                .padding(.vertical, 16)
             }
-            .padding(.vertical, 16)
         }
         .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showAddSheet) {

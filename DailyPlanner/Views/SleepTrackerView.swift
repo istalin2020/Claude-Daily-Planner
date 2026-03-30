@@ -8,48 +8,113 @@ struct SleepTrackerView: View {
     private var sleep: SleepEntry { entry.sleep }
 
     @State private var showEditSheet = false
+    @State private var isSyncingHealth = false
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                // Summary Card
-                sleepSummaryCard
+            VStack(spacing: 0) {
+                // Section header with close button (consistent with other sections)
+                SectionHeader(section: .sleepTracker,
+                              subtitle: "Track your sleep patterns",
+                              completedCount: sleep.bedtime != nil ? 1 : 0,
+                              totalCount: 1)
 
-                // Quality Section
-                sleepQualityCard
+                VStack(spacing: 16) {
+                    // Summary Card
+                    sleepSummaryCard
 
-                // Sleep Timeline
-                if sleep.bedtime != nil || sleep.wakeTime != nil {
-                    sleepTimelineCard
+                    // Sync from Health button
+                    syncHealthButton
+
+                    // Quality Section
+                    sleepQualityCard
+
+                    // Sleep Timeline
+                    if sleep.bedtime != nil || sleep.wakeTime != nil {
+                        sleepTimelineCard
+                    }
+
+                    // Weekly Overview
+                    weeklyOverviewCard
+
+                    // Notes
+                    if !sleep.notes.isEmpty {
+                        notesCard
+                    }
+
+                    // Log Button
+                    Button(action: { showEditSheet = true }) {
+                        Label(sleep.bedtime == nil ? "Log Sleep" : "Edit Sleep",
+                              systemImage: sleep.bedtime == nil ? "moon.fill" : "pencil")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color(red: 0.25, green: 0.15, blue: 0.65))
+                            .cornerRadius(14)
+                    }
+                    .padding(.horizontal)
                 }
-
-                // Weekly Overview
-                weeklyOverviewCard
-
-                // Notes
-                if !sleep.notes.isEmpty {
-                    notesCard
-                }
-
-                // Log Button
-                Button(action: { showEditSheet = true }) {
-                    Label(sleep.bedtime == nil ? "Log Sleep" : "Edit Sleep",
-                          systemImage: sleep.bedtime == nil ? "moon.fill" : "pencil")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color(red: 0.25, green: 0.15, blue: 0.65))
-                        .cornerRadius(14)
-                }
-                .padding(.horizontal)
+                .padding(.vertical, 16)
             }
-            .padding(.vertical, 16)
         }
         .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showEditSheet) {
             SleepEditSheet(sleep: sleep) { updated in
                 vm.updateSleep(updated)
+            }
+        }
+        .onAppear {
+            if sleep.bedtime == nil {
+                syncFromHealthKit()
+            }
+        }
+    }
+
+    // MARK: - Sync from Health Button
+    private var syncHealthButton: some View {
+        Button(action: syncFromHealthKit) {
+            HStack(spacing: 8) {
+                if isSyncingHealth {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(0.8)
+                } else {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 14))
+                }
+                Text(isSyncingHealth ? "Syncing…" : "Sync from Apple Health")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                LinearGradient(
+                    colors: [Color(red: 0.9, green: 0.2, blue: 0.3),
+                             Color(red: 0.7, green: 0.1, blue: 0.4)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+        }
+        .disabled(isSyncingHealth)
+        .padding(.horizontal)
+    }
+
+    private func syncFromHealthKit() {
+        guard HealthKitManager.shared.isAvailable else { return }
+        isSyncingHealth = true
+        HealthKitManager.shared.requestAuthorization {
+            HealthKitManager.shared.fetchSleepData(for: vm.selectedDate) { bedtime, wakeTime, duration in
+                isSyncingHealth = false
+                guard bedtime != nil || wakeTime != nil else { return }
+                vm.updateSleep(SleepEntry(
+                    bedtime: bedtime ?? sleep.bedtime,
+                    wakeTime: wakeTime ?? sleep.wakeTime,
+                    quality: sleep.quality,
+                    notes: sleep.notes
+                ))
             }
         }
     }

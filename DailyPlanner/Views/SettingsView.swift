@@ -15,9 +15,6 @@ struct SettingsView: View {
     @State private var showPomodoro       = false
     @State private var showProUpgrade     = false
 
-    // Suggested messages shown to the user for awareness
-    private let reminderMessages = NotificationManager.reminderMessages
-
     var body: some View {
         NavigationView {
             Form {
@@ -186,25 +183,6 @@ struct SettingsView: View {
                 } footer: {
                     if vm.settings.notificationsEnabled {
                         Text("Add up to 7 times. Each reminder carries a unique motivating message. Tap × on a time chip to remove it.")
-                    }
-                }
-
-                // ── REMINDER MESSAGES (read-only preview) ─────────────────
-                if vm.settings.notificationsEnabled {
-                    Section {
-                        ForEach(Array(reminderMessages.enumerated()), id: \.offset) { idx, msg in
-                            HStack(alignment: .top, spacing: 10) {
-                                Text("\(idx + 1).")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 20, alignment: .trailing)
-                                Text(msg)
-                                    .font(.caption)
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                    } header: {
-                        Text("Reminder Messages (rotate automatically)")
                     }
                 }
 

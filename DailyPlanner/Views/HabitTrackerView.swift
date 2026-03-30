@@ -73,8 +73,11 @@ struct HabitTrackerView: View {
                             HabitRow(habit: habit,
                                      isCompleted: vm.isHabitCompleted(habit, for: vm.selectedDate),
                                      streak: vm.habitStreak(habit),
-                                     weekProgress: weekProgress(habit)) {
+                                     weekProgress: weekProgress(habit),
+                                     weekDates: weekDates()) {
                                 vm.toggleHabit(habit, for: vm.selectedDate)
+                            } onToggleDay: { date in
+                                vm.toggleHabit(habit, for: date)
                             }
                             .padding(.horizontal, 16)
                         }
@@ -122,12 +125,15 @@ struct HabitTrackerView: View {
     }
 
     private func weekProgress(_ habit: Habit) -> [Bool] {
+        weekDates().map { vm.isHabitCompleted(habit, for: $0) }
+    }
+
+    private func weekDates() -> [Date] {
         let cal = Calendar.current
         let today = cal.startOfDay(for: vm.selectedDate)
         let weekStart = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
         return (0..<7).map { offset in
-            let d = cal.date(byAdding: .day, value: offset, to: weekStart)!
-            return vm.isHabitCompleted(habit, for: d)
+            cal.date(byAdding: .day, value: offset, to: weekStart)!
         }
     }
 }
@@ -137,7 +143,9 @@ struct HabitRow: View {
     let isCompleted: Bool
     let streak: Int
     let weekProgress: [Bool]
+    let weekDates: [Date]
     let onToggle: () -> Void
+    let onToggleDay: (Date) -> Void
 
     var body: some View {
         VStack(spacing: 10) {
@@ -152,6 +160,7 @@ struct HabitRow: View {
                             .foregroundColor(isCompleted ? .white : habit.swiftUIColor)
                     }
                 }
+                .buttonStyle(PlainButtonStyle())
                 VStack(alignment: .leading, spacing: 2) {
                     Text(habit.name).font(.system(size: 14, weight: .semibold))
                     if streak > 0 {
@@ -165,17 +174,20 @@ struct HabitRow: View {
                         .foregroundColor(habit.swiftUIColor)
                 }
             }
-            // Week mini-progress
+            // Week mini-progress — each day circle is tappable to toggle that day
             HStack(spacing: 4) {
                 let days = ["S","M","T","W","T","F","S"]
                 ForEach(0..<7) { i in
-                    VStack(spacing: 2) {
-                        Circle()
-                            .fill(weekProgress[i] ? habit.swiftUIColor : Color.secondary.opacity(0.15))
-                            .frame(width: 20, height: 20)
-                        Text(days[i]).font(.system(size: 8)).foregroundColor(.secondary)
+                    Button(action: { onToggleDay(weekDates[i]) }) {
+                        VStack(spacing: 2) {
+                            Circle()
+                                .fill(weekProgress[i] ? habit.swiftUIColor : Color.secondary.opacity(0.15))
+                                .frame(width: 20, height: 20)
+                            Text(days[i]).font(.system(size: 8)).foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
