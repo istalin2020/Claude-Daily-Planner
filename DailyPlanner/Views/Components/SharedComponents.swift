@@ -86,6 +86,7 @@ struct AddButton: View {
 
 // MARK: - Task Row Card
 struct TaskRowCard: View {
+    @EnvironmentObject var vm: PlannerViewModel
     let task: PlannerTask
     let color: Color
     let onToggle: () -> Void
@@ -94,6 +95,8 @@ struct TaskRowCard: View {
     var onEdit: (() -> Void)? = nil
     /// When non-nil, a trash button is shown and calls this on tap.
     var onDelete: (() -> Void)? = nil
+
+    private var isHighlighted: Bool { vm.highlightedTaskID == task.id }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -164,10 +167,17 @@ struct TaskRowCard: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(task.isCompleted ? color.opacity(0.05) : Color(.systemBackground))
+                .fill(isHighlighted
+                      ? color.opacity(0.18)
+                      : (task.isCompleted ? color.opacity(0.05) : Color(.systemBackground)))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(isHighlighted ? color : Color.clear, lineWidth: 2)
         )
         .shadow(color: .black.opacity(task.isCompleted ? 0.03 : 0.07), radius: 4, y: 2)
         .animation(.easeInOut(duration: 0.2), value: task.isCompleted)
+        .animation(.easeInOut(duration: 0.4), value: isHighlighted)
     }
 
     private func shortDate(_ date: Date) -> String {

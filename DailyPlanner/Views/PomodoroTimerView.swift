@@ -117,12 +117,81 @@ class PomodoroTimer: ObservableObject {
 struct PomodoroTimerView: View {
     @StateObject private var pomodoro = PomodoroTimer()
     @State private var showSettings = false
+    @State private var showIntro = true
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 28) {
+
+                    // Intro Card
+                    if showIntro {
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "timer")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.5))
+                                    Text("What is the Pomodoro Technique?")
+                                        .font(.system(size: 14, weight: .bold))
+                                }
+                                Spacer()
+                                Button {
+                                    withAnimation { showIntro = false }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary.opacity(0.5))
+                                }
+                            }
+                            .padding(.bottom, 10)
+
+                            Text("A proven time-management method that breaks your work into focused 25-minute sessions (called \"Pomodoros\") separated by short breaks. This rhythm trains your brain to focus deeply while preventing mental fatigue.")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Divider().padding(.vertical, 10)
+
+                            Text("How it works")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .padding(.bottom, 6)
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                IntroStep(number: "1", text: "Pick a task you want to work on")
+                                IntroStep(number: "2", text: "Work focused for 25 minutes — no distractions")
+                                IntroStep(number: "3", text: "Take a 5-minute short break")
+                                IntroStep(number: "4", text: "Repeat. After 4 sessions, take a 15-minute long break")
+                            }
+
+                            Divider().padding(.vertical, 10)
+
+                            Text("Example")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .padding(.bottom, 6)
+
+                            Text("You need to write a report. Start a Pomodoro, write for 25 minutes without checking your phone, then take a 5-min break to stretch. After 4 rounds (~2 hours), you'll have completed a solid chunk of work with a fresh mind.")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Divider().padding(.vertical, 10)
+
+                            HStack(spacing: 16) {
+                                BenefitBadge(icon: "brain.head.profile", text: "Deep Focus")
+                                BenefitBadge(icon: "battery.100", text: "Prevents Burnout")
+                                BenefitBadge(icon: "chart.line.uptrend.xyaxis", text: "Boosts Output")
+                            }
+                        }
+                        .padding(16)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    }
 
                     // Session dots
                     HStack(spacing: 8) {
@@ -245,6 +314,48 @@ struct StatPill: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
+    }
+}
+
+// MARK: - Intro Helper Views
+struct IntroStep: View {
+    let number: String
+    let text: String
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.9, green: 0.3, blue: 0.5).opacity(0.15))
+                    .frame(width: 22, height: 22)
+                Text(number)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.5))
+            }
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+struct BenefitBadge: View {
+    let icon: String
+    let text: String
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.5))
+            Text(text)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(Color(red: 0.9, green: 0.3, blue: 0.5).opacity(0.07))
+        .cornerRadius(8)
     }
 }
 

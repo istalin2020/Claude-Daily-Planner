@@ -12,6 +12,7 @@ struct DailyPlannerApp: App {
                 .environmentObject(viewModel)
                 .environmentObject(proManager)
                 .preferredColorScheme(viewModel.settings.isDarkMode ? .dark : .light)
+                .tint(viewModel.settings.themeColor.primary)
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {

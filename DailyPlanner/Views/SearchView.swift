@@ -18,6 +18,8 @@ struct SearchView: View {
         guard query.count >= 2 else { return [] }
         let q = query.lowercased()
         var out: [SearchResult] = []
+        // Track seen task IDs to avoid duplicates from rolled-over tasks
+        var seenTaskIDs = Set<String>()
         let fmt = DateFormatter()
         fmt.dateStyle = .medium
 
@@ -26,37 +28,81 @@ struct SearchView: View {
             let dateStr = fmt.string(from: date)
 
             if selectedFilter == .all || selectedFilter == .tasks {
-                for task in entry.topPriorities + entry.toDoLists + entry.callsEmails + entry.personalTodo {
-                    if task.title.lowercased().contains(q) || task.notes.lowercased().contains(q) {
-                        out.append(SearchResult(id: task.id.uuidString, date: date, dateStr: dateStr,
-                            type: .task, title: task.title, subtitle: task.notes.isEmpty ? nil : task.notes,
-                            isCompleted: task.isCompleted, entryKey: key))
+                let taskGroups: [(section: AppSection, tasks: [PlannerTask])] = [
+                    (.topPriorities, entry.topPriorities),
+                    (.toDoLists, entry.toDoLists),
+                    (.callsEmails, entry.callsEmails),
+                    (.personalTodo, entry.personalTodo)
+                ]
+                for group in taskGroups {
+                    for task in group.tasks {
+                        guard !seenTaskIDs.contains(task.id.uuidString) else { continue }
+                        if task.title.lowercased().contains(q) || task.notes.lowercased().contains(q) {
+                            seenTaskIDs.insert(task.id.uuidString)
+                            out.append(SearchResult(
+                                id: task.id.uuidString,
+                                taskID: task.id,
+                                date: date,
+                                dateStr: dateStr,
+                                type: .task,
+                                title: task.title,
+                                subtitle: task.notes.isEmpty ? nil : task.notes,
+                                isCompleted: task.isCompleted,
+                                entryKey: key,
+                                taskSection: group.section
+                            ))
+                        }
                     }
                 }
             }
             if selectedFilter == .all || selectedFilter == .notes {
                 if !entry.notes.isEmpty && entry.notes.lowercased().contains(q) {
-                    out.append(SearchResult(id: key + "notes", date: date, dateStr: dateStr,
-                        type: .note, title: entry.notes, subtitle: nil,
-                        isCompleted: false, entryKey: key))
+                    out.append(SearchResult(
+                        id: key + "notes",
+                        taskID: nil,
+                        date: date,
+                        dateStr: dateStr,
+                        type: .note,
+                        title: entry.notes,
+                        subtitle: nil,
+                        isCompleted: false,
+                        entryKey: key,
+                        taskSection: .notes
+                    ))
                 }
             }
             if selectedFilter == .all || selectedFilter == .expenses {
                 for expense in entry.expenses {
                     if expense.description.lowercased().contains(q) {
-                        out.append(SearchResult(id: expense.id.uuidString, date: date, dateStr: dateStr,
-                            type: .expense, title: expense.description,
+                        out.append(SearchResult(
+                            id: expense.id.uuidString,
+                            taskID: nil,
+                            date: date,
+                            dateStr: dateStr,
+                            type: .expense,
+                            title: expense.description,
                             subtitle: "\(expense.isIncome ? "+" : "-")\(vm.settings.currency.symbol)\(String(format: "%.2f", expense.amount))",
-                            isCompleted: false, entryKey: key))
+                            isCompleted: false,
+                            entryKey: key,
+                            taskSection: .expenseTracker
+                        ))
                     }
                 }
             }
             if selectedFilter == .all || selectedFilter == .health {
                 if entry.fitness.hkWorkouts.contains(where: { $0.activityType.lowercased().contains(q) }) {
-                    out.append(SearchResult(id: key + "workout", date: date, dateStr: dateStr,
-                        type: .health, title: "Workout on \(dateStr)",
+                    out.append(SearchResult(
+                        id: key + "workout",
+                        taskID: nil,
+                        date: date,
+                        dateStr: dateStr,
+                        type: .health,
+                        title: "Workout on \(dateStr)",
                         subtitle: "\(entry.fitness.displayWorkoutMinutes) min · \(entry.fitness.displaySteps) steps",
-                        isCompleted: false, entryKey: key))
+                        isCompleted: false,
+                        entryKey: key,
+                        taskSection: .healthFitness
+                    ))
                 }
             }
         }
@@ -74,7 +120,7 @@ struct SearchView: View {
                                 .font(.system(size: 12, weight: .medium))
                                 .padding(.horizontal, 12).padding(.vertical, 6)
                                 .background(selectedFilter == f
-                                    ? Color(red: 0.45, green: 0.25, blue: 0.85)
+                                    ? vm.settings.themeColor.primary
                                     : Color(.secondarySystemBackground))
                                 .foregroundColor(selectedFilter == f ? .white : .primary)
                                 .cornerRadius(16)
@@ -123,13 +169,22 @@ struct SearchView: View {
     }
 
     private func navigateTo(_ result: SearchResult) {
-        // Navigate to the date and section of the result
         vm.select(date: result.date)
-        switch result.type {
-        case .task:    vm.selectedSection = .topPriorities
-        case .note:    vm.selectedSection = .notes
-        case .expense: vm.selectedSection = .expenseTracker
-        case .health:  vm.selectedSection = .healthFitness
+        vm.selectedSection = result.taskSection ?? {
+            switch result.type {
+            case .task:    return .topPriorities
+            case .note:    return .notes
+            case .expense: return .expenseTracker
+            case .health:  return .healthFitness
+            }
+        }()
+        // Highlight the specific task so the destination view can scroll to it
+        if let taskID = result.taskID {
+            vm.highlightedTaskID = taskID
+            // Clear highlight after 2.5 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                vm.highlightedTaskID = nil
+            }
         }
         dismiss()
     }
@@ -138,6 +193,7 @@ struct SearchView: View {
 // MARK: - Search Result Model
 struct SearchResult: Identifiable {
     let id: String
+    let taskID: UUID?
     let date: Date
     let dateStr: String
     let type: ResultType
@@ -145,6 +201,7 @@ struct SearchResult: Identifiable {
     let subtitle: String?
     let isCompleted: Bool
     let entryKey: String
+    let taskSection: AppSection?
 
     enum ResultType {
         case task, note, expense, health
@@ -174,16 +231,25 @@ struct SearchResultRow: View {
         HStack(spacing: 12) {
             ZStack {
                 Circle().fill(result.type.color.opacity(0.12)).frame(width: 36, height: 36)
-                Image(systemName: result.type.icon)
+                Image(systemName: result.isCompleted && result.type == .task
+                      ? "checkmark.circle.fill" : result.type.icon)
                     .font(.system(size: 14)).foregroundColor(result.type.color)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(result.title)
                     .font(.system(size: 13, weight: .medium))
-                    .strikethrough(result.isCompleted)
+                    .strikethrough(result.isCompleted, color: .secondary)
+                    .foregroundColor(result.isCompleted ? .secondary : .primary)
                     .lineLimit(2)
                 if let sub = result.subtitle {
                     Text(sub).font(.caption2).foregroundColor(.secondary).lineLimit(1)
+                }
+                if result.type == .task {
+                    Text(result.isCompleted ? "Completed" : "Pending")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(result.isCompleted
+                            ? Color(red: 0.1, green: 0.65, blue: 0.35)
+                            : Color(red: 0.9, green: 0.5, blue: 0.1))
                 }
             }
             Spacer()

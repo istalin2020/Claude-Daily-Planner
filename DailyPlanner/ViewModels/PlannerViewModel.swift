@@ -9,6 +9,7 @@ class PlannerViewModel: ObservableObject {
     @Published var selectedSection: AppSection = .overview
     @Published var settings: AppSettings = AppSettings()
     @Published var iCloudAvailable = false
+    @Published var highlightedTaskID: UUID? = nil
 
     // Tracks the calendar day on which we last ran rollover.
     // Stored in UserDefaults so it survives app kills.

@@ -127,8 +127,8 @@ struct AppHeaderView: View {
         .padding(.bottom, 10)
         .background(
             LinearGradient(
-                colors: [Color(red: 0.35, green: 0.18, blue: 0.78),
-                         Color(red: 0.55, green: 0.25, blue: 0.90)],
+                colors: [vm.settings.themeColor.primary.opacity(0.85),
+                         vm.settings.themeColor.secondary],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

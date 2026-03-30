@@ -31,7 +31,7 @@ struct HabitTrackerView: View {
                             Circle()
                                 .trim(from: 0, to: todayHabits.isEmpty ? 0
                                       : CGFloat(completedCount) / CGFloat(todayHabits.count))
-                                .stroke(Color(red: 0.45, green: 0.25, blue: 0.85),
+                                .stroke(vm.settings.themeColor.primary,
                                         style: StrokeStyle(lineWidth: 8, lineCap: .round))
                                 .rotationEffect(.degrees(-90))
                             Text("\(todayHabits.isEmpty ? 0 : Int(Double(completedCount)/Double(todayHabits.count)*100))%")
@@ -105,8 +105,8 @@ struct HabitTrackerView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color(red: 0.45, green: 0.25, blue: 0.85).opacity(0.1))
-                            .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            .background(vm.settings.themeColor.primary.opacity(0.1))
+                            .foregroundColor(vm.settings.themeColor.primary)
                             .cornerRadius(12)
                     }
                     .padding(.horizontal, 16)
@@ -200,6 +200,7 @@ struct AllHabitRow: View {
             Button(action: onDelete) {
                 Image(systemName: "trash").font(.caption).foregroundColor(.secondary.opacity(0.5))
             }
+            .buttonStyle(BorderlessButtonStyle())
         }
         .padding(10)
         .background(Color(.systemBackground))
@@ -213,7 +214,7 @@ struct AddHabitSheet: View {
     @State private var name = ""
     @State private var icon = "star.fill"
     @State private var color = "purple"
-    @State private var targetDays = Set<Int>([1,2,3,4,5,6,7])
+    @State private var targetDays = Set<Int>()
     let onSave: (Habit) -> Void
 
     let icons = ["star.fill","heart.fill","flame.fill","bolt.fill","drop.fill","figure.run",
@@ -223,58 +224,133 @@ struct AddHabitSheet: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section("Habit Name") {
-                    TextField("e.g. Morning Workout, Read 20 min", text: $name)
-                        .autocapitalization(.sentences)
-                }
-                Section("Icon") {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 12) {
-                        ForEach(icons, id: \.self) { ic in
-                            Button { icon = ic } label: {
-                                Image(systemName: ic)
-                                    .font(.system(size: 20))
-                                    .foregroundColor(icon == ic ? .white : .primary)
-                                    .frame(width: 40, height: 40)
-                                    .background(icon == ic ? selectedColor : Color(.secondarySystemBackground))
-                                    .cornerRadius(10)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+
+                    // HABIT NAME
+                    Group {
+                        Text("HABIT NAME")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 20)
+                            .padding(.bottom, 6)
+
+                        TextField("e.g. Morning Workout, Read 20 min", text: $name)
+                            .autocapitalization(.sentences)
+                            .padding(12)
+                            .background(Color(.systemBackground))
+                            .cornerRadius(10)
+                            .padding(.horizontal, 16)
+                    }
+
+                    // ICON
+                    Group {
+                        Text("ICON")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 20)
+                            .padding(.bottom, 6)
+
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 12) {
+                            ForEach(icons, id: \.self) { ic in
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(icon == ic ? selectedColor : Color(.secondarySystemBackground))
+                                        .frame(width: 44, height: 44)
+                                    Image(systemName: ic)
+                                        .font(.system(size: 20))
+                                        .foregroundColor(icon == ic ? .white : .primary)
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture { icon = ic }
                             }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(10)
+                        .padding(.horizontal, 16)
                     }
-                    .padding(.vertical, 4)
-                }
-                Section("Color") {
-                    HStack(spacing: 12) {
-                        ForEach(colors, id: \.self) { c in
-                            let col = Habit(name: "", color: c).swiftUIColor
-                            Circle()
-                                .fill(col)
-                                .frame(width: 28, height: 28)
-                                .overlay(color == c ? Circle().stroke(.white, lineWidth: 3) : nil)
+
+                    // COLOR
+                    Group {
+                        Text("COLOR")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 20)
+                            .padding(.bottom, 6)
+
+                        HStack(spacing: 12) {
+                            ForEach(colors, id: \.self) { c in
+                                let col = Habit(name: "", color: c).swiftUIColor
+                                ZStack {
+                                    Circle()
+                                        .fill(col)
+                                        .frame(width: 34, height: 34)
+                                    if color == c {
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 3)
+                                            .frame(width: 34, height: 34)
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(.white)
+                                    }
+                                }
                                 .shadow(color: col.opacity(0.4), radius: 3)
+                                .contentShape(Circle())
                                 .onTapGesture { color = c }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-                Section("Repeat") {
-                    HStack(spacing: 8) {
-                        ForEach(1...7, id: \.self) { day in
-                            Button {
-                                if targetDays.contains(day) { targetDays.remove(day) }
-                                else { targetDays.insert(day) }
-                            } label: {
-                                Text(dayNames[day - 1])
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .frame(width: 34, height: 34)
-                                    .background(targetDays.contains(day) ? selectedColor : Color(.secondarySystemBackground))
-                                    .foregroundColor(targetDays.contains(day) ? .white : .primary)
-                                    .cornerRadius(8)
                             }
                         }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(10)
+                        .padding(.horizontal, 16)
                     }
+
+                    // REPEAT
+                    Group {
+                        Text("REPEAT")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 20)
+                            .padding(.bottom, 6)
+
+                        HStack(spacing: 8) {
+                            ForEach(1...7, id: \.self) { day in
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(targetDays.contains(day) ? selectedColor : Color(.secondarySystemBackground))
+                                        .frame(width: 38, height: 38)
+                                    Text(dayNames[day - 1])
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(targetDays.contains(day) ? .white : .primary)
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if targetDays.contains(day) {
+                                        targetDays.remove(day)
+                                    } else {
+                                        targetDays.insert(day)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(10)
+                        .padding(.horizontal, 16)
+                    }
+
+                    Spacer(minLength: 32)
                 }
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("New Habit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
