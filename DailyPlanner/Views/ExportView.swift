@@ -254,7 +254,7 @@ struct ExportView: View {
         if !byCat.isEmpty {
             lines.append("  EXPENSES BY CATEGORY")
             lines.append(thinLine)
-            for (cat, amt) in byCat.sorted(by: { $0.value > $1.value }) {
+            for (cat, amt) in byCat.sorted(by: { $0.1 > $1.1 }) {
                 lines.append(String(format: "  %-30s %@%.2f", "\(cat.rawValue.capitalized):", sym, amt))
             }
             lines.append("")
