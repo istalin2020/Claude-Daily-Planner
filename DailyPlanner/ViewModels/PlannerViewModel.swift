@@ -10,6 +10,9 @@ class PlannerViewModel: ObservableObject {
     @Published var settings: AppSettings = AppSettings()
     @Published var iCloudAvailable = false
     @Published var highlightedTaskID: UUID? = nil
+    /// Cached medication log for today — updated on toggle and on day change.
+    /// Views should read this instead of calling medicationLogsForToday() directly.
+    @Published private(set) var todayMedicationLogs: Set<UUID> = []
 
     // Tracks the calendar day on which we last ran rollover.
     // Stored in UserDefaults so it survives app kills.
@@ -23,6 +26,14 @@ class PlannerViewModel: ObservableObject {
     private var cloudDocsURL: URL?
     private let iCloudContainerID = "iCloud.com.istalin.DailyPlanner"
     private var metadataQuery: NSMetadataQuery?
+
+    // Shared DateFormatter — DateFormatter init is expensive; reuse a single instance
+    private let _dateKeyFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        return fmt
+    }()
 
     // MARK: - Documents URLs (data survives Xcode rebuilds on device)
     private var docsDir: URL {
@@ -56,13 +67,12 @@ class PlannerViewModel: ObservableObject {
             NotificationManager.shared.scheduleNotifications(
                 times: settings.notificationTimes, tone: settings.notificationTone)
         }
+        todayMedicationLogs = medicationLogsForToday()
     }
 
     // MARK: - Date Key
     func dateKey(for date: Date) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        return fmt.string(from: date)
+        _dateKeyFormatter.string(from: date)
     }
 
     var selectedDateKey: String { dateKey(for: selectedDate) }
@@ -779,15 +789,19 @@ class PlannerViewModel: ObservableObject {
     func habitStreak(_ habit: Habit) -> Int {
         var streak = 0
         var date = Calendar.current.startOfDay(for: Date())
-        while true {
+        let cal = Calendar.current
+        for daysBack in 0...365 {
             if isHabitCompleted(habit, for: date) {
                 streak += 1
             } else if streak > 0 {
+                // Streak broken — stop looking further back
+                break
+            } else if daysBack > 0 {
+                // Neither today nor any consecutive prior day was completed — no active streak
                 break
             }
-            guard let prev = Calendar.current.date(byAdding: .day, value: -1, to: date) else { break }
+            guard let prev = cal.date(byAdding: .day, value: -1, to: date) else { break }
             date = prev
-            if streak > 365 { break }
         }
         return streak
     }
@@ -816,7 +830,7 @@ class PlannerViewModel: ObservableObject {
         if let data = try? JSONEncoder().encode(logs) {
             UserDefaults.standard.set(data, forKey: "\(medLogsKey)_\(key)")
         }
-        objectWillChange.send()
+        todayMedicationLogs = logs
     }
 
     func addMedication(_ med: Medication) {
@@ -980,6 +994,8 @@ class PlannerViewModel: ObservableObject {
         guard todayKey != lastRolloverDateKey else { return }
         checkForRollover()
         UserDefaults.standard.set(todayKey, forKey: "lastRolloverDate")
+        // Refresh medication log cache since the calendar day has advanced
+        todayMedicationLogs = medicationLogsForToday()
     }
 
     /// Manual rollover trigger (e.g. from Settings). Delegates to checkForRollover

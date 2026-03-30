@@ -8,7 +8,7 @@ struct MedicationTrackerView: View {
 
     private var medications: [Medication] { vm.settings.medications }
     private var activeMeds: [Medication] { medications.filter(\.isActive) }
-    private var todayLogs: Set<UUID> { vm.medicationLogsForToday() }
+    private var todayLogs: Set<UUID> { vm.todayMedicationLogs }
 
     var body: some View {
         ScrollView {
