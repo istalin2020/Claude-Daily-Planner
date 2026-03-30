@@ -10,6 +10,7 @@ struct ExpenseTrackerView: View {
     @State private var summaryMonthOffset = 0
     @State private var showBudgets = false
     @State private var showProUpgrade = false
+    @State private var showSpendingTrends = false
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -82,12 +83,37 @@ struct ExpenseTrackerView: View {
                     ProUpgradeView().environmentObject(pro)
                 }
 
+                // ── Spending Trends (PRO) ──────────────────────────────
+                Button {
+                    if pro.isPro { showSpendingTrends = true } else { showProUpgrade = true }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Spending Trends")
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        if !pro.isPro { ProInlineBadge() }
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary.opacity(0.5))
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 12).padding(.horizontal, 14)
+                    .background(Color(red: 0.1, green: 0.65, blue: 0.35).opacity(0.1))
+                    .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 16).padding(.top, 8)
+
                 // ── Today's Transactions ───────────────────────────────
                 todayTransactionsList
                     .padding(.top, 16)
 
                 Spacer(minLength: 40)
             }
+        }
+        .sheet(isPresented: $showSpendingTrends) {
+            SpendingTrendsView().environmentObject(vm)
         }
         .sheet(isPresented: $showAddSheet) {
             AddTransactionSheet(mode: addMode, currencySymbol: sym) { transaction in

@@ -287,9 +287,140 @@ struct OverviewView: View {
                     .frame(maxWidth: .infinity)
                 }
 
+                // Habit Tracker Card (PRO)
+                ProOverviewCard(
+                    section: .habits,
+                    action: { vm.selectedSection = .habits }
+                ) {
+                    let weekday = Calendar.current.component(.weekday, from: vm.selectedDate)
+                    let todayHabits = vm.settings.habits.filter { $0.targetDays.contains(weekday) }
+                    let completedCount = todayHabits.filter { vm.isHabitCompleted($0, for: vm.selectedDate) }.count
+                    if todayHabits.isEmpty {
+                        EmptyOverviewRow(text: "No habits for today")
+                    } else {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle().stroke(Color.secondary.opacity(0.2), lineWidth: 4)
+                                Circle()
+                                    .trim(from: 0, to: todayHabits.count > 0 ? Double(completedCount) / Double(todayHabits.count) : 0)
+                                    .stroke(AppSection.habits.color, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                                    .rotationEffect(.degrees(-90))
+                                Text("\(todayHabits.count > 0 ? Int(Double(completedCount) / Double(todayHabits.count) * 100) : 0)%")
+                                    .font(.system(size: 9, weight: .bold))
+                            }
+                            .frame(width: 36, height: 36)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(completedCount) of \(todayHabits.count) habits done")
+                                    .font(.caption).fontWeight(.medium)
+                                Text(completedCount == todayHabits.count && todayHabits.count > 0 ? "Perfect day!" : "Keep going!")
+                                    .font(.system(size: 10)).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+
+                // Sleep Tracker Card (PRO)
+                ProOverviewCard(
+                    section: .sleepTracker,
+                    action: { vm.selectedSection = .sleepTracker }
+                ) {
+                    let sleep = entry.sleep
+                    if let hours = sleep.durationHours {
+                        HStack(spacing: 12) {
+                            Image(systemName: "moon.zzz.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppSection.sleepTracker.color)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(String(format: "%.1fh sleep", hours))
+                                    .font(.caption).fontWeight(.bold)
+                                if sleep.quality > 0 {
+                                    HStack(spacing: 2) {
+                                        ForEach(1...5, id: \.self) { i in
+                                            Image(systemName: i <= sleep.quality ? "star.fill" : "star")
+                                                .font(.system(size: 8))
+                                                .foregroundColor(i <= sleep.quality ? .yellow : .secondary.opacity(0.3))
+                                        }
+                                    }
+                                } else {
+                                    Text("No quality rating").font(.system(size: 10)).foregroundColor(.secondary)
+                                }
+                            }
+                            Spacer()
+                        }
+                    } else {
+                        EmptyOverviewRow(text: "No sleep logged yet")
+                    }
+                }
+
+                // Medication Tracker Card (PRO)
+                ProOverviewCard(
+                    section: .medications,
+                    action: { vm.selectedSection = .medications }
+                ) {
+                    let activeMeds = vm.settings.medications.filter(\.isActive)
+                    let takenCount = vm.medicationLogsForToday().count
+                    if activeMeds.isEmpty {
+                        EmptyOverviewRow(text: "No medications added")
+                    } else {
+                        HStack(spacing: 12) {
+                            Image(systemName: "pill.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(AppSection.medications.color)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(takenCount) of \(activeMeds.count) taken today")
+                                    .font(.caption).fontWeight(.medium)
+                                Text(takenCount == activeMeds.count ? "All medications taken!" : "\(activeMeds.count - takenCount) remaining")
+                                    .font(.system(size: 10)).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+
                 Spacer(minLength: 24)
             }
         }
+    }
+}
+
+// MARK: - PRO Overview Card (shows PRO lock badge, tappable to navigate)
+struct ProOverviewCard<Content: View>: View {
+    @EnvironmentObject var pro: ProManager
+    let section: AppSection
+    let action: () -> Void
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: section.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(6)
+                        .background(section.color)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    Text(section.rawValue)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.primary)
+                    Spacer()
+                    if !pro.isPro {
+                        ProInlineBadge()
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary.opacity(0.5))
+                }
+                content
+            }
+            .padding(14)
+            .background(Color(.systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+            .padding(.horizontal, 12)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

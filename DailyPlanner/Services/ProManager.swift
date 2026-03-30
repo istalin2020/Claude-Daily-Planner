@@ -152,42 +152,82 @@ struct ProGate<Content: View>: View {
         if pro.isPro {
             content()
         } else {
-            ZStack {
-                content()
-                    .blur(radius: 6)
-                    .allowsHitTesting(false)
+            // Do NOT render content() when not PRO — avoids hang from building expensive views.
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Gradient header matching section style
+                    LinearGradient(
+                        colors: [Color(red: 1.0, green: 0.65, blue: 0.0).opacity(0.85),
+                                 Color(red: 1.0, green: 0.40, blue: 0.0)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                    .frame(height: 80)
+                    .overlay(
+                        HStack(spacing: 14) {
+                            Image(systemName: featureIcon)
+                                .font(.system(size: 28, weight: .semibold))
+                                .foregroundColor(.white)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(featureName)
+                                    .font(.title3).fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                Text("PRO Feature")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.85))
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                    )
 
-                VStack(spacing: 16) {
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 36))
-                        .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.0))
+                    VStack(spacing: 24) {
+                        Spacer(minLength: 40)
 
-                    VStack(spacing: 6) {
-                        Text("\(featureName) is PRO")
-                            .font(.headline).fontWeight(.bold)
-                        Text("Upgrade to unlock all 15 premium features")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(
+                                    colors: [Color(red: 1.0, green: 0.78, blue: 0.0),
+                                             Color(red: 1.0, green: 0.45, blue: 0.0)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 80, height: 80)
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 36))
+                                .foregroundColor(.white)
+                        }
 
-                    Button(action: { showUpgrade = true }) {
-                        Text("Upgrade to PRO")
-                            .font(.system(size: 15, weight: .semibold))
+                        VStack(spacing: 8) {
+                            Text("\(featureName) is PRO")
+                                .font(.title3).fontWeight(.bold)
+                            Text("Upgrade to unlock all 15 premium features including\nHabit Tracker, Sleep Tracker, Medication Reminders,\nPomodoro Timer, Spending Trends and more.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.horizontal, 32)
+
+                        Button(action: { showUpgrade = true }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "crown.fill")
+                                    .font(.system(size: 14))
+                                Text("Upgrade to PRO")
+                                    .font(.system(size: 16, weight: .bold))
+                            }
                             .foregroundColor(.white)
-                            .padding(.horizontal, 28).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
                             .background(
                                 LinearGradient(colors: [Color(red: 1.0, green: 0.65, blue: 0.0),
                                                         Color(red: 1.0, green: 0.40, blue: 0.0)],
                                                startPoint: .leading, endPoint: .trailing)
                             )
-                            .cornerRadius(24)
+                            .cornerRadius(16)
+                            .shadow(color: Color(red: 1.0, green: 0.55, blue: 0.0).opacity(0.4), radius: 8, y: 4)
+                        }
+                        .padding(.horizontal, 32)
+
+                        Spacer(minLength: 40)
                     }
                 }
-                .padding(28)
-                .background(.ultraThinMaterial)
-                .cornerRadius(20)
-                .padding(24)
             }
             .sheet(isPresented: $showUpgrade) {
                 ProUpgradeView().environmentObject(pro)

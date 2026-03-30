@@ -11,7 +11,6 @@ struct SettingsView: View {
     @State private var permissionDenied   = false
     @State private var monthlyIncomeText  = ""
     @State private var showExport         = false
-    @State private var showSpendingTrends = false
     @State private var showWeeklySummary  = false
     @State private var showPomodoro       = false
     @State private var showProUpgrade     = false
@@ -23,7 +22,84 @@ struct SettingsView: View {
         NavigationView {
             Form {
 
-                // ── NOTIFICATIONS ──────────────────────────────────────
+                // ── 1. iCLOUD SYNC ────────────────────────────────────────
+                Section {
+                    HStack {
+                        Label("iCloud Sync", systemImage: "icloud.fill")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if !pro.isPro {
+                            ProInlineBadge()
+                        } else if vm.iCloudAvailable {
+                            Label("On", systemImage: "checkmark.circle.fill")
+                                .font(.caption).foregroundColor(.green)
+                        } else {
+                            Label("Sign in to iCloud", systemImage: "xmark.circle.fill")
+                                .font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                    .onTapGesture { if !pro.isPro { showProUpgrade = true } }
+                } header: {
+                    Text("iCloud Sync")
+                } footer: {
+                    Text(pro.isPro
+                         ? (vm.iCloudAvailable ? "Your data syncs across all Apple devices." : "Sign in to iCloud in iOS Settings to enable sync.")
+                         : "iCloud Sync is a PRO feature. Upgrade to sync across all your Apple devices.")
+                }
+
+                // ── 2. POMODORO TIMER ──────────────────────────────────────
+                Section("Pomodoro Timer") {
+                    Button {
+                        if pro.isPro { showPomodoro = true } else { showProUpgrade = true }
+                    } label: {
+                        HStack {
+                            Label("Open Focus Timer", systemImage: "timer")
+                                .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.5))
+                            Spacer()
+                            if !pro.isPro {
+                                ProInlineBadge()
+                            } else {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                // ── 3. CURRENCY ────────────────────────────────────────────
+                Section("Currency") {
+                    Picker(selection: $vm.settings.currency) {
+                        ForEach(Currency.allCases) { currency in
+                            Text(currency.displayName).tag(currency)
+                        }
+                    } label: {
+                        Label("Currency", systemImage: "dollarsign.circle.fill")
+                    }
+                }
+
+                // ── 4. SALARY ──────────────────────────────────────────────
+                Section {
+                    HStack(spacing: 8) {
+                        Label("Monthly Salary", systemImage: "banknote.fill")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text(vm.settings.currency.symbol)
+                            .foregroundColor(.secondary)
+                        TextField("0.00", text: $monthlyIncomeText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 100)
+                            .onChange(of: monthlyIncomeText) { _, val in
+                                vm.settings.monthlyIncome = Double(val) ?? 0
+                            }
+                    }
+                } header: {
+                    Text("Salary")
+                } footer: {
+                    Text("Monthly salary is used in the income summary in Expense Tracker. The currency symbol applies throughout the app.")
+                }
+
+                // ── 5. ENABLE DAILY REMINDERS + HORIZONTAL TIME BAR ───────
                 Section {
                     Toggle(isOn: $vm.settings.notificationsEnabled) {
                         Label("Enable Daily Reminders", systemImage: "bell.badge.fill")
@@ -38,36 +114,64 @@ struct SettingsView: View {
                     }
 
                     if vm.settings.notificationsEnabled {
-                        if vm.settings.notificationTimes.isEmpty {
-                            Text("No reminders set — tap ＋ to add one.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .italic()
-                        } else {
-                            ForEach(vm.settings.notificationTimes, id: \.self) { time in
-                                HStack {
-                                    Image(systemName: "alarm.fill")
-                                        .foregroundColor(.orange)
-                                        .frame(width: 24)
-                                    Text(formattedTime(time))
-                                        .font(.system(size: 15, weight: .medium))
-                                    Spacer()
+                        // ── Horizontal scrolling reminder times ──────────────
+                        VStack(alignment: .leading, spacing: 8) {
+                            if vm.settings.notificationTimes.isEmpty {
+                                Text("No reminders set — tap ＋ to add one.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                                    .padding(.vertical, 4)
+                            } else {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(Array(vm.settings.notificationTimes.enumerated()), id: \.element) { idx, time in
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "alarm.fill")
+                                                    .font(.system(size: 11))
+                                                    .foregroundColor(.orange)
+                                                Text(formattedTime(time))
+                                                    .font(.system(size: 13, weight: .semibold))
+                                                Button {
+                                                    vm.settings.notificationTimes.remove(at: idx)
+                                                    NotificationManager.shared.scheduleNotifications(
+                                                        times: vm.settings.notificationTimes,
+                                                        tone: vm.settings.notificationTone)
+                                                } label: {
+                                                    Image(systemName: "xmark.circle.fill")
+                                                        .font(.system(size: 12))
+                                                        .foregroundColor(.secondary.opacity(0.6))
+                                                }
+                                                .buttonStyle(PlainButtonStyle())
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 7)
+                                            .background(Color.orange.opacity(0.12))
+                                            .cornerRadius(16)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                                            )
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
                                 }
                             }
-                            .onDelete { offsets in
-                                vm.settings.notificationTimes.remove(atOffsets: offsets)
-                                NotificationManager.shared.scheduleNotifications(
-                                    times: vm.settings.notificationTimes,
-                                    tone: vm.settings.notificationTone)
-                            }
-                        }
 
-                        Button {
-                            pickerTime = Self.defaultPickerTime()
-                            showTimePicker = true
-                        } label: {
-                            Label("Add Reminder Time", systemImage: "plus.circle.fill")
-                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            Button {
+                                guard vm.settings.notificationTimes.count < 7 else { return }
+                                pickerTime = Self.defaultPickerTime()
+                                showTimePicker = true
+                            } label: {
+                                Label(vm.settings.notificationTimes.count >= 7
+                                      ? "Maximum 7 reminders reached"
+                                      : "Add Reminder Time (\(vm.settings.notificationTimes.count)/7)",
+                                      systemImage: "plus.circle.fill")
+                                    .foregroundColor(vm.settings.notificationTimes.count >= 7
+                                                     ? .secondary
+                                                     : Color(red: 0.45, green: 0.25, blue: 0.85))
+                            }
+                            .disabled(vm.settings.notificationTimes.count >= 7)
                         }
                     }
 
@@ -77,33 +181,15 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundColor(.orange)
                     }
-                    if vm.settings.notificationsEnabled {
-                        Picker(selection: $vm.settings.notificationTone) {
-                            ForEach(NotificationTone.allCases) { tone in
-                                Text(tone.rawValue).tag(tone)
-                            }
-                        } label: {
-                            Label("Notification Tone", systemImage: "speaker.wave.2.fill")
-                        }
-                        .onChange(of: vm.settings.notificationTone) { _, newTone in
-                            if !vm.settings.notificationTimes.isEmpty {
-                                NotificationManager.shared.scheduleNotifications(
-                                    times: vm.settings.notificationTimes,
-                                    tone: newTone)
-                            }
-                            // Play a 1-second preview so the user hears the chosen tone
-                            NotificationManager.shared.playPreview(tone: newTone)
-                        }
-                    }
                 } header: {
-                    Text("Reminders")
+                    Text("Daily Reminders")
                 } footer: {
                     if vm.settings.notificationsEnabled {
-                        Text("Add up to 7 times. Each reminder carries a unique motivating message. The selected tone applies to daily reminders, schedule blocks, and appointment reminders.")
+                        Text("Add up to 7 times. Each reminder carries a unique motivating message. Tap × on a time chip to remove it.")
                     }
                 }
 
-                // ── REMINDER MESSAGES (read-only preview) ─────────────
+                // ── REMINDER MESSAGES (read-only preview) ─────────────────
                 if vm.settings.notificationsEnabled {
                     Section {
                         ForEach(Array(reminderMessages.enumerated()), id: \.offset) { idx, msg in
@@ -122,45 +208,28 @@ struct SettingsView: View {
                     }
                 }
 
-                // ── DISPLAY ─────────────────────────────────────────────
-                Section("Display") {
-                    Toggle(isOn: $vm.settings.isDarkMode) {
-                        Label("Dark Mode", systemImage: vm.settings.isDarkMode ? "moon.fill" : "sun.max.fill")
-                    }
-                    .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
-                }
-
-                // ── FINANCE ────────────────────────────────────────────
-                Section {
-                    Picker(selection: $vm.settings.currency) {
-                        ForEach(Currency.allCases) { currency in
-                            Text(currency.displayName).tag(currency)
-                        }
-                    } label: {
-                        Label("Currency", systemImage: "dollarsign.circle.fill")
-                    }
-
-                    HStack(spacing: 8) {
-                        Label("Monthly Salary", systemImage: "banknote.fill")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Text(vm.settings.currency.symbol)
-                            .foregroundColor(.secondary)
-                        TextField("0.00", text: $monthlyIncomeText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 100)
-                            .onChange(of: monthlyIncomeText) { _, val in
-                                vm.settings.monthlyIncome = Double(val) ?? 0
+                // ── 6. NOTIFICATION TONE ───────────────────────────────────
+                if vm.settings.notificationsEnabled {
+                    Section("Notification Tone") {
+                        Picker(selection: $vm.settings.notificationTone) {
+                            ForEach(NotificationTone.allCases) { tone in
+                                Text(tone.rawValue).tag(tone)
                             }
+                        } label: {
+                            Label("Notification Tone", systemImage: "speaker.wave.2.fill")
+                        }
+                        .onChange(of: vm.settings.notificationTone) { _, newTone in
+                            if !vm.settings.notificationTimes.isEmpty {
+                                NotificationManager.shared.scheduleNotifications(
+                                    times: vm.settings.notificationTimes,
+                                    tone: newTone)
+                            }
+                            NotificationManager.shared.playPreview(tone: newTone)
+                        }
                     }
-                } header: {
-                    Text("Finance")
-                } footer: {
-                    Text("Monthly salary is used in the monthly income summary in Expense Tracker. The currency symbol applies throughout the app.")
                 }
 
-                // ── TASK MANAGEMENT ────────────────────────────────────
+                // ── 7. ROLL OVER PENDING TASKS ─────────────────────────────
                 Section {
                     Toggle(isOn: $vm.settings.autoRollover) {
                         Label("Roll Over Pending Tasks Daily",
@@ -181,42 +250,53 @@ struct SettingsView: View {
                     Text("Task Management")
                 }
 
-                // ── PRO UPGRADE BANNER ─────────────────────────────────
-                if !pro.isPro {
-                    Section {
-                        Button(action: { showProUpgrade = true }) {
-                            HStack(spacing: 12) {
-                                ZStack {
-                                    Circle()
-                                        .fill(LinearGradient(
-                                            colors: [Color(red: 1.0, green: 0.78, blue: 0.0),
-                                                     Color(red: 1.0, green: 0.45, blue: 0.0)],
-                                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                                        .frame(width: 40, height: 40)
-                                    Image(systemName: "crown.fill")
-                                        .foregroundColor(.white).font(.system(size: 18))
-                                }
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Upgrade to PRO")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.primary)
-                                    Text("₹99/month · ₹999/year · Unlock all 15 features")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
+                // ── 8. EXPORT DATA ─────────────────────────────────────────
+                Section("Export Data") {
+                    Button {
+                        if pro.isPro { showExport = true } else { showProUpgrade = true }
+                    } label: {
+                        HStack {
+                            Label("Export Data (CSV / Report)", systemImage: "square.and.arrow.up.fill")
+                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            Spacer()
+                            if !pro.isPro {
+                                ProInlineBadge()
+                            } else {
                                 Image(systemName: "chevron.right")
                                     .font(.caption).foregroundColor(.secondary)
                             }
                         }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .sheet(isPresented: $showProUpgrade) {
-                        ProUpgradeView().environmentObject(pro)
                     }
                 }
 
-                // ── APPEARANCE ─────────────────────────────────────────
+                // ── 9. WEEKLY / MONTHLY SUMMARY ────────────────────────────
+                Section("Reports") {
+                    Button {
+                        if pro.isPro { showWeeklySummary = true } else { showProUpgrade = true }
+                    } label: {
+                        HStack {
+                            Label("Weekly / Monthly Summary", systemImage: "calendar.badge.clock")
+                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            Spacer()
+                            if !pro.isPro {
+                                ProInlineBadge()
+                            } else {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                // ── 10. DARK MODE ──────────────────────────────────────────
+                Section("Display") {
+                    Toggle(isOn: $vm.settings.isDarkMode) {
+                        Label("Dark Mode", systemImage: vm.settings.isDarkMode ? "moon.fill" : "sun.max.fill")
+                    }
+                    .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
+                }
+
+                // ── 11. COLOR THEME ────────────────────────────────────────
                 Section {
                     HStack {
                         Label("Color Theme", systemImage: "paintpalette.fill")
@@ -268,50 +348,43 @@ struct SettingsView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
                 } header: {
-                    Text("Appearance")
+                    Text("Color Theme")
                 }
 
-                // ── SYNC ───────────────────────────────────────────────
-                Section {
-                    HStack {
-                        Label("iCloud Sync", systemImage: "icloud.fill")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        if !pro.isPro {
-                            ProInlineBadge()
-                        } else if vm.iCloudAvailable {
-                            Label("On", systemImage: "checkmark.circle.fill")
-                                .font(.caption).foregroundColor(.green)
-                        } else {
-                            Label("Off — Sign in to iCloud", systemImage: "xmark.circle.fill")
-                                .font(.caption).foregroundColor(.secondary)
+                // ── PRO UPGRADE BANNER (if not PRO) ───────────────────────
+                if !pro.isPro {
+                    Section {
+                        Button(action: { showProUpgrade = true }) {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(LinearGradient(
+                                            colors: [Color(red: 1.0, green: 0.78, blue: 0.0),
+                                                     Color(red: 1.0, green: 0.45, blue: 0.0)],
+                                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "crown.fill")
+                                        .foregroundColor(.white).font(.system(size: 18))
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Upgrade to PRO")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.primary)
+                                    Text("₹99/month · ₹999/year · Unlock all 15 features")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
                         }
-                    }
-                    .onTapGesture { if !pro.isPro { showProUpgrade = true } }
-                } header: {
-                    Text("Sync")
-                } footer: {
-                    Text(pro.isPro
-                         ? (vm.iCloudAvailable ? "Your data syncs across all Apple devices." : "Sign in to iCloud in iOS Settings.")
-                         : "iCloud Sync is a PRO feature.")
-                }
-
-                // ── TOOLS ──────────────────────────────────────────────
-                Section("Tools") {
-                    Button {
-                        if pro.isPro { showPomodoro = true } else { showProUpgrade = true }
-                    } label: {
-                        HStack {
-                            Label("Pomodoro Timer", systemImage: "timer")
-                                .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.5))
-                            Spacer()
-                            if !pro.isPro { ProInlineBadge() }
-                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
 
-                // ── ABOUT ──────────────────────────────────────────────
-                Section("About") {
+                // ── 12. ABOUT DAILY PLANNER ────────────────────────────────
+                Section("About Daily Planner") {
                     HStack {
                         Text("Daily Planner")
                         Spacer()
@@ -330,36 +403,6 @@ struct SettingsView: View {
                         Text("Version")
                         Spacer()
                         Text("1.0").foregroundColor(.secondary).font(.caption)
-                    }
-                    Button {
-                        if pro.isPro { showExport = true } else { showProUpgrade = true }
-                    } label: {
-                        HStack {
-                            Label("Export Data", systemImage: "square.and.arrow.up.fill")
-                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
-                            Spacer()
-                            if !pro.isPro { ProInlineBadge() }
-                        }
-                    }
-                    Button {
-                        if pro.isPro { showSpendingTrends = true } else { showProUpgrade = true }
-                    } label: {
-                        HStack {
-                            Label("Spending Trends", systemImage: "chart.bar.fill")
-                                .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
-                            Spacer()
-                            if !pro.isPro { ProInlineBadge() }
-                        }
-                    }
-                    Button {
-                        if pro.isPro { showWeeklySummary = true } else { showProUpgrade = true }
-                    } label: {
-                        HStack {
-                            Label("Weekly / Monthly Summary", systemImage: "calendar.badge.clock")
-                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
-                            Spacer()
-                            if !pro.isPro { ProInlineBadge() }
-                        }
                     }
                 }
             }
@@ -381,20 +424,18 @@ struct SettingsView: View {
                     guard vm.settings.notificationTimes.count < 7 else { return }
                     vm.settings.notificationTimes.append(pickerTime)
                     NotificationManager.shared.scheduleNotifications(
-                        times: vm.settings.notificationTimes)
+                        times: vm.settings.notificationTimes,
+                        tone: vm.settings.notificationTone)
                 }
             }
             .sheet(isPresented: $showExport) {
                 ExportView().environmentObject(vm)
             }
-            .sheet(isPresented: $showSpendingTrends) {
-                SpendingTrendsView().environmentObject(vm)
-            }
             .sheet(isPresented: $showWeeklySummary) {
                 WeeklySummaryView().environmentObject(vm)
             }
             .sheet(isPresented: $showPomodoro) {
-                PomodoroTimerView()
+                PomodoroTimerView().environmentObject(vm)
             }
             .sheet(isPresented: $showProUpgrade) {
                 ProUpgradeView().environmentObject(pro)

@@ -106,35 +106,108 @@ struct ExportView: View {
         }
     }
 
+    // MARK: - CSV / Report Generators
+
+    private func csvEscape(_ str: String) -> String {
+        let escaped = str.replacingOccurrences(of: "\"", with: "\"\"")
+        return "\"\(escaped)\""
+    }
+
     private func generateExpensesCSV() -> String {
-        var csv = "Date,Description,Category,Amount,Type\n"
-        let entries = vm.monthlyEntries(for: exportMonth)
-            .sorted { $0.date < $1.date }
+        let fmt = DateFormatter(); fmt.dateFormat = "MMMM yyyy"
+        let monthStr = fmt.string(from: exportMonth)
         let sym = vm.settings.currency.symbol
+        let entries = vm.monthlyEntries(for: exportMonth).sorted { $0.date < $1.date }
+
+        var lines: [String] = []
+
+        // Document heading block
+        lines.append("Daily Planner — Expense Export")
+        lines.append("Month: \(monthStr)")
+        lines.append("Currency: \(vm.settings.currency.displayName) (\(sym))")
+        lines.append("Generated: \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))")
+        lines.append("") // blank separator
+
+        // Column header
+        lines.append("No.,Date,Description,Category,Amount,Type")
+
+        let dfmt = DateFormatter(); dfmt.dateStyle = .medium
+        var rowNum = 0
+        var totalIncome = 0.0, totalExpense = 0.0, totalSavings = 0.0
         for entry in entries {
-            let fmt = DateFormatter(); fmt.dateStyle = .short
-            let dateStr = fmt.string(from: entry.date)
             for e in entry.expenses {
+                rowNum += 1
                 let type = e.isIncome ? "Income" : (e.isDeposit ? "Savings" : "Expense")
                 let sign = e.isIncome || e.isDeposit ? "+" : "-"
-                csv += "\(dateStr),\"\(e.description)\",\(e.category.rawValue),\(sign)\(sym)\(String(format: "%.2f", e.amount)),\(type)\n"
+                let amt = "\(sign)\(sym)\(String(format: "%.2f", e.amount))"
+                let cat = e.category.rawValue.capitalized
+                lines.append("\(rowNum),\(csvEscape(dfmt.string(from: entry.date))),\(csvEscape(e.description)),\(csvEscape(cat)),\(csvEscape(amt)),\(type)")
+                if e.isIncome { totalIncome += e.amount }
+                else if e.isDeposit { totalSavings += e.amount }
+                else { totalExpense += e.amount }
             }
         }
-        return csv
+
+        // Summary footer
+        lines.append("")
+        lines.append("SUMMARY")
+        lines.append("Total Income,\(sym)\(String(format: "%.2f", totalIncome))")
+        lines.append("Total Expenses,\(sym)\(String(format: "%.2f", totalExpense))")
+        lines.append("Total Savings,\(sym)\(String(format: "%.2f", totalSavings))")
+        lines.append("Net Balance,\(sym)\(String(format: "%.2f", totalIncome - totalExpense))")
+
+        return lines.joined(separator: "\n")
     }
 
     private func generateTasksCSV() -> String {
-        var csv = "Date,Title,Section,Status,Notes\n"
+        let fmt = DateFormatter(); fmt.dateFormat = "MMMM yyyy"
+        let monthStr = fmt.string(from: exportMonth)
         let entries = vm.monthlyEntries(for: exportMonth).sorted { $0.date < $1.date }
-        let fmt = DateFormatter(); fmt.dateStyle = .short
+
+        var lines: [String] = []
+
+        // Document heading block
+        lines.append("Daily Planner — Task Export")
+        lines.append("Month: \(monthStr)")
+        lines.append("Generated: \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))")
+        lines.append("")
+
+        // Column header
+        lines.append("No.,Date,Title,Section,Status,Notes")
+
+        let dfmt = DateFormatter(); dfmt.dateStyle = .medium
+        var rowNum = 0
+        var totalTasks = 0, doneTasks = 0
+
         for entry in entries {
-            let d = fmt.string(from: entry.date)
-            for t in entry.topPriorities { csv += "\(d),\"\(t.title)\",Top Priorities,\(t.isCompleted ? "Done" : "Pending"),\"\(t.notes)\"\n" }
-            for t in entry.toDoLists    { csv += "\(d),\"\(t.title)\",To-Do,\(t.isCompleted ? "Done" : "Pending"),\"\(t.notes)\"\n" }
-            for t in entry.callsEmails  { csv += "\(d),\"\(t.title)\",Calls & Emails,\(t.isCompleted ? "Done" : "Pending"),\"\(t.notes)\"\n" }
-            for t in entry.personalTodo { csv += "\(d),\"\(t.title)\",Personal,\(t.isCompleted ? "Done" : "Pending"),\"\(t.notes)\"\n" }
+            let d = csvEscape(dfmt.string(from: entry.date))
+            let sections: [(tasks: [PlannerTask], name: String)] = [
+                (entry.topPriorities, "Top Priorities"),
+                (entry.toDoLists,     "To-Do Lists"),
+                (entry.callsEmails,   "Calls & Emails"),
+                (entry.personalTodo,  "Personal To-Do")
+            ]
+            for (tasks, sectionName) in sections {
+                for t in tasks {
+                    rowNum += 1
+                    totalTasks += 1
+                    if t.isCompleted { doneTasks += 1 }
+                    let status = t.isCompleted ? "Done" : "Pending"
+                    lines.append("\(rowNum),\(d),\(csvEscape(t.title)),\(csvEscape(sectionName)),\(status),\(csvEscape(t.notes))")
+                }
+            }
         }
-        return csv
+
+        // Summary footer
+        let pct = totalTasks > 0 ? Int(Double(doneTasks) / Double(totalTasks) * 100) : 0
+        lines.append("")
+        lines.append("SUMMARY")
+        lines.append("Total Tasks,\(totalTasks)")
+        lines.append("Completed,\(doneTasks)")
+        lines.append("Pending,\(totalTasks - doneTasks)")
+        lines.append("Completion Rate,\(pct)%")
+
+        return lines.joined(separator: "\n")
     }
 
     private func generateMonthlyReport() -> String {
@@ -142,33 +215,81 @@ struct ExportView: View {
         let monthStr = fmt.string(from: exportMonth)
         let entries = vm.monthlyEntries(for: exportMonth).sorted { $0.date < $1.date }
         let sym = vm.settings.currency.symbol
+        let divider = String(repeating: "═", count: 50)
+        let thinLine = String(repeating: "─", count: 50)
 
-        var report = "=== DAILY PLANNER — \(monthStr.uppercased()) REPORT ===\n\n"
+        var lines: [String] = []
+        lines.append(divider)
+        lines.append("  DAILY PLANNER  —  \(monthStr.uppercased())")
+        lines.append("  Monthly Summary Report")
+        lines.append("  Generated: \(DateFormatter.localizedString(from: Date(), dateStyle: .long, timeStyle: .short))")
+        lines.append(divider)
+        lines.append("")
 
-        let totalTasks = entries.flatMap { $0.topPriorities + $0.toDoLists + $0.callsEmails + $0.personalTodo }
-        let doneTasks = totalTasks.filter { $0.isCompleted }
-        report += "TASK SUMMARY\n"
-        report += "Total tasks: \(totalTasks.count)\n"
-        report += "Completed:   \(doneTasks.count) (\(totalTasks.isEmpty ? 0 : Int(Double(doneTasks.count)/Double(totalTasks.count)*100))%)\n\n"
+        // Task Summary
+        let allTasks = entries.flatMap { $0.topPriorities + $0.toDoLists + $0.callsEmails + $0.personalTodo }
+        let done = allTasks.filter(\.isCompleted)
+        let pct = allTasks.isEmpty ? 0 : Int(Double(done.count) / Double(allTasks.count) * 100)
 
-        report += "FINANCE SUMMARY\n"
-        report += "Total Income:  \(sym)\(String(format: "%.2f", vm.monthlyTotalIncome(for: exportMonth)))\n"
-        report += "Total Expenses:\(sym)\(String(format: "%.2f", vm.monthlyTotalExpenses(for: exportMonth)))\n"
-        report += "Balance:       \(sym)\(String(format: "%.2f", vm.monthlyBalance(for: exportMonth)))\n\n"
+        lines.append("  TASK SUMMARY")
+        lines.append(thinLine)
+        lines.append(String(format: "  %-30s %d", "Total Tasks:", allTasks.count))
+        lines.append(String(format: "  %-30s %d  (%d%%)", "Completed:", done.count, pct))
+        lines.append(String(format: "  %-30s %d", "Pending:", allTasks.count - done.count))
+        lines.append("")
 
-        report += "EXPENSE BY CATEGORY\n"
-        for (cat, amt) in vm.monthlyExpensesByCategory(for: exportMonth) {
-            report += "  \(cat.rawValue): \(sym)\(String(format: "%.2f", amt))\n"
+        // Finance Summary
+        let totalInc = vm.monthlyTotalIncome(for: exportMonth)
+        let totalExp = vm.monthlyTotalExpenses(for: exportMonth)
+        let balance  = vm.monthlyBalance(for: exportMonth)
+        lines.append("  FINANCE SUMMARY")
+        lines.append(thinLine)
+        lines.append(String(format: "  %-30s %@%.2f", "Total Income:", sym, totalInc))
+        lines.append(String(format: "  %-30s %@%.2f", "Total Expenses:", sym, totalExp))
+        lines.append(String(format: "  %-30s %@%.2f", "Net Balance:", sym, balance))
+        lines.append("")
+
+        // Expense by Category
+        let byCat = vm.monthlyExpensesByCategory(for: exportMonth)
+        if !byCat.isEmpty {
+            lines.append("  EXPENSES BY CATEGORY")
+            lines.append(thinLine)
+            for (cat, amt) in byCat.sorted(by: { $0.value > $1.value }) {
+                lines.append(String(format: "  %-30s %@%.2f", "\(cat.rawValue.capitalized):", sym, amt))
+            }
+            lines.append("")
         }
-        report += "\nDAILY BREAKDOWN\n"
-        let dfmt = DateFormatter(); dfmt.dateStyle = .medium
-        for entry in entries where !entry.expenses.isEmpty || !entry.topPriorities.isEmpty {
-            report += "\n\(dfmt.string(from: entry.date))\n"
-            if !entry.topPriorities.isEmpty {
-                report += "  Priorities: \(entry.topPriorities.filter(\.isCompleted).count)/\(entry.topPriorities.count) done\n"
+
+        // Daily Breakdown
+        lines.append("  DAILY BREAKDOWN")
+        lines.append(thinLine)
+        let dfmt = DateFormatter(); dfmt.dateFormat = "EEE, d MMM"
+        for entry in entries {
+            let hasTasks = !(entry.topPriorities + entry.toDoLists + entry.callsEmails + entry.personalTodo).isEmpty
+            let hasExp   = !entry.expenses.isEmpty
+            guard hasTasks || hasExp else { continue }
+
+            let totalTasks = entry.topPriorities.count + entry.toDoLists.count + entry.callsEmails.count + entry.personalTodo.count
+            let doneTasks  = (entry.topPriorities + entry.toDoLists + entry.callsEmails + entry.personalTodo).filter(\.isCompleted).count
+            lines.append("")
+            lines.append("  \(dfmt.string(from: entry.date))")
+            if hasTasks {
+                lines.append(String(format: "    Tasks: %d/%d done", doneTasks, totalTasks))
+            }
+            if hasExp {
+                let dayInc = entry.totalIncome
+                let dayExp = entry.totalExpenses
+                if dayInc > 0 { lines.append(String(format: "    Income:   %@%.2f", sym, dayInc)) }
+                if dayExp > 0 { lines.append(String(format: "    Expenses: %@%.2f", sym, dayExp)) }
             }
         }
-        return report
+
+        lines.append("")
+        lines.append(divider)
+        lines.append("  End of Report")
+        lines.append(divider)
+
+        return lines.joined(separator: "\n")
     }
 }
 

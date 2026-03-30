@@ -11,6 +11,9 @@ class PomodoroTimer: ObservableObject {
     @Published var isRunning = false
     @Published var linkedTask = ""
 
+    /// Set this to the user's chosen notification tone so it plays when a phase ends.
+    var notificationTone: NotificationTone = .defaultTone
+
     private var timer: Timer?
     var workDuration   = 25 * 60
     var shortBreak     = 5  * 60
@@ -80,7 +83,12 @@ class PomodoroTimer: ObservableObject {
     }
 
     private func tick() {
-        guard timeRemaining > 0 else { advance(); return }
+        guard timeRemaining > 0 else {
+            // Play the user's selected notification tone when timer hits zero
+            NotificationManager.shared.playPreview(tone: notificationTone)
+            advance()
+            return
+        }
         timeRemaining -= 1
     }
 
@@ -119,6 +127,7 @@ struct PomodoroTimerView: View {
     @State private var showSettings = false
     @State private var showIntro = true
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var vm: PlannerViewModel
 
     var body: some View {
         NavigationView {
@@ -299,6 +308,12 @@ struct PomodoroTimerView: View {
             }
             .sheet(isPresented: $showSettings) {
                 PomodoroSettingsSheet(pomodoro: pomodoro)
+            }
+            .onAppear {
+                pomodoro.notificationTone = vm.settings.notificationTone
+            }
+            .onChange(of: vm.settings.notificationTone) { _, tone in
+                pomodoro.notificationTone = tone
             }
         }
     }
