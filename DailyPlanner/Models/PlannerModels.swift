@@ -421,6 +421,10 @@ struct Medication: Identifiable, Codable {
     var isActive: Bool = true
     var notes: String = ""
     var color: String = "blue"
+    /// "daily" or "weekly"
+    var repeatType: String = "daily"
+    /// Calendar weekday (1=Sunday, 2=Monday … 7=Saturday). Used only when repeatType == "weekly".
+    var weekday: Int = 2
 
     var swiftUIColor: Color {
         switch color {
@@ -436,21 +440,25 @@ struct Medication: Identifiable, Codable {
     }
 
     init(id: UUID = UUID(), name: String, dosage: String = "", times: [Date] = [],
-         isActive: Bool = true, notes: String = "", color: String = "blue") {
+         isActive: Bool = true, notes: String = "", color: String = "blue",
+         repeatType: String = "daily", weekday: Int = 2) {
         self.id = id; self.name = name; self.dosage = dosage
         self.times = times; self.isActive = isActive
         self.notes = notes; self.color = color
+        self.repeatType = repeatType; self.weekday = weekday
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        id       = try c.decodeIfPresent(UUID.self,   forKey: .id)       ?? UUID()
-        name     = try c.decode(String.self,           forKey: .name)
-        dosage   = try c.decodeIfPresent(String.self, forKey: .dosage)   ?? ""
-        times    = try c.decodeIfPresent([Date].self,  forKey: .times)    ?? []
-        isActive = try c.decodeIfPresent(Bool.self,   forKey: .isActive) ?? true
-        notes    = try c.decodeIfPresent(String.self, forKey: .notes)    ?? ""
-        color    = try c.decodeIfPresent(String.self, forKey: .color)    ?? "blue"
+        id         = try c.decodeIfPresent(UUID.self,   forKey: .id)         ?? UUID()
+        name       = try c.decode(String.self,           forKey: .name)
+        dosage     = try c.decodeIfPresent(String.self, forKey: .dosage)     ?? ""
+        times      = try c.decodeIfPresent([Date].self,  forKey: .times)      ?? []
+        isActive   = try c.decodeIfPresent(Bool.self,   forKey: .isActive)   ?? true
+        notes      = try c.decodeIfPresent(String.self, forKey: .notes)      ?? ""
+        color      = try c.decodeIfPresent(String.self, forKey: .color)      ?? "blue"
+        repeatType = try c.decodeIfPresent(String.self, forKey: .repeatType) ?? "daily"
+        weekday    = try c.decodeIfPresent(Int.self,    forKey: .weekday)    ?? 2
     }
 }
 

@@ -182,12 +182,18 @@ struct MedicationRow: View {
         HStack(spacing: 14) {
             Button(action: onToggle) {
                 ZStack {
-                    Circle()
-                        .fill(isTaken ? medication.swiftUIColor : Color(.systemGray5))
-                        .frame(width: 42, height: 42)
-                    Image(systemName: isTaken ? "checkmark" : "pill.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(isTaken ? .white : medication.swiftUIColor)
+                    if isTaken {
+                        Circle()
+                            .fill(medication.swiftUIColor)
+                            .frame(width: 42, height: 42)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    } else {
+                        Circle()
+                            .strokeBorder(medication.swiftUIColor, lineWidth: 2)
+                            .frame(width: 42, height: 42)
+                    }
                 }
             }
             .buttonStyle(PlainButtonStyle())
@@ -274,7 +280,8 @@ struct MedicationListRow: View {
                     Text(medication.dosage).font(.caption).foregroundColor(.secondary)
                 }
                 if !medication.times.isEmpty {
-                    Text("\(medication.times.count) reminder\(medication.times.count == 1 ? "" : "s") daily")
+                    let freq = medication.repeatType == "weekly" ? "weekly" : "daily"
+                    Text("\(medication.times.count) reminder\(medication.times.count == 1 ? "" : "s") \(freq)")
                         .font(.caption).foregroundColor(.secondary)
                 }
             }
@@ -335,17 +342,23 @@ struct MedicationEditSheet: View {
     @State private var times: [Date]
     @State private var newTime = Date()
     @State private var showTimePicker = false
+    @State private var repeatType: String
+    @State private var weekday: Int
 
     private let colors = ["blue", "purple", "green", "orange", "red", "pink", "teal"]
+    private let weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    // Calendar weekday index: 1=Sun, 2=Mon, ..., 7=Sat
 
     init(medication: Medication?, onSave: @escaping (Medication) -> Void) {
         self.existing = medication
         self.onSave = onSave
-        _name   = State(initialValue: medication?.name   ?? "")
-        _dosage = State(initialValue: medication?.dosage ?? "")
-        _notes  = State(initialValue: medication?.notes  ?? "")
-        _color  = State(initialValue: medication?.color  ?? "blue")
-        _times  = State(initialValue: medication?.times  ?? [])
+        _name       = State(initialValue: medication?.name       ?? "")
+        _dosage     = State(initialValue: medication?.dosage     ?? "")
+        _notes      = State(initialValue: medication?.notes      ?? "")
+        _color      = State(initialValue: medication?.color      ?? "blue")
+        _times      = State(initialValue: medication?.times      ?? [])
+        _repeatType = State(initialValue: medication?.repeatType ?? "daily")
+        _weekday    = State(initialValue: medication?.weekday    ?? 2)
     }
 
     var body: some View {
@@ -395,6 +408,44 @@ struct MedicationEditSheet: View {
                     Text("You'll receive a notification at each time to take this medication.")
                         .font(.caption)
                 }
+
+                Section("Repeat") {
+                    Picker("Frequency", selection: $repeatType) {
+                        Text("Every Day").tag("daily")
+                        Text("Weekly").tag("weekly")
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+
+                    if repeatType == "weekly" {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Repeat on")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            HStack(spacing: 6) {
+                                ForEach(0..<7) { index in
+                                    let calWeekday = index + 1 // 1=Sun ... 7=Sat
+                                    Button(action: { weekday = calWeekday }) {
+                                        Text(weekdayNames[index])
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .frame(width: 38, height: 34)
+                                            .background(
+                                                weekday == calWeekday
+                                                    ? Medication(name: "", color: color).swiftUIColor
+                                                    : Color(.systemGray5)
+                                            )
+                                            .foregroundColor(weekday == calWeekday ? .white : .primary)
+                                            .cornerRadius(8)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+
                 Section("Notes") {
                     TextEditor(text: $notes).frame(minHeight: 60)
                 }
@@ -412,7 +463,9 @@ struct MedicationEditSheet: View {
                             times: times,
                             isActive: existing?.isActive ?? true,
                             notes: notes,
-                            color: color
+                            color: color,
+                            repeatType: repeatType,
+                            weekday: weekday
                         )
                         onSave(med)
                         scheduleMedicationNotifications(med)
@@ -448,6 +501,9 @@ struct MedicationEditSheet: View {
 
             var comps = Calendar.current.dateComponents([.hour, .minute], from: time)
             comps.second = 0
+            if med.repeatType == "weekly" {
+                comps.weekday = med.weekday
+            }
             let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
             let req = UNNotificationRequest(
                 identifier: "\(med.id)_\(i)",
