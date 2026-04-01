@@ -392,7 +392,7 @@ struct SettingsView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
                         .fontWeight(.semibold)
                 }
@@ -490,7 +490,7 @@ struct TimePickerSheet: View {
             .padding(.top, 32)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItemGroup(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
             }
