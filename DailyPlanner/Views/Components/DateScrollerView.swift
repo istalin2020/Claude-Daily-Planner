@@ -65,7 +65,7 @@ struct DateScrollerView: View {
                             DateCell(
                                 date: date,
                                 isSelected: cal.isDate(date, inSameDayAs: vm.selectedDate),
-                                hasEntry: vm.entries[vm.dateKey(for: date)] != nil
+                                hasEntry: vm.entries[vm.dateKey(for: date)]?.hasData ?? false
                             )
                             .onTapGesture {
                                 withAnimation(.spring(response: 0.3)) {

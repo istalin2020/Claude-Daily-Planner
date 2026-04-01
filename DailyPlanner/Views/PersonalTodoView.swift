@@ -94,8 +94,8 @@ struct PersonalTodoView: View {
                     placeholder: "What do you need to do?",
                     accentColor: AppSection.personalTodo.color,
                     icon: AppSection.personalTodo.icon
-                ) { text, recurrence in
-                    vm.addPersonalTodo(text, recurrence: recurrence)
+                ) { text, recurrence, notes, subtasks in
+                    vm.addPersonalTodo(text, recurrence: recurrence, notes: notes, subtasks: subtasks)
                 }
             }
             .sheet(item: $editingTask) { task in

@@ -95,8 +95,8 @@ struct TopPrioritiesView: View {
                     placeholder: "What's your top priority?",
                     accentColor: AppSection.topPriorities.color,
                     icon: AppSection.topPriorities.icon
-                ) { text, recurrence in
-                    vm.addTopPriority(text, recurrence: recurrence)
+                ) { text, recurrence, notes, subtasks in
+                    vm.addTopPriority(text, recurrence: recurrence, notes: notes, subtasks: subtasks)
                 }
             }
             .sheet(item: $editingTask) { task in

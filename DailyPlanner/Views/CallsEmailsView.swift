@@ -94,8 +94,8 @@ struct CallsEmailsView: View {
                     placeholder: "Who to call or email?",
                     accentColor: AppSection.callsEmails.color,
                     icon: AppSection.callsEmails.icon
-                ) { text, recurrence in
-                    vm.addCallEmail(text, recurrence: recurrence)
+                ) { text, recurrence, notes, subtasks in
+                    vm.addCallEmail(text, recurrence: recurrence, notes: notes, subtasks: subtasks)
                 }
             }
             .sheet(item: $editingTask) { task in

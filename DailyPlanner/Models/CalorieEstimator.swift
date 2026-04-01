@@ -865,5 +865,248 @@ final class CalorieEstimator {
         DBEntry(keywords: ["donut", "doughnut"], calories: 253, portion: "1 donut", questions: nil),
         DBEntry(keywords: ["muffin"], calories: 340, portion: "1 large",            questions: nil),
         DBEntry(keywords: ["brownie"], calories: 180, portion: "1 piece",           questions: nil),
+
+        // ── INDIAN SWEETS & SNACKS ───────────────────────────────────────────
+
+        DBEntry(keywords: ["sweet", "mithai", "indian sweet"], calories: 150, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "What type of sweet?", options: [
+                ClarifyOption(label: "Ladoo / laddoo",        calories: 175),
+                ClarifyOption(label: "Barfi / burfi",         calories: 160),
+                ClarifyOption(label: "Peda",                  calories: 130),
+                ClarifyOption(label: "Rasgulla (1 piece)",    calories: 120)
+            ]),
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "1 piece",   calories: 0),
+                ClarifyOption(label: "2 pieces",  calories: 150),
+                ClarifyOption(label: "3 pieces",  calories: 300)
+            ])
+        ]),
+
+        DBEntry(keywords: ["ladoo", "laddoo", "motichoor", "besan ladoo", "rava ladoo", "coconut ladoo"], calories: 175, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many ladoos?", options: [
+                ClarifyOption(label: "1 ladoo",   calories: 175),
+                ClarifyOption(label: "2 ladoos",  calories: 350),
+                ClarifyOption(label: "3 ladoos",  calories: 525)
+            ])
+        ]),
+
+        DBEntry(keywords: ["barfi", "burfi", "kaju katli", "kaju barfi"], calories: 160, portion: "1 piece (30 g)", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "1 piece",   calories: 160),
+                ClarifyOption(label: "2 pieces",  calories: 320),
+                ClarifyOption(label: "3 pieces",  calories: 480)
+            ])
+        ]),
+
+        DBEntry(keywords: ["rasgulla", "rasagulla"], calories: 120, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many rasgullas?", options: [
+                ClarifyOption(label: "1 piece",   calories: 120),
+                ClarifyOption(label: "2 pieces",  calories: 240),
+                ClarifyOption(label: "3 pieces",  calories: 360)
+            ])
+        ]),
+
+        DBEntry(keywords: ["sandesh", "sondesh"], calories: 110, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "1 piece",   calories: 110),
+                ClarifyOption(label: "2 pieces",  calories: 220),
+                ClarifyOption(label: "3 pieces",  calories: 330)
+            ])
+        ]),
+
+        DBEntry(keywords: ["mysore pak", "mysorepak"], calories: 200, portion: "1 piece (40 g)", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "1 piece",   calories: 200),
+                ClarifyOption(label: "2 pieces",  calories: 400),
+                ClarifyOption(label: "3 pieces",  calories: 600)
+            ])
+        ]),
+
+        DBEntry(keywords: ["balushahi", "badushah"], calories: 180, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many?", options: [
+                ClarifyOption(label: "1 piece",   calories: 180),
+                ClarifyOption(label: "2 pieces",  calories: 360),
+                ClarifyOption(label: "3 pieces",  calories: 540)
+            ])
+        ]),
+
+        DBEntry(keywords: ["imarti"], calories: 130, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many?", options: [
+                ClarifyOption(label: "1 piece",   calories: 130),
+                ClarifyOption(label: "2 pieces",  calories: 260),
+                ClarifyOption(label: "3 pieces",  calories: 390)
+            ])
+        ]),
+
+        DBEntry(keywords: ["chakli", "murukku", "chakri"], calories: 70, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "2 pieces",    calories: 140),
+                ClarifyOption(label: "4 pieces",    calories: 280),
+                ClarifyOption(label: "6 pieces",    calories: 420)
+            ])
+        ]),
+
+        DBEntry(keywords: ["chivda", "mixture", "namkeen mixture", "farsan"], calories: 140, portion: "½ cup (30 g)", questions: [
+            ClarifyQuestion(prompt: "How much?", options: [
+                ClarifyOption(label: "½ cup – 30 g",  calories: 140),
+                ClarifyOption(label: "1 cup – 60 g",  calories: 280),
+                ClarifyOption(label: "1½ cups – 90 g", calories: 420)
+            ])
+        ]),
+
+        DBEntry(keywords: ["mathri", "namak para", "nimki"], calories: 80, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many?", options: [
+                ClarifyOption(label: "2 pieces",   calories: 160),
+                ClarifyOption(label: "4 pieces",   calories: 320),
+                ClarifyOption(label: "6 pieces",   calories: 480)
+            ])
+        ]),
+
+        DBEntry(keywords: ["dhokla", "khaman"], calories: 75, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "2 pieces",   calories: 150),
+                ClarifyOption(label: "4 pieces",   calories: 300),
+                ClarifyOption(label: "6 pieces",   calories: 450)
+            ])
+        ]),
+
+        DBEntry(keywords: ["khakhra"], calories: 50, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many khakhras?", options: [
+                ClarifyOption(label: "1 piece",   calories: 50),
+                ClarifyOption(label: "2 pieces",  calories: 100),
+                ClarifyOption(label: "3 pieces",  calories: 150)
+            ])
+        ]),
+
+        DBEntry(keywords: ["pani puri", "gol gappa", "puchka"], calories: 200, portion: "6 pieces (1 plate)", questions: [
+            ClarifyQuestion(prompt: "How many plates?", options: [
+                ClarifyOption(label: "½ plate – 3 pcs",  calories: 100),
+                ClarifyOption(label: "1 plate – 6 pcs",  calories: 200),
+                ClarifyOption(label: "2 plates – 12 pcs", calories: 400)
+            ])
+        ]),
+
+        DBEntry(keywords: ["bhel puri", "bhelpuri"], calories: 180, portion: "1 cup (1 serving)", questions: nil),
+
+        DBEntry(keywords: ["sev puri", "sevpuri"], calories: 200, portion: "1 plate (4 pcs)", questions: nil),
+
+        DBEntry(keywords: ["dahi puri", "dahi puchka"], calories: 250, portion: "1 plate (6 pcs)", questions: nil),
+
+        DBEntry(keywords: ["papdi chaat", "aloo chaat", "chaat"], calories: 220, portion: "1 plate", questions: [
+            ClarifyQuestion(prompt: "What type of chaat?", options: [
+                ClarifyOption(label: "Papdi chaat",       calories: 220),
+                ClarifyOption(label: "Aloo chaat",        calories: 250),
+                ClarifyOption(label: "Dahi bhalla chaat", calories: 280),
+                ClarifyOption(label: "Basket chaat",      calories: 350)
+            ])
+        ]),
+
+        // ── FAST FOOD ────────────────────────────────────────────────────────
+
+        DBEntry(keywords: ["mcdonalds", "mc donalds", "mcdonald"], calories: 500, portion: "meal", questions: [
+            ClarifyQuestion(prompt: "What did you order?", options: [
+                ClarifyOption(label: "McAloo Tikki / Veg burger",   calories: 380),
+                ClarifyOption(label: "Chicken burger",               calories: 450),
+                ClarifyOption(label: "Big Mac / Double Beef",        calories: 560),
+                ClarifyOption(label: "Happy Meal (burger + fries)",  calories: 500)
+            ])
+        ]),
+
+        DBEntry(keywords: ["kfc"], calories: 550, portion: "meal", questions: [
+            ClarifyQuestion(prompt: "What did you order?", options: [
+                ClarifyOption(label: "2-piece chicken",             calories: 400),
+                ClarifyOption(label: "Crispy chicken burger",       calories: 490),
+                ClarifyOption(label: "3-piece meal + fries",        calories: 700),
+                ClarifyOption(label: "Popcorn chicken (small)",     calories: 280)
+            ])
+        ]),
+
+        DBEntry(keywords: ["dominos", "domino's", "pizza hut"], calories: 600, portion: "2 slices", questions: [
+            ClarifyQuestion(prompt: "What size pizza / how many slices?", options: [
+                ClarifyOption(label: "1 medium slice",          calories: 250),
+                ClarifyOption(label: "2 medium slices",         calories: 500),
+                ClarifyOption(label: "2 large slices",          calories: 600),
+                ClarifyOption(label: "Personal pizza (6 slices)", calories: 900)
+            ])
+        ]),
+
+        DBEntry(keywords: ["subway"], calories: 400, portion: "6-inch sub", questions: [
+            ClarifyQuestion(prompt: "What size & filling?", options: [
+                ClarifyOption(label: "6-inch veggie sub",       calories: 280),
+                ClarifyOption(label: "6-inch chicken sub",      calories: 380),
+                ClarifyOption(label: "Footlong veggie",         calories: 560),
+                ClarifyOption(label: "Footlong chicken",        calories: 760)
+            ])
+        ]),
+
+        DBEntry(keywords: ["noodles", "maggi", "instant noodles", "ramen"], calories: 350, portion: "1 packet cooked", questions: [
+            ClarifyQuestion(prompt: "What type?", options: [
+                ClarifyOption(label: "Maggi 2-minute noodles (1 pack)", calories: 350),
+                ClarifyOption(label: "Instant ramen (1 pack)",          calories: 380),
+                ClarifyOption(label: "Foxtail millet noodles – 1 cup",  calories: 200),
+                ClarifyOption(label: "Foxtail millet noodles – 1½ cups", calories: 300)
+            ])
+        ]),
+
+        DBEntry(keywords: ["spring roll", "springroll"], calories: 130, portion: "1 roll", questions: [
+            ClarifyQuestion(prompt: "How many spring rolls?", options: [
+                ClarifyOption(label: "1 roll",   calories: 130),
+                ClarifyOption(label: "2 rolls",  calories: 260),
+                ClarifyOption(label: "3 rolls",  calories: 390)
+            ])
+        ]),
+
+        DBEntry(keywords: ["momos", "momo", "dumpling", "dim sum"], calories: 200, portion: "6 pieces", questions: [
+            ClarifyQuestion(prompt: "How many momos?", options: [
+                ClarifyOption(label: "6 steamed momos",   calories: 200),
+                ClarifyOption(label: "6 fried momos",     calories: 280),
+                ClarifyOption(label: "8 steamed momos",   calories: 267),
+                ClarifyOption(label: "8 fried momos",     calories: 373)
+            ])
+        ]),
+
+        DBEntry(keywords: ["panipuri", "golgappa", "gupchup"], calories: 200, portion: "6 pieces", questions: nil),
+
+        DBEntry(keywords: ["vada pav", "wadapav"], calories: 290, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many vada pavs?", options: [
+                ClarifyOption(label: "1 vada pav",   calories: 290),
+                ClarifyOption(label: "2 vada pavs",  calories: 580)
+            ])
+        ]),
+
+        DBEntry(keywords: ["misal pav", "misalpav"], calories: 350, portion: "1 plate", questions: nil),
+
+        DBEntry(keywords: ["fried chicken", "crispy chicken"], calories: 350, portion: "1 piece (100 g)", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "1 piece – 100 g",  calories: 350),
+                ClarifyOption(label: "2 pieces – 200 g", calories: 700),
+                ClarifyOption(label: "3 pieces – 300 g", calories: 1050)
+            ])
+        ]),
+
+        DBEntry(keywords: ["onion rings", "onion ring"], calories: 270, portion: "medium serving", questions: [
+            ClarifyQuestion(prompt: "What size?", options: [
+                ClarifyOption(label: "Small",  calories: 180),
+                ClarifyOption(label: "Medium", calories: 270),
+                ClarifyOption(label: "Large",  calories: 400)
+            ])
+        ]),
+
+        DBEntry(keywords: ["milkshake", "milk shake", "frappe"], calories: 450, portion: "medium (400 ml)", questions: [
+            ClarifyQuestion(prompt: "What size & flavour?", options: [
+                ClarifyOption(label: "Small chocolate shake",   calories: 350),
+                ClarifyOption(label: "Medium vanilla shake",    calories: 450),
+                ClarifyOption(label: "Large strawberry shake",  calories: 600),
+                ClarifyOption(label: "Thick oreo frappe",       calories: 550)
+            ])
+        ]),
+
+        DBEntry(keywords: ["hot chocolate", "hot cocoa"], calories: 200, portion: "1 mug (250 ml)", questions: [
+            ClarifyQuestion(prompt: "What size?", options: [
+                ClarifyOption(label: "Small – 200 ml",         calories: 160),
+                ClarifyOption(label: "Regular – 250 ml",       calories: 200),
+                ClarifyOption(label: "Large with cream",        calories: 320)
+            ])
+        ]),
     ]
 }

@@ -113,10 +113,11 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Top Priorities
-    func addTopPriority(_ title: String, recurrence: Recurrence = .none) {
+    func addTopPriority(_ title: String, recurrence: Recurrence = .none, notes: String = "", subtasks: [SubTask] = []) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces), recurrence: recurrence)
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces),
+                               notes: notes, recurrence: recurrence, subtasks: subtasks)
         if let idx = e.topPriorities.firstIndex(where: { $0.isCompleted }) {
             e.topPriorities.insert(task, at: idx)
         } else {
@@ -168,10 +169,11 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - To-Do Lists
-    func addToDoListItem(_ title: String, recurrence: Recurrence = .none) {
+    func addToDoListItem(_ title: String, recurrence: Recurrence = .none, notes: String = "", subtasks: [SubTask] = []) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces), recurrence: recurrence)
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces),
+                               notes: notes, recurrence: recurrence, subtasks: subtasks)
         // Insert before the first completed fresh (non-rolled-over) task so the
         // new item always lands below open tasks and above completed tasks.
         if let idx = e.toDoLists.firstIndex(where: { $0.isCompleted }) {
@@ -223,10 +225,11 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Calls & Emails
-    func addCallEmail(_ title: String, recurrence: Recurrence = .none) {
+    func addCallEmail(_ title: String, recurrence: Recurrence = .none, notes: String = "", subtasks: [SubTask] = []) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces), recurrence: recurrence)
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces),
+                               notes: notes, recurrence: recurrence, subtasks: subtasks)
         if let idx = e.callsEmails.firstIndex(where: { $0.isCompleted }) {
             e.callsEmails.insert(task, at: idx)
         } else {
@@ -312,10 +315,11 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Personal To-Do
-    func addPersonalTodo(_ title: String, recurrence: Recurrence = .none) {
+    func addPersonalTodo(_ title: String, recurrence: Recurrence = .none, notes: String = "", subtasks: [SubTask] = []) {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
-        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces), recurrence: recurrence)
+        let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces),
+                               notes: notes, recurrence: recurrence, subtasks: subtasks)
         if let idx = e.personalTodo.firstIndex(where: { $0.isCompleted }) {
             e.personalTodo.insert(task, at: idx)
         } else {
@@ -472,6 +476,29 @@ class PlannerViewModel: ObservableObject {
         case "lunch":     e.meals.lunchItems.removeAll { $0.id == item.id }
         case "dinner":    e.meals.dinnerItems.removeAll { $0.id == item.id }
         default:          e.meals.snackItems.removeAll { $0.id == item.id }
+        }
+        currentEntry = e
+    }
+
+    func updateMealItem(_ original: MealItem, with updated: MealItem, in meal: String) {
+        var e = currentEntry
+        switch meal {
+        case "breakfast":
+            if let i = e.meals.breakfastItems.firstIndex(where: { $0.id == original.id }) {
+                e.meals.breakfastItems[i] = updated
+            }
+        case "lunch":
+            if let i = e.meals.lunchItems.firstIndex(where: { $0.id == original.id }) {
+                e.meals.lunchItems[i] = updated
+            }
+        case "dinner":
+            if let i = e.meals.dinnerItems.firstIndex(where: { $0.id == original.id }) {
+                e.meals.dinnerItems[i] = updated
+            }
+        default:
+            if let i = e.meals.snackItems.firstIndex(where: { $0.id == original.id }) {
+                e.meals.snackItems[i] = updated
+            }
         }
         currentEntry = e
     }

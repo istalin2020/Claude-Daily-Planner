@@ -6,6 +6,8 @@ struct FoodTrackerView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet  = false
     @State private var selectedMeal  = "breakfast"
+    @State private var editingItem: MealItem? = nil
+    @State private var editingMealKey: String = ""
 
     var entry: DailyEntry { vm.currentEntry }
 
@@ -32,6 +34,9 @@ struct FoodTrackerView: View {
                         showAddSheet = true
                     } onDelete: { item in
                         vm.removeMealItem(item, from: meal.key)
+                    } onEdit: { item in
+                        editingItem = item
+                        editingMealKey = meal.key
                     }
                     .padding(.horizontal, 16).padding(.top, 10)
                 }
@@ -43,6 +48,12 @@ struct FoodTrackerView: View {
             let mealName = mealSections.first(where: { $0.key == selectedMeal })?.name ?? "Meal"
             AddMealItemSheet(mealName: mealName) { item in
                 vm.addMealItem(item, to: selectedMeal)
+            }
+        }
+        .sheet(item: $editingItem) { item in
+            let mealName = mealSections.first(where: { $0.key == editingMealKey })?.name ?? "Meal"
+            EditMealItemSheet(item: item, mealName: mealName) { updatedItem in
+                vm.updateMealItem(item, with: updatedItem, in: editingMealKey)
             }
         }
     }
@@ -126,6 +137,7 @@ struct MealSection: View {
     let canEdit : Bool
     let onAdd   : () -> Void
     let onDelete: (MealItem) -> Void
+    let onEdit  : (MealItem) -> Void
 
     private var sectionCalories: Int { items.reduce(0) { $0 + $1.calories } }
 
@@ -182,13 +194,21 @@ struct MealSection: View {
                                 .foregroundColor(.secondary)
                         }
                         if canEdit {
+                            // Edit button
+                            Button(action: { onEdit(item) }) {
+                                Image(systemName: "pencil.circle")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(meal.color.opacity(0.7))
+                            }
+                            // Delete button
                             Button(action: { onDelete(item) }) {
                                 Image(systemName: "xmark.circle")
-                                    .font(.system(size: 14))
+                                    .font(.system(size: 16))
                                     .foregroundColor(.secondary.opacity(0.5))
                             }
                         }
                     }
+                    .padding(.vertical, 2)
                 }
             }
         }
@@ -447,6 +467,84 @@ struct AddMealItemSheet: View {
             let cal = Int(manualCalText) ?? 0
             onSave(MealItem(name: name, calories: cal, portion: ""))
             dismiss()
+        }
+    }
+}
+
+// MARK: - Edit Meal Item Sheet
+
+struct EditMealItemSheet: View {
+    @Environment(\.dismiss) var dismiss
+
+    let item    : MealItem
+    let mealName: String
+    let onSave  : (MealItem) -> Void
+
+    @State private var nameText   : String
+    @State private var portionText: String
+    @State private var calText    : String
+
+    init(item: MealItem, mealName: String, onSave: @escaping (MealItem) -> Void) {
+        self.item     = item
+        self.mealName = mealName
+        self.onSave   = onSave
+        _nameText    = State(initialValue: item.name)
+        _portionText = State(initialValue: item.portion)
+        _calText     = State(initialValue: item.calories > 0 ? "\(item.calories)" : "")
+    }
+
+    private var canSave: Bool {
+        !nameText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Food") {
+                    TextField("Food name", text: $nameText)
+                        .autocapitalization(.sentences)
+                }
+
+                Section("Portion") {
+                    TextField("e.g. 1 cup, 2 eggs", text: $portionText)
+                        .autocapitalization(.sentences)
+                }
+
+                Section("Calories") {
+                    HStack {
+                        TextField("0", text: $calText)
+                            .keyboardType(.numberPad)
+                            .onChange(of: calText) { _, v in
+                                calText = v.filter(\.isNumber)
+                            }
+                        Text("cal")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Edit Food")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let name = nameText.trimmingCharacters(in: .whitespaces)
+                        guard !name.isEmpty else { return }
+                        let cal = Int(calText) ?? item.calories
+                        let portion = portionText.trimmingCharacters(in: .whitespaces)
+                        var updated = item
+                        updated.name = name
+                        updated.calories = cal
+                        updated.portion = portion
+                        onSave(updated)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(!canSave)
+                }
+            }
         }
     }
 }

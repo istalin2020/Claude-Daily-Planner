@@ -510,97 +510,243 @@ struct AddItemSheet: View {
 struct AddItemWithRecurrenceSheet: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject private var pro: ProManager
-    @State private var text = ""
+    @State private var text         = ""
+    @State private var notes        = ""
     @State private var recurrence: Recurrence = .none
+    @State private var subtasks: [SubTask] = []
+    @State private var newSubtask   = ""
     @State private var showProUpgrade = false
-    @FocusState private var focused: Bool
+    @FocusState private var titleFocused: Bool
+    @FocusState private var subtaskFocused: Bool
 
     let title: String
     let placeholder: String
     let accentColor: Color
     let icon: String
-    let onSave: (String, Recurrence) -> Void
+    let onSave: (String, Recurrence, String, [SubTask]) -> Void
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // Header
-                VStack(spacing: 8) {
-                    Image(systemName: icon)
-                        .font(.system(size: 36))
-                        .foregroundColor(accentColor)
-                    Text(title)
-                        .font(.title3).fontWeight(.bold)
-                }
-                .padding(.top, 20)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: icon)
+                            .font(.system(size: 36))
+                            .foregroundColor(accentColor)
+                        Text(title)
+                            .font(.title3).fontWeight(.bold)
+                    }
+                    .padding(.top, 20)
 
-                // Text field
-                VStack(alignment: .leading, spacing: 6) {
+                    // Task title field
                     TextField(placeholder, text: $text, axis: .vertical)
-                        .focused($focused)
+                        .focused($titleFocused)
                         .font(.body)
                         .padding(14)
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(14)
                         .lineLimit(3...6)
-                }
-                .padding(.horizontal, 20)
+                        .padding(.horizontal, 20)
 
-                // Recurrence picker (PRO feature 3)
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        RecurrencePicker(recurrence: $recurrence)
+                    // Notes field (available to all users)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Notes")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+                        TextField("Add notes (optional)", text: $notes, axis: .vertical)
+                            .font(.subheadline)
+                            .padding(14)
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(14)
+                            .lineLimit(2...4)
+                            .padding(.horizontal, 20)
+                    }
+
+                    // Subtasks section (PRO feature)
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Subtasks")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            if !pro.isPro { ProInlineBadge() }
+                            Spacer()
+                            if pro.isPro && !subtasks.isEmpty {
+                                Text("\(subtasks.filter(\.isCompleted).count)/\(subtasks.count)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+
+                        if pro.isPro {
+                            // Existing subtask rows
+                            if !subtasks.isEmpty {
+                                VStack(spacing: 0) {
+                                    ForEach(subtasks.indices, id: \.self) { i in
+                                        HStack(spacing: 10) {
+                                            Button(action: { subtasks[i].isCompleted.toggle() }) {
+                                                Image(systemName: subtasks[i].isCompleted ? "checkmark.circle.fill" : "circle")
+                                                    .foregroundColor(subtasks[i].isCompleted ? accentColor : .secondary)
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+
+                                            TextField("Subtask", text: $subtasks[i].title)
+                                                .strikethrough(subtasks[i].isCompleted, color: .secondary)
+                                                .foregroundColor(subtasks[i].isCompleted ? .secondary : .primary)
+
+                                            Spacer()
+
+                                            Button(action: { subtasks.remove(at: i) }) {
+                                                Image(systemName: "xmark.circle")
+                                                    .font(.system(size: 14))
+                                                    .foregroundColor(.secondary.opacity(0.5))
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        }
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 10)
+
+                                        if i < subtasks.count - 1 {
+                                            Divider().padding(.leading, 44)
+                                        }
+                                    }
+                                }
+                                .background(Color(.systemBackground))
+                                .cornerRadius(14)
+                                .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+                                .padding(.horizontal, 20)
+                            }
+
+                            // Add subtask input row
+                            HStack(spacing: 10) {
+                                Image(systemName: "plus.circle")
+                                    .foregroundColor(accentColor)
+                                TextField("Add subtask…", text: $newSubtask)
+                                    .focused($subtaskFocused)
+                                    .onSubmit { addSubtask() }
+                                if !newSubtask.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    Button(action: addSubtask) {
+                                        Text("Add")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(accentColor)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(8)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                            .padding(14)
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(14)
+                            .padding(.horizontal, 20)
+
+                        } else {
+                            // Locked – show crown button
+                            Button(action: { showProUpgrade = true }) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "crown.fill")
+                                        .foregroundColor(Color(red: 1.0, green: 0.65, blue: 0.0))
+                                    Text("Subtasks require PRO")
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    ProInlineBadge()
+                                }
+                                .padding(14)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(14)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.horizontal, 20)
+                        }
+                    }
+
+                    // Recurrence picker (PRO feature — "None" excluded from visible options)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Picker("Repeat", selection: $recurrence) {
+                                Label("No Repeat", systemImage: "slash.circle").tag(Recurrence.none)
+                                ForEach(Recurrence.allCases.filter { $0 != .none }) { r in
+                                    Label(r.rawValue, systemImage: r.icon).tag(r)
+                                }
+                            }
                             .pickerStyle(.menu)
                             .disabled(!pro.isPro)
                             .opacity(pro.isPro ? 1 : 0.5)
-                        if !pro.isPro {
-                            ProInlineBadge()
-                            Spacer()
-                            Button(action: { showProUpgrade = true }) {
-                                Text("Unlock").font(.caption).foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+                            if !pro.isPro {
+                                ProInlineBadge()
+                                Spacer()
+                                Button(action: { showProUpgrade = true }) {
+                                    Text("Unlock").font(.caption).foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+                                }
                             }
                         }
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(14)
-                }
-                .padding(.horizontal, 20)
-                .sheet(isPresented: $showProUpgrade) {
-                    ProUpgradeView().environmentObject(pro)
-                }
-
-                // Save button
-                Button(action: {
-                    guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                    onSave(text.trimmingCharacters(in: .whitespaces), recurrence)
-                    text = ""
-                    dismiss()
-                }) {
-                    Text("Add")
-                        .font(.system(size: 16, weight: .bold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(text.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary.opacity(0.3) : accentColor)
-                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.secondarySystemBackground))
                         .cornerRadius(14)
-                }
-                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
-                .padding(.horizontal, 20)
+                    }
+                    .padding(.horizontal, 20)
 
-                Spacer()
+                    // Add / Save button
+                    Button(action: saveTask) {
+                        Text("Add")
+                            .font(.system(size: 16, weight: .bold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(text.trimmingCharacters(in: .whitespaces).isEmpty
+                                        ? Color.secondary.opacity(0.3) : accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(14)
+                    }
+                    .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .padding(.horizontal, 20)
+
+                    Spacer(minLength: 20)
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .cancellationAction) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { saveTask() }
+                        .fontWeight(.semibold)
+                        .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
             }
-            .onAppear { focused = true }
+            .onAppear { titleFocused = true }
+            .sheet(isPresented: $showProUpgrade) {
+                ProUpgradeView().environmentObject(pro)
+            }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
+    }
+
+    private func addSubtask() {
+        let t = newSubtask.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty else { return }
+        subtasks.append(SubTask(title: t))
+        newSubtask = ""
+    }
+
+    private func saveTask() {
+        // If there's a pending subtask in the text field, commit it first
+        let pendingSub = newSubtask.trimmingCharacters(in: .whitespaces)
+        if !pendingSub.isEmpty {
+            subtasks.append(SubTask(title: pendingSub))
+            newSubtask = ""
+        }
+        guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        onSave(text.trimmingCharacters(in: .whitespaces), recurrence,
+               notes.trimmingCharacters(in: .whitespaces), subtasks)
+        text = ""; notes = ""; subtasks = []
+        dismiss()
     }
 }
 

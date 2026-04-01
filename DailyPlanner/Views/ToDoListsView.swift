@@ -94,8 +94,8 @@ struct ToDoListsView: View {
                     placeholder: "What do you need to do?",
                     accentColor: AppSection.toDoLists.color,
                     icon: AppSection.toDoLists.icon
-                ) { text, recurrence in
-                    vm.addToDoListItem(text, recurrence: recurrence)
+                ) { text, recurrence, notes, subtasks in
+                    vm.addToDoListItem(text, recurrence: recurrence, notes: notes, subtasks: subtasks)
                 }
             }
             .sheet(item: $editingTask) { task in

@@ -119,6 +119,7 @@ struct ExpenseTrackerView: View {
             AddTransactionSheet(mode: addMode, currencySymbol: sym) { transaction in
                 vm.addExpense(transaction)
             }
+            .environmentObject(vm)
         }
         .sheet(isPresented: $showBudgets) {
             BudgetSettingsView().environmentObject(vm)
@@ -537,6 +538,7 @@ struct TransactionRow: View {
     private var rowIcon: String {
         if expense.isIncome  { return "arrow.down.circle.fill" }
         if expense.isDeposit { return "banknote.fill" }
+        if !expense.customCategoryLabel.isEmpty { return "tag.fill" }
         return expense.category.icon
     }
 
@@ -547,7 +549,7 @@ struct TransactionRow: View {
     private var typeLabel: String {
         if expense.isIncome  { return "Income" }
         if expense.isDeposit { return "Savings" }
-        return expense.category.rawValue
+        return expense.displayCategory
     }
 
     var body: some View {
@@ -588,9 +590,14 @@ struct TransactionRow: View {
 
 struct AddTransactionSheet: View {
     @Environment(\.dismiss) var dismiss
-    @State private var amount      = ""
-    @State private var description = ""
-    @State private var category    = ExpenseCategory.other
+    @EnvironmentObject var vm: PlannerViewModel
+    @State private var amount              = ""
+    @State private var description         = ""
+    @State private var category            = ExpenseCategory.other
+    @State private var customCategoryLabel = ""
+    @State private var isCustomCategory    = false
+    @State private var showAddCategory     = false
+    @State private var newCategoryName     = ""
 
     let mode: ExpenseTrackerView.AddMode
     let currencySymbol: String
@@ -661,10 +668,51 @@ struct AddTransactionSheet: View {
                         }
 
                         if mode == .expense {
-                            Picker("Category", selection: $category) {
-                                ForEach(ExpenseCategory.allCases, id: \.self) { cat in
-                                    Label(cat.rawValue, systemImage: cat.icon).tag(cat)
+                            // ── Category picker with custom support ──────────────
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Category")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+
+                                // Built-in categories
+                                Picker("Category", selection: Binding(
+                                    get: { isCustomCategory ? "custom:\(customCategoryLabel)" : category.rawValue },
+                                    set: { newVal in
+                                        if newVal.hasPrefix("custom:") {
+                                            isCustomCategory = true
+                                            customCategoryLabel = String(newVal.dropFirst(7))
+                                        } else {
+                                            isCustomCategory = false
+                                            customCategoryLabel = ""
+                                            category = ExpenseCategory(rawValue: newVal) ?? .other
+                                        }
+                                    }
+                                )) {
+                                    ForEach(ExpenseCategory.allCases, id: \.self) { cat in
+                                        Label(cat.rawValue, systemImage: cat.icon).tag(cat.rawValue)
+                                    }
+                                    if !vm.settings.customExpenseCategories.isEmpty {
+                                        Divider()
+                                        ForEach(vm.settings.customExpenseCategories, id: \.self) { name in
+                                            Label(name, systemImage: "tag.fill")
+                                                .tag("custom:\(name)")
+                                        }
+                                    }
                                 }
+                                .pickerStyle(.menu)
+
+                                // Add Category button
+                                Button(action: { showAddCategory = true }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .foregroundColor(accentColor)
+                                        Text("Add Category")
+                                            .font(.subheadline)
+                                            .foregroundColor(accentColor)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 4)
                             }
                         }
                     }
@@ -674,7 +722,8 @@ struct AddTransactionSheet: View {
                             guard let amt = Double(amount), amt > 0, !description.isEmpty else { return }
                             let expense = Expense(
                                 amount: amt,
-                                category: mode == .expense ? category : .other,
+                                category: mode == .expense ? (isCustomCategory ? .other : category) : .other,
+                                customCategoryLabel: mode == .expense && isCustomCategory ? customCategoryLabel : "",
                                 description: description,
                                 isDeposit: mode == .savings,
                                 isIncome:  mode == .income
@@ -706,6 +755,23 @@ struct AddTransactionSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+            }
+            .alert("Add Category", isPresented: $showAddCategory) {
+                TextField("Category name", text: $newCategoryName)
+                    .autocapitalization(.words)
+                Button("Add") {
+                    let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+                    if !name.isEmpty && !vm.settings.customExpenseCategories.contains(name) {
+                        vm.settings.customExpenseCategories.append(name)
+                        vm.saveSettings()
+                        isCustomCategory = true
+                        customCategoryLabel = name
+                    }
+                    newCategoryName = ""
+                }
+                Button("Cancel", role: .cancel) { newCategoryName = "" }
+            } message: {
+                Text("Enter a name for your new category.")
             }
         }
     }

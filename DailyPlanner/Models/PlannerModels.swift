@@ -162,19 +162,29 @@ struct Expense: Identifiable, Codable {
     var id = UUID()
     var amount: Double
     var category: ExpenseCategory = .other
+    /// Non-empty when the user picked a custom (user-created) category.
+    /// In that case `category` is stored as `.other` for backward compat.
+    var customCategoryLabel: String = ""
     var description: String
     var isDeposit: Bool = false  // savings
     var isIncome: Bool = false   // income entry
 
+    /// The human-readable category name to display (custom label takes priority).
+    var displayCategory: String {
+        customCategoryLabel.isEmpty ? category.rawValue : customCategoryLabel
+    }
+
     init(id: UUID = UUID(),
          amount: Double,
          category: ExpenseCategory = .other,
+         customCategoryLabel: String = "",
          description: String,
          isDeposit: Bool = false,
          isIncome: Bool = false) {
         self.id = id
         self.amount = amount
         self.category = category
+        self.customCategoryLabel = customCategoryLabel
         self.description = description
         self.isDeposit = isDeposit
         self.isIncome = isIncome
@@ -182,12 +192,13 @@ struct Expense: Identifiable, Codable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        id          = try c.decodeIfPresent(UUID.self,            forKey: .id)          ?? UUID()
-        amount      = try c.decode(Double.self,                    forKey: .amount)
-        category    = try c.decodeIfPresent(ExpenseCategory.self, forKey: .category)    ?? .other
-        description = try c.decode(String.self,                    forKey: .description)
-        isDeposit   = try c.decodeIfPresent(Bool.self,            forKey: .isDeposit)   ?? false
-        isIncome    = try c.decodeIfPresent(Bool.self,            forKey: .isIncome)    ?? false
+        id                  = try c.decodeIfPresent(UUID.self,            forKey: .id)                  ?? UUID()
+        amount              = try c.decode(Double.self,                    forKey: .amount)
+        category            = try c.decodeIfPresent(ExpenseCategory.self, forKey: .category)            ?? .other
+        customCategoryLabel = try c.decodeIfPresent(String.self,          forKey: .customCategoryLabel) ?? ""
+        description         = try c.decode(String.self,                    forKey: .description)
+        isDeposit           = try c.decodeIfPresent(Bool.self,            forKey: .isDeposit)           ?? false
+        isIncome            = try c.decodeIfPresent(Bool.self,            forKey: .isIncome)            ?? false
     }
 }
 
@@ -789,6 +800,9 @@ struct AppSettings: Codable {
     // MARK: - Medications
     var medications: [Medication] = []
 
+    // MARK: - Custom expense categories
+    var customExpenseCategories: [String] = []
+
     init(isDarkMode: Bool = false,
          autoRollover: Bool = true,
          notificationsEnabled: Bool = false,
@@ -804,7 +818,8 @@ struct AppSettings: Codable {
          habitLogs: [String: HabitLog] = [:],
          categoryBudgets: [String: Double] = [:],
          themeColor: ThemeColor = .purple,
-         medications: [Medication] = []) {
+         medications: [Medication] = [],
+         customExpenseCategories: [String] = []) {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
         self.notificationsEnabled = notificationsEnabled
@@ -821,6 +836,7 @@ struct AppSettings: Codable {
         self.categoryBudgets = categoryBudgets
         self.themeColor = themeColor
         self.medications = medications
+        self.customExpenseCategories = customExpenseCategories
     }
 
     init(from decoder: Decoder) throws {
@@ -839,8 +855,9 @@ struct AppSettings: Codable {
         habits               = try c.decodeIfPresent([Habit].self,                    forKey: .habits)               ?? []
         habitLogs            = try c.decodeIfPresent([String: HabitLog].self,         forKey: .habitLogs)            ?? [:]
         categoryBudgets      = try c.decodeIfPresent([String: Double].self,           forKey: .categoryBudgets)      ?? [:]
-        themeColor           = try c.decodeIfPresent(ThemeColor.self,                 forKey: .themeColor)           ?? .purple
-        medications          = try c.decodeIfPresent([Medication].self,               forKey: .medications)          ?? []
+        themeColor                  = try c.decodeIfPresent(ThemeColor.self,    forKey: .themeColor)                  ?? .purple
+        medications                 = try c.decodeIfPresent([Medication].self,  forKey: .medications)                 ?? []
+        customExpenseCategories     = try c.decodeIfPresent([String].self,      forKey: .customExpenseCategories)     ?? []
     }
 }
 
@@ -878,6 +895,23 @@ struct DailyEntry: Codable {
 
     var rating: DayRating = DayRating()
     var sleep: SleepEntry = SleepEntry()
+
+    /// Returns true only when the entry contains at least one piece of
+    /// user-entered data.  An entry created solely by the recurrence
+    /// scheduler (which populates only task lists) still counts, but an
+    /// otherwise-empty entry that was auto-created when the user tapped
+    /// a future date will NOT show a calendar indicator dot.
+    var hasData: Bool {
+        !topPriorities.isEmpty || !toDoLists.isEmpty ||
+        !callsEmails.isEmpty || !personalTodo.isEmpty ||
+        !meals.breakfastItems.isEmpty || !meals.lunchItems.isEmpty ||
+        !meals.dinnerItems.isEmpty || !meals.snackItems.isEmpty ||
+        !expenses.isEmpty || waterGlasses > 0 || !notes.isEmpty ||
+        sleep.bedtime != nil || !dailySchedule.isEmpty ||
+        !appointments.isEmpty || fitness.steps > 0 ||
+        !fitness.activities.isEmpty || rating.productivity > 0 ||
+        rating.mood > 0 || rating.health > 0
+    }
 
     init(date: Date = Date()) {
         self.date = date
