@@ -75,6 +75,123 @@ enum Recurrence: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Share Recipient
+struct ShareRecipient: Identifiable, Codable, Equatable {
+    var id    = UUID()
+    var name  : String = ""
+    var email : String          // Gmail or iCloud email
+
+    enum AccountType {
+        case gmail, icloud, other
+        var icon: String {
+            switch self {
+            case .gmail:  return "envelope.circle.fill"
+            case .icloud: return "icloud.fill"
+            case .other:  return "person.circle.fill"
+            }
+        }
+        var color: Color {
+            switch self {
+            case .gmail:  return .red
+            case .icloud: return .blue
+            case .other:  return .gray
+            }
+        }
+    }
+
+    var accountType: AccountType {
+        let lc = email.lowercased()
+        if lc.hasSuffix("@gmail.com") { return .gmail }
+        if lc.hasSuffix("@icloud.com") || lc.hasSuffix("@me.com") || lc.hasSuffix("@mac.com") { return .icloud }
+        return .other
+    }
+
+    init(id: UUID = UUID(), name: String = "", email: String) {
+        self.id = id; self.name = name; self.email = email
+    }
+
+    init(from decoder: Decoder) throws {
+        let c     = try decoder.container(keyedBy: CodingKeys.self)
+        id        = try c.decodeIfPresent(UUID.self,   forKey: .id)    ?? UUID()
+        name      = try c.decodeIfPresent(String.self, forKey: .name)  ?? ""
+        email     = try c.decode(String.self,           forKey: .email)
+    }
+}
+
+// MARK: - Sharable Section
+enum SharableSection: String, Codable, CaseIterable, Identifiable {
+    case entireList    = "Entire To-Do List"
+    case topPriorities = "Top Priorities"
+    case personalList  = "Personal List"
+    case callsEmails   = "Calls & Emails"
+    case foodTracker   = "Food Tracker"
+    case waterTracker  = "Water Tracker"
+    case medications   = "Medications"
+    case habits        = "Habit Tracker"
+    case sleepTracker  = "Sleep Tracker"
+    case appointments  = "Appointments"
+    case expenses      = "Expense Tracker"
+    case notes         = "Notes"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .entireList:    return "list.bullet.clipboard.fill"
+        case .topPriorities: return "star.fill"
+        case .personalList:  return "person.circle.fill"
+        case .callsEmails:   return "phone.fill"
+        case .foodTracker:   return "fork.knife"
+        case .waterTracker:  return "drop.fill"
+        case .medications:   return "pill.fill"
+        case .habits:        return "flame.fill"
+        case .sleepTracker:  return "moon.zzz.fill"
+        case .appointments:  return "clock.fill"
+        case .expenses:      return "dollarsign.circle.fill"
+        case .notes:         return "note.text"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .entireList:    return Color(red: 0.45, green: 0.25, blue: 0.85)
+        case .topPriorities: return Color(red: 1.0,  green: 0.75, blue: 0.0)
+        case .personalList:  return Color(red: 0.1,  green: 0.65, blue: 0.35)
+        case .callsEmails:   return .blue
+        case .foodTracker:   return .orange
+        case .waterTracker:  return Color(red: 0.0,  green: 0.6,  blue: 1.0)
+        case .medications:   return .red
+        case .habits:        return Color(red: 0.9,  green: 0.3,  blue: 0.5)
+        case .sleepTracker:  return .indigo
+        case .appointments:  return .teal
+        case .expenses:      return Color(red: 0.1,  green: 0.65, blue: 0.35)
+        case .notes:         return Color(red: 0.6,  green: 0.4,  blue: 0.2)
+        }
+    }
+}
+
+// MARK: - Sharing Settings
+struct SharingSettings: Codable {
+    var isEnabled       : Bool                  = false
+    var recipients      : [ShareRecipient]      = []
+    var enabledSections : Set<SharableSection>  = []
+
+    init(isEnabled: Bool = false,
+         recipients: [ShareRecipient] = [],
+         enabledSections: Set<SharableSection> = []) {
+        self.isEnabled       = isEnabled
+        self.recipients      = recipients
+        self.enabledSections = enabledSections
+    }
+
+    init(from decoder: Decoder) throws {
+        let c           = try decoder.container(keyedBy: CodingKeys.self)
+        isEnabled       = try c.decodeIfPresent(Bool.self,                 forKey: .isEnabled)       ?? false
+        recipients      = try c.decodeIfPresent([ShareRecipient].self,     forKey: .recipients)      ?? []
+        enabledSections = try c.decodeIfPresent(Set<SharableSection>.self, forKey: .enabledSections) ?? []
+    }
+}
+
 // MARK: - Planner Task
 struct PlannerTask: Identifiable, Codable, Equatable {
     var id = UUID()
@@ -85,6 +202,7 @@ struct PlannerTask: Identifiable, Codable, Equatable {
     var notes: String = ""
     var recurrence: Recurrence = .none
     var subtasks: [SubTask] = []
+    var isShared: Bool = false
 
     // Robust decoder: any field that might be absent in older saved JSON
     // falls back to its default rather than throwing a keyNotFound error.
@@ -95,7 +213,8 @@ struct PlannerTask: Identifiable, Codable, Equatable {
          originalDate: Date? = nil,
          notes: String = "",
          recurrence: Recurrence = .none,
-         subtasks: [SubTask] = []) {
+         subtasks: [SubTask] = [],
+         isShared: Bool = false) {
         self.id = id
         self.title = title
         self.isCompleted = isCompleted
@@ -104,10 +223,11 @@ struct PlannerTask: Identifiable, Codable, Equatable {
         self.notes = notes
         self.recurrence = recurrence
         self.subtasks = subtasks
+        self.isShared = isShared
     }
 
     init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let c        = try decoder.container(keyedBy: CodingKeys.self)
         id           = try c.decodeIfPresent(UUID.self,       forKey: .id)           ?? UUID()
         title        = try c.decode(String.self,               forKey: .title)
         isCompleted  = try c.decodeIfPresent(Bool.self,       forKey: .isCompleted)  ?? false
@@ -116,6 +236,7 @@ struct PlannerTask: Identifiable, Codable, Equatable {
         notes        = try c.decodeIfPresent(String.self,     forKey: .notes)        ?? ""
         recurrence   = try c.decodeIfPresent(Recurrence.self, forKey: .recurrence)   ?? .none
         subtasks     = try c.decodeIfPresent([SubTask].self,  forKey: .subtasks)     ?? []
+        isShared     = try c.decodeIfPresent(Bool.self,       forKey: .isShared)     ?? false
     }
 }
 
@@ -803,6 +924,9 @@ struct AppSettings: Codable {
     // MARK: - Custom expense categories
     var customExpenseCategories: [String] = []
 
+    // MARK: - Sharing
+    var sharingSettings: SharingSettings = SharingSettings()
+
     init(isDarkMode: Bool = false,
          autoRollover: Bool = true,
          notificationsEnabled: Bool = false,
@@ -819,7 +943,8 @@ struct AppSettings: Codable {
          categoryBudgets: [String: Double] = [:],
          themeColor: ThemeColor = .purple,
          medications: [Medication] = [],
-         customExpenseCategories: [String] = []) {
+         customExpenseCategories: [String] = [],
+         sharingSettings: SharingSettings = SharingSettings()) {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
         self.notificationsEnabled = notificationsEnabled
@@ -837,6 +962,7 @@ struct AppSettings: Codable {
         self.themeColor = themeColor
         self.medications = medications
         self.customExpenseCategories = customExpenseCategories
+        self.sharingSettings = sharingSettings
     }
 
     init(from decoder: Decoder) throws {
@@ -858,6 +984,7 @@ struct AppSettings: Codable {
         themeColor                  = try c.decodeIfPresent(ThemeColor.self,    forKey: .themeColor)                  ?? .purple
         medications                 = try c.decodeIfPresent([Medication].self,  forKey: .medications)                 ?? []
         customExpenseCategories     = try c.decodeIfPresent([String].self,      forKey: .customExpenseCategories)     ?? []
+        sharingSettings             = try c.decodeIfPresent(SharingSettings.self, forKey: .sharingSettings)           ?? SharingSettings()
     }
 }
 

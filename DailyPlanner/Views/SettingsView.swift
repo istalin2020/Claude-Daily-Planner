@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var showWeeklySummary  = false
     @State private var showPomodoro       = false
     @State private var showProUpgrade     = false
+    @State private var showSharing        = false
 
     var body: some View {
         NavigationView {
@@ -228,7 +229,36 @@ struct SettingsView: View {
                     Text("Task Management")
                 }
 
-                // ── 8. EXPORT DATA ─────────────────────────────────────────
+                // ── 8. SHARING TASKS ───────────────────────────────────────
+                Section {
+                    Button {
+                        showSharing = true
+                    } label: {
+                        HStack {
+                            Label("Share Tasks", systemImage: "square.and.arrow.up.fill")
+                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            Spacer()
+                            if vm.settings.sharingSettings.isEnabled {
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 8, height: 8)
+                                    Text("On")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                }
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Sharing")
+                } footer: {
+                    Text("Share your to-do lists, trackers, and individual tasks with family or friends via Gmail or iCloud.")
+                }
+
+                // ── 9. EXPORT DATA ─────────────────────────────────────────
                 Section("Export Data") {
                     Button {
                         if pro.isPro { showExport = true } else { showProUpgrade = true }
@@ -417,6 +447,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showProUpgrade) {
                 ProUpgradeView().environmentObject(pro)
+            }
+            .sheet(isPresented: $showSharing) {
+                SharingView().environmentObject(vm)
             }
         }
     }
