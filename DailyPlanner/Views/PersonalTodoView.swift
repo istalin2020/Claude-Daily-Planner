@@ -41,7 +41,7 @@ struct PersonalTodoView: View {
                                     color: AppSection.personalTodo.color,
                                     onToggle: { vm.togglePersonalTodo(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
-                                    onDelete: vm.isFuture ? nil : { taskToDelete = task },
+                                    onDelete: vm.isFuture ? nil : { taskToDelete = task }
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
@@ -57,7 +57,7 @@ struct PersonalTodoView: View {
                                     color: AppSection.personalTodo.color,
                                     onToggle: { vm.togglePersonalTodo(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
-                                    onDelete: vm.isFuture ? nil : { taskToDelete = task },
+                                    onDelete: vm.isFuture ? nil : { taskToDelete = task }
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
@@ -71,7 +71,7 @@ struct PersonalTodoView: View {
                                     color: AppSection.personalTodo.color,
                                     onToggle: { vm.togglePersonalTodo(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
-                                    onDelete: vm.isFuture ? nil : { taskToDelete = task },
+                                    onDelete: vm.isFuture ? nil : { taskToDelete = task }
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
