@@ -10,13 +10,9 @@ struct SharingView: View {
     @State private var recipientName     = ""
     @State private var recipientEmail    = ""
     @State private var emailError        = ""
-    @State private var showShareSheet    = false
-    @State private var shareContent      = ""
-    @State private var selectedSection   : SharableSection? = nil
-
-    private var sharing: SharingSettings {
-        get { vm.settings.sharingSettings }
-    }
+    @State private var showInviteSheet   = false
+    @State private var inviteContent     = ""
+    @State private var showSentBanner    = false
 
     var body: some View {
         NavigationView {
@@ -38,6 +34,22 @@ struct SharingView: View {
                 }
 
                 if vm.settings.sharingSettings.isEnabled {
+
+                    // ── YOUR NAME ────────────────────────────────────────────
+                    Section {
+                        HStack(spacing: 10) {
+                            Image(systemName: "person.circle.fill")
+                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            TextField("Your name (shown to recipients)", text: Binding(
+                                get: { vm.settings.sharingSettings.ownerName },
+                                set: { vm.settings.sharingSettings.ownerName = $0; vm.saveSettings() }
+                            ))
+                        }
+                    } header: {
+                        Text("Your Name")
+                    } footer: {
+                        Text("This name appears as the list heading in recipients' apps, e.g. \"Alice's shared to-do list\".")
+                    }
 
                     // ── RECIPIENTS ──────────────────────────────────────────
                     Section {
@@ -86,35 +98,37 @@ struct SharingView: View {
                         Text("Choose which sections to share with your recipients. You can also share individual tasks from inside each list.")
                     }
 
-                    // ── SHARE NOW BUTTONS ───────────────────────────────────
-                    if !vm.settings.sharingSettings.recipients.isEmpty &&
-                       !vm.settings.sharingSettings.enabledSections.isEmpty {
+                    // ── RECEIVED SHARES ─────────────────────────────────────
+                    if !vm.settings.receivedSharedLists.isEmpty {
                         Section {
-                            ForEach(SharableSection.allCases.filter {
-                                vm.settings.sharingSettings.enabledSections.contains($0)
-                            }) { section in
-                                Button {
-                                    shareContent    = vm.generateShareText(for: section)
-                                    selectedSection = section
-                                    showShareSheet  = true
-                                } label: {
-                                    HStack {
-                                        Image(systemName: section.icon)
-                                            .foregroundColor(section.color)
-                                            .frame(width: 28)
-                                        Text("Share \(section.rawValue)")
-                                            .foregroundColor(.primary)
-                                        Spacer()
-                                        Image(systemName: "square.and.arrow.up")
+                            ForEach(vm.settings.receivedSharedLists) { sharedList in
+                                HStack(spacing: 12) {
+                                    Image(systemName: sharedList.section.icon)
+                                        .foregroundColor(sharedList.section.color)
+                                        .frame(width: 28)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(sharedList.senderName)'s \(sharedList.section.rawValue)")
+                                            .font(.system(size: 14, weight: .semibold))
+                                        Text("\(sharedList.tasks.count) tasks · Updated \(sharedList.lastUpdated.formatted(.relative(presentation: .named)))")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
+                                    Spacer()
+                                    Button {
+                                        vm.removeReceivedSharedList(sharedList)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.red.opacity(0.7))
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
+                                .padding(.vertical, 3)
                             }
                         } header: {
-                            Text("Share Now")
+                            Text("Shared With Me")
                         } footer: {
-                            Text("Tap any item above to share that section via email, Messages, or any other app.")
+                            Text("Lists shared by others appear below your own tasks in each section view.")
                         }
                     }
                 }
@@ -123,8 +137,10 @@ struct SharingView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .fontWeight(.semibold)
+                    Button("Done") {
+                        handleDone()
+                    }
+                    .fontWeight(.semibold)
                 }
             }
             .sheet(isPresented: $showAddRecipient) {
@@ -145,9 +161,38 @@ struct SharingView: View {
                     showAddRecipient = false
                 }
             }
-            .sheet(isPresented: $showShareSheet) {
-                ActivityShareSheet(text: shareContent)
+            .sheet(isPresented: $showInviteSheet, onDismiss: { dismiss() }) {
+                ActivityShareSheet(text: inviteContent)
             }
+            .overlay(alignment: .top) {
+                if showSentBanner {
+                    Text("Invitation sent!")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color(red: 0.1, green: 0.65, blue: 0.35))
+                        .cornerRadius(20)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut(duration: 0.3), value: showSentBanner)
+        }
+    }
+
+    // MARK: - Done Action
+    private func handleDone() {
+        let sharing = vm.settings.sharingSettings
+        let hasRecipients = !sharing.recipients.isEmpty
+        let hasSections   = !sharing.enabledSections.isEmpty
+
+        if sharing.isEnabled && hasRecipients && hasSections {
+            inviteContent = vm.buildInvitationEmailBody()
+            showInviteSheet = true
+            // dismiss() is called in the sheet's onDismiss
+        } else {
+            dismiss()
         }
     }
 
@@ -414,8 +459,115 @@ struct TaskShareSheet: View {
     }
 }
 
-// MARK: - ViewModel Extension: Share Text Generation
+// MARK: - ViewModel Extension: Sharing
 extension PlannerViewModel {
+
+    // MARK: - Received Shares Management
+
+    func removeReceivedSharedList(_ list: ReceivedSharedList) {
+        settings.receivedSharedLists.removeAll { $0.id == list.id }
+        saveSettings()
+    }
+
+    func acceptSharedList(fromData encoded: String) {
+        guard let raw    = encoded.removingPercentEncoding ?? Optional(encoded),
+              let data   = Data(base64Encoded: raw),
+              let payload = try? JSONDecoder().decode(SharePayload.self, from: data) else { return }
+
+        let newList = ReceivedSharedList(
+            shareToken  : payload.token,
+            senderName  : payload.senderName,
+            senderEmail : payload.senderEmail,
+            section     : payload.section,
+            tasks       : payload.tasks,
+            lastUpdated : payload.sentAt
+        )
+
+        if let idx = settings.receivedSharedLists.firstIndex(where: { $0.shareToken == payload.token }) {
+            settings.receivedSharedLists[idx] = newList
+        } else {
+            settings.receivedSharedLists.append(newList)
+        }
+        saveSettings()
+    }
+
+    // MARK: - Invitation Email
+
+    /// Builds the full invitation email body for all enabled sections + all recipients.
+    func buildInvitationEmailBody() -> String {
+        let sharing    = settings.sharingSettings
+        let ownerName  = sharing.ownerName.isEmpty ? "Someone" : sharing.ownerName
+        let recipEmails = sharing.recipients.map { $0.email }.joined(separator: ", ")
+
+        var lines: [String] = []
+        lines.append("Hi,")
+        lines.append("")
+        lines.append("\(ownerName) has shared the following sections of their Daily Planner with you:")
+        lines.append("")
+
+        for section in SharableSection.allCases where sharing.enabledSections.contains(section) {
+            lines.append("• \(section.rawValue)")
+            let payload  = buildSharePayload(for: section, ownerName: ownerName)
+            if let link  = encodedShareLink(for: payload) {
+                lines.append("  Accept & sync: \(link)")
+            }
+            lines.append("")
+        }
+
+        lines.append("──────────────────────────────────────")
+        lines.append("HOW TO SYNC:")
+        lines.append("1. Open Daily Planner on your device.")
+        lines.append("2. Tap each \"Accept & sync\" link above.")
+        lines.append("3. The shared list will appear below your own tasks automatically.")
+        lines.append("")
+        lines.append("Whenever \(ownerName) updates their list and re-shares, tap the new link to get the latest tasks.")
+        lines.append("")
+        lines.append("To: \(recipEmails)")
+        lines.append("Shared from Daily Planner")
+        return lines.joined(separator: "\n")
+    }
+
+    // MARK: - Payload Helpers
+
+    func buildSharePayload(for section: SharableSection, ownerName: String) -> SharePayload {
+        let tasks    = sharedTaskItems(for: section)
+        let email    = settings.sharingSettings.recipients.first?.email ?? ""
+        return SharePayload(
+            token      : UUID().uuidString,
+            senderName : ownerName,
+            senderEmail: email,
+            section    : section,
+            tasks      : tasks,
+            sentAt     : Date()
+        )
+    }
+
+    private func sharedTaskItems(for section: SharableSection) -> [SharedTaskItem] {
+        let entry = currentEntry
+        func convert(_ tasks: [PlannerTask]) -> [SharedTaskItem] {
+            tasks.map { t in
+                SharedTaskItem(id: t.id, title: t.title, isCompleted: t.isCompleted,
+                               notes: t.notes, subtasks: t.subtasks)
+            }
+        }
+        switch section {
+        case .entireList:
+            return convert(entry.topPriorities + entry.toDoLists + entry.callsEmails + entry.personalTodo)
+        case .topPriorities: return convert(entry.topPriorities)
+        case .personalList:  return convert(entry.personalTodo)
+        case .callsEmails:   return convert(entry.callsEmails)
+        default:             return []
+        }
+    }
+
+    func encodedShareLink(for payload: SharePayload) -> String? {
+        guard let data    = try? JSONEncoder().encode(payload) else { return nil }
+        let base64        = data.base64EncodedString()
+        guard let encoded = base64.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return nil }
+        return "dailyplanner://accept-share?data=\(encoded)"
+    }
+
+    // MARK: - Share Text Generation
 
     func generateShareText(for section: SharableSection) -> String {
         let entry     = currentEntry

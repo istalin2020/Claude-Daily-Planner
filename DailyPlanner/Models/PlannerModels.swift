@@ -175,13 +175,17 @@ struct SharingSettings: Codable {
     var isEnabled       : Bool                  = false
     var recipients      : [ShareRecipient]      = []
     var enabledSections : Set<SharableSection>  = []
+    /// Display name shown to recipients in invitation emails and shared list headings.
+    var ownerName       : String                = ""
 
     init(isEnabled: Bool = false,
          recipients: [ShareRecipient] = [],
-         enabledSections: Set<SharableSection> = []) {
+         enabledSections: Set<SharableSection> = [],
+         ownerName: String = "") {
         self.isEnabled       = isEnabled
         self.recipients      = recipients
         self.enabledSections = enabledSections
+        self.ownerName       = ownerName
     }
 
     init(from decoder: Decoder) throws {
@@ -189,7 +193,71 @@ struct SharingSettings: Codable {
         isEnabled       = try c.decodeIfPresent(Bool.self,                 forKey: .isEnabled)       ?? false
         recipients      = try c.decodeIfPresent([ShareRecipient].self,     forKey: .recipients)      ?? []
         enabledSections = try c.decodeIfPresent(Set<SharableSection>.self, forKey: .enabledSections) ?? []
+        ownerName       = try c.decodeIfPresent(String.self,               forKey: .ownerName)       ?? ""
     }
+}
+
+// MARK: - Shared Task Item (lightweight task representation for cross-user sharing)
+struct SharedTaskItem: Identifiable, Codable, Equatable {
+    var id          : UUID      = UUID()
+    var title       : String
+    var isCompleted : Bool      = false
+    var notes       : String    = ""
+    var subtasks    : [SubTask] = []
+
+    init(id: UUID = UUID(), title: String, isCompleted: Bool = false,
+         notes: String = "", subtasks: [SubTask] = []) {
+        self.id = id; self.title = title; self.isCompleted = isCompleted
+        self.notes = notes; self.subtasks = subtasks
+    }
+
+    init(from decoder: Decoder) throws {
+        let c       = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decodeIfPresent(UUID.self,      forKey: .id)          ?? UUID()
+        title       = try c.decode(String.self,              forKey: .title)
+        isCompleted = try c.decodeIfPresent(Bool.self,      forKey: .isCompleted) ?? false
+        notes       = try c.decodeIfPresent(String.self,    forKey: .notes)       ?? ""
+        subtasks    = try c.decodeIfPresent([SubTask].self, forKey: .subtasks)    ?? []
+    }
+}
+
+// MARK: - Received Shared List (a list shared to this user by someone else)
+struct ReceivedSharedList: Identifiable, Codable {
+    var id          : UUID            = UUID()
+    var shareToken  : String                    // stable unique ID for update-in-place
+    var senderName  : String
+    var senderEmail : String
+    var section     : SharableSection
+    var tasks       : [SharedTaskItem]
+    var lastUpdated : Date
+
+    init(id: UUID = UUID(), shareToken: String, senderName: String, senderEmail: String,
+         section: SharableSection, tasks: [SharedTaskItem], lastUpdated: Date = Date()) {
+        self.id = id; self.shareToken = shareToken; self.senderName = senderName
+        self.senderEmail = senderEmail; self.section = section
+        self.tasks = tasks; self.lastUpdated = lastUpdated
+    }
+
+    init(from decoder: Decoder) throws {
+        let c       = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decodeIfPresent(UUID.self,             forKey: .id)          ?? UUID()
+        shareToken  = try c.decodeIfPresent(String.self,           forKey: .shareToken)  ?? UUID().uuidString
+        senderName  = try c.decodeIfPresent(String.self,           forKey: .senderName)  ?? ""
+        senderEmail = try c.decodeIfPresent(String.self,           forKey: .senderEmail) ?? ""
+        section     = try c.decodeIfPresent(SharableSection.self,  forKey: .section)     ?? .entireList
+        tasks       = try c.decodeIfPresent([SharedTaskItem].self,  forKey: .tasks)       ?? []
+        lastUpdated = try c.decodeIfPresent(Date.self,             forKey: .lastUpdated) ?? Date()
+    }
+}
+
+// MARK: - Share Payload (JSON-encoded in the invitation deep link)
+struct SharePayload: Codable {
+    var token       : String
+    var senderName  : String
+    var senderEmail : String
+    var section     : SharableSection
+    var tasks       : [SharedTaskItem]
+    var sentAt      : Date
 }
 
 // MARK: - Planner Task
@@ -925,7 +993,9 @@ struct AppSettings: Codable {
     var customExpenseCategories: [String] = []
 
     // MARK: - Sharing
-    var sharingSettings: SharingSettings = SharingSettings()
+    var sharingSettings      : SharingSettings        = SharingSettings()
+    /// Lists shared with this user by others; displayed below own tasks.
+    var receivedSharedLists  : [ReceivedSharedList]   = []
 
     init(isDarkMode: Bool = false,
          autoRollover: Bool = true,
@@ -944,7 +1014,8 @@ struct AppSettings: Codable {
          themeColor: ThemeColor = .purple,
          medications: [Medication] = [],
          customExpenseCategories: [String] = [],
-         sharingSettings: SharingSettings = SharingSettings()) {
+         sharingSettings: SharingSettings = SharingSettings(),
+         receivedSharedLists: [ReceivedSharedList] = []) {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
         self.notificationsEnabled = notificationsEnabled
@@ -963,6 +1034,7 @@ struct AppSettings: Codable {
         self.medications = medications
         self.customExpenseCategories = customExpenseCategories
         self.sharingSettings = sharingSettings
+        self.receivedSharedLists = receivedSharedLists
     }
 
     init(from decoder: Decoder) throws {
@@ -981,10 +1053,11 @@ struct AppSettings: Codable {
         habits               = try c.decodeIfPresent([Habit].self,                    forKey: .habits)               ?? []
         habitLogs            = try c.decodeIfPresent([String: HabitLog].self,         forKey: .habitLogs)            ?? [:]
         categoryBudgets      = try c.decodeIfPresent([String: Double].self,           forKey: .categoryBudgets)      ?? [:]
-        themeColor                  = try c.decodeIfPresent(ThemeColor.self,    forKey: .themeColor)                  ?? .purple
-        medications                 = try c.decodeIfPresent([Medication].self,  forKey: .medications)                 ?? []
-        customExpenseCategories     = try c.decodeIfPresent([String].self,      forKey: .customExpenseCategories)     ?? []
-        sharingSettings             = try c.decodeIfPresent(SharingSettings.self, forKey: .sharingSettings)           ?? SharingSettings()
+        themeColor              = try c.decodeIfPresent(ThemeColor.self,             forKey: .themeColor)              ?? .purple
+        medications             = try c.decodeIfPresent([Medication].self,           forKey: .medications)             ?? []
+        customExpenseCategories = try c.decodeIfPresent([String].self,              forKey: .customExpenseCategories)  ?? []
+        sharingSettings         = try c.decodeIfPresent(SharingSettings.self,       forKey: .sharingSettings)          ?? SharingSettings()
+        receivedSharedLists     = try c.decodeIfPresent([ReceivedSharedList].self,  forKey: .receivedSharedLists)      ?? []
     }
 }
 

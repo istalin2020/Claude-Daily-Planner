@@ -8,6 +8,13 @@ struct ToDoListsView: View {
 
     var entry: DailyEntry { vm.currentEntry }
 
+    /// Received lists that belong to the To-Do / Entire-List sections.
+    private var receivedToDoLists: [ReceivedSharedList] {
+        vm.settings.receivedSharedLists.filter {
+            $0.section == .entireList || $0.section == .toDoLists
+        }
+    }
+
     var body: some View {
         ZStack {
             ScrollView {
@@ -88,6 +95,11 @@ struct ToDoListsView: View {
                             .padding(.horizontal, 16).padding(.top, 16)
                     }
 
+                    // ── RECEIVED SHARED LISTS ────────────────────────────────
+                    ForEach(receivedToDoLists) { sharedList in
+                        SharedToDoListSection(sharedList: sharedList)
+                    }
+
                     Spacer(minLength: 40)
                 }
             }
@@ -119,5 +131,101 @@ struct ToDoListsView: View {
         .onChange(of: vm.toDoListsCompletionPercent) { _, newVal in
             if newVal == 100 { showPopper = true }
         }
+    }
+}
+
+// MARK: - Shared To-Do List Section
+/// Read-only section shown below the user's own tasks for each received shared list.
+private struct SharedToDoListSection: View {
+    let sharedList: ReceivedSharedList
+
+    private var accentColor: Color { Color(red: 0.15, green: 0.45, blue: 0.95) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Section heading
+            HStack(spacing: 8) {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(accentColor)
+                Text("\(sharedList.senderName)'s shared to-do list")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(accentColor)
+                Spacer()
+                Text("Updated \(sharedList.lastUpdated.formatted(.relative(presentation: .named)))")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(accentColor.opacity(0.07))
+            .cornerRadius(10)
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
+
+            if sharedList.tasks.isEmpty {
+                Text("No tasks in this shared list yet.")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+            } else {
+                ForEach(sharedList.tasks) { task in
+                    SharedTaskRow(task: task, accentColor: accentColor)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 3)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Shared Task Row (read-only)
+private struct SharedTaskRow: View {
+    let task: SharedTaskItem
+    let accentColor: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 20))
+                .foregroundColor(task.isCompleted ? accentColor : Color(.systemGray3))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(task.title)
+                    .font(.system(size: 15))
+                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+                    .strikethrough(task.isCompleted)
+
+                if !task.notes.isEmpty {
+                    Text(task.notes)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+
+                if !task.subtasks.isEmpty {
+                    let doneCount = task.subtasks.filter(\.isCompleted).count
+                    Text("\(doneCount)/\(task.subtasks.count) subtasks")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Read-only badge
+            Text("shared")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(accentColor)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(accentColor.opacity(0.12))
+                .cornerRadius(6)
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+        .opacity(task.isCompleted ? 0.7 : 1.0)
     }
 }
