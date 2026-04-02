@@ -48,7 +48,7 @@ class ProManager: ObservableObject {
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
-                let transaction = try checkVerified(verification)
+                let transaction = try ProManager.checkVerified(verification)
                 await transaction.finish()
                 setPro(true)
                 return true
