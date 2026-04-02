@@ -270,15 +270,11 @@ struct SpendingTrendsView: View {
                             x: .value("Month", monthLabel(month, short: true)),
                             y: .value("Amount", amount)
                         )
-                        .foregroundStyle(by: .value("Category", catSpend.category.rawValue))
+                        .foregroundStyle(catSpend.category.color)
                         .symbol(by: .value("Category", catSpend.category.rawValue))
                     }
                 }
             }
-            .chartForegroundStyleScale(
-                domain: top3.map { $0.category.rawValue },
-                range: top3.map { $0.category.color }
-            )
             .frame(height: 180)
             .padding()
             .background(Color(.secondarySystemBackground))

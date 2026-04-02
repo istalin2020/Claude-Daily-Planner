@@ -97,7 +97,7 @@ class ProManager: ObservableObject {
             for await result in Transaction.updates {
                 guard let self else { return }
                 do {
-                    let transaction = try self.checkVerified(result)
+                    let transaction = try ProManager.checkVerified(result)
                     if transaction.productID == self.monthlyID ||
                        transaction.productID == self.yearlyID {
                         await transaction.finish()
@@ -108,7 +108,7 @@ class ProManager: ObservableObject {
         }
     }
 
-    nonisolated private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
+    private static func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .unverified: throw ProError.verificationFailed
         case .verified(let value): return value
