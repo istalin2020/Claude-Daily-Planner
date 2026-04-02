@@ -554,6 +554,7 @@ extension PlannerViewModel {
         case .entireList:
             return convert(entry.topPriorities + entry.toDoLists + entry.callsEmails + entry.personalTodo)
         case .topPriorities: return convert(entry.topPriorities)
+        case .toDoLists:     return convert(entry.toDoLists)
         case .personalList:  return convert(entry.personalTodo)
         case .callsEmails:   return convert(entry.callsEmails)
         default:             return []
@@ -597,6 +598,10 @@ extension PlannerViewModel {
         case .topPriorities:
             lines.append("")
             appendTasks(entry.topPriorities, to: &lines)
+
+        case .toDoLists:
+            lines.append("")
+            appendTasks(entry.toDoLists, to: &lines)
 
         case .personalList:
             lines.append("")

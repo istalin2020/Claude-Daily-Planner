@@ -122,6 +122,7 @@ struct ShareRecipient: Identifiable, Codable, Equatable {
 enum SharableSection: String, Codable, CaseIterable, Identifiable {
     case entireList    = "Entire To-Do List"
     case topPriorities = "Top Priorities"
+    case toDoLists     = "To-Do Lists"
     case personalList  = "Personal List"
     case callsEmails   = "Calls & Emails"
     case foodTracker   = "Food Tracker"
@@ -139,6 +140,7 @@ enum SharableSection: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .entireList:    return "list.bullet.clipboard.fill"
         case .topPriorities: return "star.fill"
+        case .toDoLists:     return "checklist"
         case .personalList:  return "person.circle.fill"
         case .callsEmails:   return "phone.fill"
         case .foodTracker:   return "fork.knife"
@@ -156,6 +158,7 @@ enum SharableSection: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .entireList:    return Color(red: 0.45, green: 0.25, blue: 0.85)
         case .topPriorities: return Color(red: 1.0,  green: 0.75, blue: 0.0)
+        case .toDoLists:     return Color(red: 0.0,  green: 0.6,  blue: 0.85)
         case .personalList:  return Color(red: 0.1,  green: 0.65, blue: 0.35)
         case .callsEmails:   return .blue
         case .foodTracker:   return .orange
