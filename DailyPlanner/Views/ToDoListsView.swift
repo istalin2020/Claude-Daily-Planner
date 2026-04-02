@@ -48,7 +48,6 @@ struct ToDoListsView: View {
                                     onToggle: { vm.toggleToDoListItem(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
                                     onDelete: { vm.deleteToDoListItem(task) },
-                                    sectionLabel: AppSection.toDoLists.rawValue
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
@@ -65,7 +64,6 @@ struct ToDoListsView: View {
                                     onToggle: { vm.toggleToDoListItem(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
                                     onDelete: { vm.deleteToDoListItem(task) },
-                                    sectionLabel: AppSection.toDoLists.rawValue
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
@@ -80,7 +78,6 @@ struct ToDoListsView: View {
                                     onToggle: { vm.toggleToDoListItem(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
                                     onDelete: { vm.deleteToDoListItem(task) },
-                                    sectionLabel: AppSection.toDoLists.rawValue
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
@@ -135,20 +132,28 @@ struct ToDoListsView: View {
 }
 
 // MARK: - Shared To-Do List Section
-/// Read-only section shown below the user's own tasks for each received shared list.
+/// Section shown below the user's own tasks for each received shared list.
+/// Recipients can toggle completion and edit notes, but cannot delete tasks.
 private struct SharedToDoListSection: View {
+    @EnvironmentObject var vm: PlannerViewModel
     let sharedList: ReceivedSharedList
+
+    @State private var editingTask: SharedTaskItem? = nil
 
     private var accentColor: Color { Color(red: 0.15, green: 0.45, blue: 0.95) }
 
+    private var heading: String {
+        let name = sharedList.senderName.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? "Shared tasks" : "\(name)'s shared tasks"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Section heading
             HStack(spacing: 8) {
                 Image(systemName: "person.2.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(accentColor)
-                Text("\(sharedList.senderName)'s shared to-do list")
+                Text(heading)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(accentColor)
                 Spacer()
@@ -171,25 +176,43 @@ private struct SharedToDoListSection: View {
                     .padding(.vertical, 12)
             } else {
                 ForEach(sharedList.tasks) { task in
-                    SharedTaskRow(task: task, accentColor: accentColor)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 3)
+                    SharedTaskRow(
+                        task: task,
+                        accentColor: accentColor,
+                        onToggle: {
+                            vm.toggleSharedTaskCompletion(listID: sharedList.id, taskID: task.id)
+                        },
+                        onEdit: { editingTask = task }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 3)
                 }
+            }
+        }
+        .sheet(item: $editingTask) { task in
+            SharedTaskEditSheet(task: task, accentColor: accentColor) { updatedNotes in
+                vm.updateSharedTaskNotes(listID: sharedList.id, taskID: task.id, notes: updatedNotes)
             }
         }
     }
 }
 
-// MARK: - Shared Task Row (read-only)
+// MARK: - Shared Task Row (interactive: toggle + edit, no delete)
 private struct SharedTaskRow: View {
-    let task: SharedTaskItem
-    let accentColor: Color
+    let task        : SharedTaskItem
+    let accentColor : Color
+    let onToggle    : () -> Void
+    let onEdit      : () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 20))
-                .foregroundColor(task.isCompleted ? accentColor : Color(.systemGray3))
+            Button(action: onToggle) {
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundColor(task.isCompleted ? accentColor : Color(.systemGray3))
+                    .animation(.spring(response: 0.3), value: task.isCompleted)
+            }
+            .buttonStyle(PlainButtonStyle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
@@ -211,21 +234,81 @@ private struct SharedTaskRow: View {
                         .foregroundColor(.secondary)
                 }
             }
+            .contentShape(Rectangle())
+            .onTapGesture { onEdit() }
 
             Spacer()
 
-            // Read-only badge
-            Text("shared")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(accentColor)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
-                .background(accentColor.opacity(0.12))
-                .cornerRadius(6)
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(accentColor.opacity(0.7))
+                    .padding(6)
+            }
+            .buttonStyle(PlainButtonStyle())
         }
         .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
-        .opacity(task.isCompleted ? 0.7 : 1.0)
+        .opacity(task.isCompleted ? 0.65 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: task.isCompleted)
+    }
+}
+
+// MARK: - Shared Task Edit Sheet (notes only; recipient cannot delete)
+private struct SharedTaskEditSheet: View {
+    let task        : SharedTaskItem
+    let accentColor : Color
+    let onSave      : (String) -> Void
+
+    @State private var notesText: String
+    @Environment(\.dismiss) var dismiss
+    @FocusState private var notesFocused: Bool
+
+    init(task: SharedTaskItem, accentColor: Color, onSave: @escaping (String) -> Void) {
+        self.task = task
+        self.accentColor = accentColor
+        self.onSave = onSave
+        _notesText = State(initialValue: task.notes)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section {
+                    Text(task.title)
+                        .font(.system(size: 15, weight: .semibold))
+                } header: {
+                    Text("Task")
+                }
+
+                Section {
+                    TextEditor(text: $notesText)
+                        .frame(minHeight: 100)
+                        .focused($notesFocused)
+                } header: {
+                    Text("Your Notes")
+                } footer: {
+                    Text("Add notes about this shared task. You cannot delete shared tasks.")
+                }
+            }
+            .navigationTitle("Edit Notes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(notesText)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .foregroundColor(accentColor)
+                }
+            }
+            .onAppear { notesFocused = true }
+        }
+        .presentationDetents([.medium])
     }
 }

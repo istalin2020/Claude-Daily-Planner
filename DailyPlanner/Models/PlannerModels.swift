@@ -77,9 +77,13 @@ enum Recurrence: String, Codable, CaseIterable, Identifiable {
 
 // MARK: - Share Recipient
 struct ShareRecipient: Identifiable, Codable, Equatable {
-    var id    = UUID()
-    var name  : String = ""
-    var email : String          // Gmail or iCloud email
+    var id             = UUID()
+    var name           : String   = ""
+    var email          : String          // Gmail or iCloud email
+    /// IDs of PlannerTask items specifically selected to share with this person.
+    var sharedTaskIDs  : [UUID]   = []
+    /// Stable token used in the accept deep-link so re-shares update in-place.
+    var shareToken     : String   = UUID().uuidString
 
     enum AccountType {
         case gmail, icloud, other
@@ -106,15 +110,19 @@ struct ShareRecipient: Identifiable, Codable, Equatable {
         return .other
     }
 
-    init(id: UUID = UUID(), name: String = "", email: String) {
+    init(id: UUID = UUID(), name: String = "", email: String,
+         sharedTaskIDs: [UUID] = [], shareToken: String = UUID().uuidString) {
         self.id = id; self.name = name; self.email = email
+        self.sharedTaskIDs = sharedTaskIDs; self.shareToken = shareToken
     }
 
     init(from decoder: Decoder) throws {
-        let c     = try decoder.container(keyedBy: CodingKeys.self)
-        id        = try c.decodeIfPresent(UUID.self,   forKey: .id)    ?? UUID()
-        name      = try c.decodeIfPresent(String.self, forKey: .name)  ?? ""
-        email     = try c.decode(String.self,           forKey: .email)
+        let c          = try decoder.container(keyedBy: CodingKeys.self)
+        id             = try c.decodeIfPresent(UUID.self,   forKey: .id)            ?? UUID()
+        name           = try c.decodeIfPresent(String.self, forKey: .name)          ?? ""
+        email          = try c.decode(String.self,           forKey: .email)
+        sharedTaskIDs  = try c.decodeIfPresent([UUID].self, forKey: .sharedTaskIDs) ?? []
+        shareToken     = try c.decodeIfPresent(String.self, forKey: .shareToken)    ?? UUID().uuidString
     }
 }
 
@@ -202,25 +210,29 @@ struct SharingSettings: Codable {
 
 // MARK: - Shared Task Item (lightweight task representation for cross-user sharing)
 struct SharedTaskItem: Identifiable, Codable, Equatable {
-    var id          : UUID      = UUID()
+    var id          : UUID             = UUID()
     var title       : String
-    var isCompleted : Bool      = false
-    var notes       : String    = ""
-    var subtasks    : [SubTask] = []
+    var isCompleted : Bool             = false
+    var notes       : String           = ""
+    var subtasks    : [SubTask]        = []
+    /// The source section this task belongs to (used when grouping across sections).
+    var section     : SharableSection  = .toDoLists
 
     init(id: UUID = UUID(), title: String, isCompleted: Bool = false,
-         notes: String = "", subtasks: [SubTask] = []) {
+         notes: String = "", subtasks: [SubTask] = [],
+         section: SharableSection = .toDoLists) {
         self.id = id; self.title = title; self.isCompleted = isCompleted
-        self.notes = notes; self.subtasks = subtasks
+        self.notes = notes; self.subtasks = subtasks; self.section = section
     }
 
     init(from decoder: Decoder) throws {
         let c       = try decoder.container(keyedBy: CodingKeys.self)
-        id          = try c.decodeIfPresent(UUID.self,      forKey: .id)          ?? UUID()
-        title       = try c.decode(String.self,              forKey: .title)
-        isCompleted = try c.decodeIfPresent(Bool.self,      forKey: .isCompleted) ?? false
-        notes       = try c.decodeIfPresent(String.self,    forKey: .notes)       ?? ""
-        subtasks    = try c.decodeIfPresent([SubTask].self, forKey: .subtasks)    ?? []
+        id          = try c.decodeIfPresent(UUID.self,             forKey: .id)          ?? UUID()
+        title       = try c.decode(String.self,                     forKey: .title)
+        isCompleted = try c.decodeIfPresent(Bool.self,             forKey: .isCompleted) ?? false
+        notes       = try c.decodeIfPresent(String.self,           forKey: .notes)       ?? ""
+        subtasks    = try c.decodeIfPresent([SubTask].self,        forKey: .subtasks)    ?? []
+        section     = try c.decodeIfPresent(SharableSection.self,  forKey: .section)     ?? .toDoLists
     }
 }
 
@@ -231,6 +243,7 @@ struct ReceivedSharedList: Identifiable, Codable {
     var senderName  : String
     var senderEmail : String
     var section     : SharableSection
+    /// Mutable: recipient can toggle completion & edit notes, but not delete.
     var tasks       : [SharedTaskItem]
     var lastUpdated : Date
 
@@ -261,6 +274,14 @@ struct SharePayload: Codable {
     var section     : SharableSection
     var tasks       : [SharedTaskItem]
     var sentAt      : Date
+}
+
+// MARK: - Shareable Task (used in per-recipient task selection UI)
+struct SelectableTask: Identifiable {
+    var id      : UUID
+    var title   : String
+    var section : SharableSection
+    var isSelected: Bool = false
 }
 
 // MARK: - Planner Task

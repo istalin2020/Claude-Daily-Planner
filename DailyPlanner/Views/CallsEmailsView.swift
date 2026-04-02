@@ -42,7 +42,6 @@ struct CallsEmailsView: View {
                                     onToggle: { vm.toggleCallEmail(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
                                     onDelete: vm.isFuture ? nil : { taskToDelete = task },
-                                    sectionLabel: AppSection.callsEmails.rawValue
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
@@ -59,7 +58,6 @@ struct CallsEmailsView: View {
                                     onToggle: { vm.toggleCallEmail(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
                                     onDelete: vm.isFuture ? nil : { taskToDelete = task },
-                                    sectionLabel: AppSection.callsEmails.rawValue
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }
@@ -74,7 +72,6 @@ struct CallsEmailsView: View {
                                     onToggle: { vm.toggleCallEmail(task) },
                                     onEdit: vm.isFuture ? nil : { editingTask = task },
                                     onDelete: vm.isFuture ? nil : { taskToDelete = task },
-                                    sectionLabel: AppSection.callsEmails.rawValue
                                 )
                                 .padding(.horizontal, 16).padding(.vertical, 3)
                             }

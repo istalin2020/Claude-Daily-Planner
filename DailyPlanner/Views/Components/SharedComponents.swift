@@ -95,11 +95,6 @@ struct TaskRowCard: View {
     var onEdit: (() -> Void)? = nil
     /// When non-nil, a trash button is shown and calls this on tap.
     var onDelete: (() -> Void)? = nil
-    /// Section label used in share text (e.g. "To-Do List").
-    var sectionLabel: String = "Task"
-
-    @State private var showTaskShareSheet = false
-
     private var isHighlighted: Bool { vm.highlightedTaskID == task.id }
 
     var body: some View {
@@ -156,15 +151,6 @@ struct TaskRowCard: View {
             .contentShape(Rectangle())   // makes the Spacer area tappable too
             .onTapGesture { onEdit?() }
 
-            // ── Share button ──────────────────────────────────────────────
-            Button(action: { showTaskShareSheet = true }) {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 13))
-                    .foregroundColor(.blue.opacity(0.7))
-                    .padding(6)
-            }
-            .buttonStyle(PlainButtonStyle())
-
             // ── Delete button (outside tappable area so it doesn't trigger edit) ─
             if let onDelete = onDelete {
                 Button(action: onDelete) {
@@ -178,10 +164,6 @@ struct TaskRowCard: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .sheet(isPresented: $showTaskShareSheet) {
-            TaskShareSheet(task: task, section: sectionLabel)
-                .environmentObject(vm)
-        }
         .background(
             RoundedRectangle(cornerRadius: 14)
                 .fill(isHighlighted
