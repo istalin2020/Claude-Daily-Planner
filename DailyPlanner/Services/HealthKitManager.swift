@@ -261,11 +261,16 @@ final class HealthKitManager {
             let sleepSamples = (samples as? [HKCategorySample]) ?? []
 
             // Values that represent actual sleep (exclude just "in bed")
-            var asleepValues: Set<Int> = [HKCategoryValueSleepAnalysis.asleep.rawValue]
+            var asleepValues: Set<Int>
             if #available(iOS 16.0, *) {
-                asleepValues.insert(HKCategoryValueSleepAnalysis.asleepCore.rawValue)
-                asleepValues.insert(HKCategoryValueSleepAnalysis.asleepDeep.rawValue)
-                asleepValues.insert(HKCategoryValueSleepAnalysis.asleepREM.rawValue)
+                asleepValues = [
+                    HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepREM.rawValue
+                ]
+            } else {
+                asleepValues = [HKCategoryValueSleepAnalysis.asleep.rawValue]
             }
             let inBedValue = HKCategoryValueSleepAnalysis.inBed.rawValue
 
