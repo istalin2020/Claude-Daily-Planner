@@ -11,6 +11,7 @@ struct ExpenseTrackerView: View {
     @State private var showBudgets = false
     @State private var showProUpgrade = false
     @State private var showSpendingTrends = false
+    @State private var deleteConfirmItem: Expense? = nil
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -25,6 +26,14 @@ struct ExpenseTrackerView: View {
         return fmt.string(from: summaryDate)
     }
 
+    // True when summaryDate is the same month/year as the calendar's selected date
+    private var isCurrentMonth: Bool {
+        let cal = Calendar.current
+        let a = cal.dateComponents([.year, .month], from: summaryDate)
+        let b = cal.dateComponents([.year, .month], from: vm.selectedDate)
+        return a.year == b.year && a.month == b.month
+    }
+
     enum AddMode { case income, expense, savings }
 
     var body: some View {
@@ -35,8 +44,8 @@ struct ExpenseTrackerView: View {
                               completedCount: entry.expenses.count,
                               totalCount: entry.expenses.count)
 
-                // ── Today's Snapshot ──────────────────────────────────
-                todaySnapshotSection
+                // ── Monthly Snapshot Cards ─────────────────────────────
+                monthlySnapshotSection
                     .padding(.top, 12)
 
                 // ── Quick Add Buttons ──────────────────────────────────
@@ -45,7 +54,7 @@ struct ExpenseTrackerView: View {
                         .padding(.top, 10)
                 }
 
-                // ── Monthly Summary ────────────────────────────────────
+                // ── Monthly Summary Card ───────────────────────────────
                 monthlySummaryCard
                     .padding(.horizontal, 16)
                     .padding(.top, 20)
@@ -124,6 +133,22 @@ struct ExpenseTrackerView: View {
         .sheet(isPresented: $showBudgets) {
             BudgetSettingsView().environmentObject(vm)
         }
+        .alert("Delete Transaction", isPresented: Binding(
+            get: { deleteConfirmItem != nil },
+            set: { if !$0 { deleteConfirmItem = nil } }
+        )) {
+            Button("Delete", role: .destructive) {
+                if let item = deleteConfirmItem {
+                    vm.deleteExpense(byID: item.id)
+                }
+                deleteConfirmItem = nil
+            }
+            Button("Cancel", role: .cancel) { deleteConfirmItem = nil }
+        } message: {
+            if let item = deleteConfirmItem {
+                Text("Delete \"\(item.description)\" (\(item.isIncome ? "+" : item.isDeposit ? "+" : "-")\(sym)\(String(format: "%.2f", item.amount)))?")
+            }
+        }
     }
 
     private func budgetAlerts() -> [BudgetAlert] {
@@ -135,27 +160,32 @@ struct ExpenseTrackerView: View {
         }
     }
 
-    // MARK: - Today Snapshot
+    // MARK: - Monthly Snapshot Cards (replaces "Today" snapshot)
 
-    private var todaySnapshotSection: some View {
-        HStack(spacing: 10) {
+    private var monthlySnapshotSection: some View {
+        let income   = vm.monthlyTotalIncome(for: summaryDate)
+        let expenses = vm.monthlyTotalExpenses(for: summaryDate)
+        let savings  = vm.monthlyTotalSavings(for: summaryDate)
+        let label    = isCurrentMonth ? "This Month" : summaryMonthLabel
+
+        return HStack(spacing: 10) {
             TodayFinanceCard(
-                title: "Today's Income",
-                amount: entry.totalIncome,
+                title: "\(label)\nIncome",
+                amount: income,
                 icon: "arrow.down.circle.fill",
                 gradient: [Color(red: 0.1, green: 0.75, blue: 0.4), Color(red: 0.0, green: 0.55, blue: 0.3)],
                 sym: sym
             )
             TodayFinanceCard(
-                title: "Today's Expenses",
-                amount: entry.totalExpenses,
+                title: "\(label)\nExpenses",
+                amount: expenses,
                 icon: "arrow.up.circle.fill",
                 gradient: [Color(red: 0.95, green: 0.35, blue: 0.3), Color(red: 0.8, green: 0.15, blue: 0.15)],
                 sym: sym
             )
             TodayFinanceCard(
-                title: "Future Savings",
-                amount: entry.totalDeposits,
+                title: "\(label)\nSavings",
+                amount: savings,
                 icon: "banknote.fill",
                 gradient: [Color(red: 0.3, green: 0.5, blue: 0.95), Color(red: 0.15, green: 0.3, blue: 0.8)],
                 sym: sym
@@ -181,10 +211,11 @@ struct ExpenseTrackerView: View {
             }
             .padding(.horizontal, 16)
 
-            FinanceAddButton(label: "Add Saving  \(sym)\(String(format: "%.2f", entry.totalDeposits))",
-                             icon: "banknote.fill",
-                             bg: Color(red: 0.3, green: 0.5, blue: 0.95).opacity(0.1),
-                             fg: Color(red: 0.3, green: 0.5, blue: 0.95)) {
+            FinanceAddButton(
+                label: "Add Saving  \(sym)\(String(format: "%.2f", vm.monthlyTotalSavings(for: vm.selectedDate)))",
+                icon: "banknote.fill",
+                bg: Color(red: 0.3, green: 0.5, blue: 0.95).opacity(0.1),
+                fg: Color(red: 0.3, green: 0.5, blue: 0.95)) {
                 addMode = .savings; showAddSheet = true
             }
             .padding(.horizontal, 16)
@@ -196,6 +227,8 @@ struct ExpenseTrackerView: View {
     private var monthlySummaryCard: some View {
         let totalIncome   = vm.monthlyTotalIncome(for: summaryDate)
         let totalExpenses = vm.monthlyTotalExpenses(for: summaryDate)
+        let totalSavings  = vm.monthlyTotalSavings(for: summaryDate)
+        // Balance = Income − Expenses (savings are tracked separately and NOT deducted from balance)
         let balance       = vm.monthlyBalance(for: summaryDate)
         let categories    = vm.monthlyExpensesByCategory(for: summaryDate)
         let barRatio: Double = totalIncome > 0 ? min(totalExpenses / totalIncome, 1.0) : 0
@@ -248,7 +281,6 @@ struct ExpenseTrackerView: View {
 
             // ── Income rows ──
             VStack(spacing: 0) {
-                // Total income (bold header row) — no breakdown rows
                 SummaryRow(
                     label: "Income",
                     amount: totalIncome,
@@ -258,7 +290,6 @@ struct ExpenseTrackerView: View {
                 )
                 .padding(.horizontal, 16)
 
-                // Spacer between income and expenses
                 if !categories.isEmpty {
                     Rectangle()
                         .fill(Color.white.opacity(0.08))
@@ -278,7 +309,7 @@ struct ExpenseTrackerView: View {
                             .font(.system(size: 13))
                             .foregroundColor(.white.opacity(0.8))
                         Spacer()
-                        Text("\(sym)\(String(format: "%.2f", amount))")
+                        Text("-\(sym)\(String(format: "%.2f", amount))")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(Color.red.opacity(0.9))
                     }
@@ -297,12 +328,30 @@ struct ExpenseTrackerView: View {
                     .padding(.horizontal, 16)
                 }
 
+                // Savings row in monthly summary
+                if totalSavings > 0 {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 1)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
+
+                    SummaryRow(
+                        label: "Savings",
+                        amount: totalSavings,
+                        sym: sym,
+                        color: Color(red: 0.3, green: 0.5, blue: 0.95),
+                        isHeader: false
+                    )
+                    .padding(.horizontal, 16)
+                }
+
                 // Dashed divider
                 DashedDivider()
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
 
-                // Balance
+                // Balance (Income − Expenses only; savings are separate)
                 HStack {
                     Text("Balance")
                         .font(.system(size: 16, weight: .bold))
@@ -349,37 +398,52 @@ struct ExpenseTrackerView: View {
                         SectionGroupLabel(title: "Income", color: Color(red: 0.1, green: 0.65, blue: 0.35))
                         ForEach(incomes) { item in
                             TransactionRow(expense: item, sym: sym) {
-                                deleteTransaction(item)
+                                deleteConfirmItem = item
                             }
                             .padding(.horizontal, 16)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    vm.deleteExpense(byID: item.id)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                     if !expenses.isEmpty {
                         SectionGroupLabel(title: "Expenses", color: .red)
                         ForEach(expenses) { item in
                             TransactionRow(expense: item, sym: sym) {
-                                deleteTransaction(item)
+                                deleteConfirmItem = item
                             }
                             .padding(.horizontal, 16)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    vm.deleteExpense(byID: item.id)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                     if !savings.isEmpty {
                         SectionGroupLabel(title: "Savings", color: Color(red: 0.3, green: 0.5, blue: 0.95))
                         ForEach(savings) { item in
                             TransactionRow(expense: item, sym: sym) {
-                                deleteTransaction(item)
+                                deleteConfirmItem = item
                             }
                             .padding(.horizontal, 16)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    vm.deleteExpense(byID: item.id)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-    }
-
-    private func deleteTransaction(_ item: Expense) {
-        if let i = vm.currentEntry.expenses.firstIndex(where: { $0.id == item.id }) {
-            vm.deleteExpense(at: IndexSet([i]))
         }
     }
 }
@@ -414,8 +478,8 @@ struct TodayFinanceCard: View {
                 .font(.system(size: 10, weight: .medium))
                 .foregroundColor(.white.opacity(0.85))
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
+                .lineLimit(3)
+                .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
@@ -548,7 +612,7 @@ struct TransactionRow: View {
                 Image(systemName: "trash")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary.opacity(0.6))
-                    .padding(6)
+                    .padding(8)
                     .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
@@ -572,6 +636,7 @@ struct AddTransactionSheet: View {
     @State private var isCustomCategory    = false
     @State private var showAddCategory     = false
     @State private var newCategoryName     = ""
+    @FocusState private var amountFocused: Bool
 
     let mode: ExpenseTrackerView.AddMode
     let currencySymbol: String
@@ -599,6 +664,12 @@ struct AddTransactionSheet: View {
         case .expense: return "minus.circle.fill"
         case .savings: return "banknote.fill"
         }
+    }
+
+    private var canSave: Bool {
+        !description.trimmingCharacters(in: .whitespaces).isEmpty &&
+        Double(amount) != nil &&
+        (Double(amount) ?? 0) > 0
     }
 
     var body: some View {
@@ -639,6 +710,18 @@ struct AddTransactionSheet: View {
                                 .foregroundColor(.secondary)
                             TextField("0.00", text: $amount)
                                 .keyboardType(.decimalPad)
+                                .focused($amountFocused)
+                            // Clear button — lets the user wipe a mis-typed value
+                            if !amount.isEmpty {
+                                Button {
+                                    amount = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary)
+                                        .font(.system(size: 16))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
                         }
 
                         if mode == .expense {
@@ -648,7 +731,6 @@ struct AddTransactionSheet: View {
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
 
-                                // Built-in categories
                                 Picker("Category", selection: Binding(
                                     get: { isCustomCategory ? "custom:\(customCategoryLabel)" : category.rawValue },
                                     set: { newVal in
@@ -675,7 +757,6 @@ struct AddTransactionSheet: View {
                                 }
                                 .pickerStyle(.menu)
 
-                                // Add Category button
                                 Button(action: { showAddCategory = true }) {
                                     HStack(spacing: 6) {
                                         Image(systemName: "plus.circle.fill")
@@ -693,12 +774,12 @@ struct AddTransactionSheet: View {
 
                     Section {
                         Button {
-                            guard let amt = Double(amount), amt > 0, !description.isEmpty else { return }
+                            guard canSave, let amt = Double(amount) else { return }
                             let expense = Expense(
                                 amount: amt,
                                 category: mode == .expense ? (isCustomCategory ? .other : category) : .other,
                                 customCategoryLabel: mode == .expense && isCustomCategory ? customCategoryLabel : "",
-                                description: description,
+                                description: description.trimmingCharacters(in: .whitespaces),
                                 isDeposit: mode == .savings,
                                 isIncome:  mode == .income
                             )
@@ -715,12 +796,22 @@ struct AddTransactionSheet: View {
                             .foregroundColor(.white)
                             .padding(.vertical, 4)
                         }
-                        .listRowBackground(
-                            description.isEmpty || Double(amount) == nil
-                                ? Color.secondary.opacity(0.3)
-                                : accentColor
-                        )
-                        .disabled(description.isEmpty || Double(amount) == nil)
+                        .listRowBackground(canSave ? accentColor : Color.secondary.opacity(0.3))
+                        .disabled(!canSave)
+                    }
+                }
+                // Keyboard toolbar with Done and Clear buttons for decimal pad
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Clear") {
+                            amount = ""
+                        }
+                        .foregroundColor(.secondary)
+                        Button("Done") {
+                            amountFocused = false
+                        }
+                        .fontWeight(.semibold)
                     }
                 }
             }

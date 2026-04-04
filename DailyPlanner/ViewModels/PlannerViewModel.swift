@@ -14,6 +14,24 @@ class PlannerViewModel: ObservableObject {
     /// Views should read this instead of calling medicationLogsForToday() directly.
     @Published private(set) var todayMedicationLogs: Set<UUID> = []
 
+    // MARK: - Carry Forward State
+    /// Set to true when a new-month carry-forward prompt needs to be shown.
+    @Published var showCarryForwardPrompt: Bool = false
+    /// The previous month's balance and savings amounts available for carry-forward.
+    @Published var pendingCarryForwardAmounts: (balance: Double, savings: Double, monthLabel: String)? = nil
+
+    // MARK: - Share Accept State
+    /// Published info for the most recently accepted shared list.
+    /// Views observe this to show an in-app confirmation banner.
+    @Published var lastAcceptedShareInfo: ShareAcceptedInfo? = nil
+
+    struct ShareAcceptedInfo: Equatable {
+        var senderName  : String
+        var sectionName : String
+        var taskCount   : Int
+        var isUpdate    : Bool
+    }
+
     // Tracks the calendar day on which we last ran rollover.
     // Stored in UserDefaults so it survives app kills.
     private var lastRolloverDateKey: String {
@@ -673,6 +691,13 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    /// Safe ID-based delete that works regardless of list reordering.
+    func deleteExpense(byID id: UUID) {
+        var e = currentEntry
+        e.expenses.removeAll { $0.id == id }
+        currentEntry = e
+    }
+
     func updateSavings(_ amount: Double) {
         var e = currentEntry
         e.savings = amount
@@ -1031,6 +1056,103 @@ class PlannerViewModel: ObservableObject {
     /// which already handles deduplication and multi-day lookback.
     func performRollover() {
         checkForRollover()
+    }
+
+    // MARK: - Monthly Carry Forward
+
+    /// Checks whether we've entered a new calendar month that has not yet been
+    /// prompted for carry-forward.  Safe to call every time the app foregrounds.
+    func checkMonthlyCarryForward() {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+
+        // Only prompt on the first day of a new month (or first open in a new month).
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM"
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        let thisMonthKey = fmt.string(from: today)
+
+        // Already prompted this month — nothing to do.
+        guard settings.lastCarryForwardMonthKey != thisMonthKey else { return }
+
+        // Compute the previous month.
+        guard let prevMonthDate = cal.date(byAdding: .month, value: -1, to: today) else { return }
+
+        let prevBalance = monthlyBalance(for: prevMonthDate)
+        let prevSavings = monthlyTotalSavings(for: prevMonthDate)
+
+        // Nothing meaningful to carry forward — silently record that we checked.
+        guard prevBalance != 0 || prevSavings != 0 else {
+            settings.lastCarryForwardMonthKey = thisMonthKey
+            saveSettings()
+            return
+        }
+
+        let prevLabelFmt = DateFormatter()
+        prevLabelFmt.dateFormat = "MMMM yyyy"
+        let prevLabel = prevLabelFmt.string(from: prevMonthDate)
+
+        // Publish to UI so the app can show the prompt sheet.
+        DispatchQueue.main.async {
+            self.pendingCarryForwardAmounts = (balance: prevBalance, savings: prevSavings, monthLabel: prevLabel)
+            self.showCarryForwardPrompt = true
+        }
+    }
+
+    /// Called after the user responds to the carry-forward prompt.
+    /// - Parameters:
+    ///   - carryBalance: Add previous month's balance as an income entry today.
+    ///   - carrySavings: Add previous month's savings as a savings entry today.
+    func applyCarryForward(carryBalance: Bool, carrySavings: Bool) {
+        guard let amounts = pendingCarryForwardAmounts else {
+            markCarryForwardDone()
+            return
+        }
+
+        var e = entries[dateKey(for: Calendar.current.startOfDay(for: Date()))]
+            ?? DailyEntry(date: Calendar.current.startOfDay(for: Date()))
+        let today = Calendar.current.startOfDay(for: Date())
+        let key = dateKey(for: today)
+
+        if carryBalance && amounts.balance != 0 {
+            let sign = amounts.balance > 0 ? "Balance" : "Deficit"
+            let entry = Expense(
+                amount: abs(amounts.balance),
+                category: .other,
+                customCategoryLabel: "",
+                description: "Carry Forward (\(sign) from \(amounts.monthLabel))",
+                isDeposit: false,
+                isIncome: amounts.balance > 0
+            )
+            e.expenses.append(entry)
+        }
+
+        if carrySavings && amounts.savings > 0 {
+            let entry = Expense(
+                amount: amounts.savings,
+                category: .other,
+                customCategoryLabel: "",
+                description: "Carry Forward (Savings from \(amounts.monthLabel))",
+                isDeposit: true,
+                isIncome: false
+            )
+            e.expenses.append(entry)
+        }
+
+        entries[key] = e
+        markCarryForwardDone()
+    }
+
+    private func markCarryForwardDone() {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM"
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        settings.lastCarryForwardMonthKey = fmt.string(from: Date())
+        saveSettings()
+        DispatchQueue.main.async {
+            self.pendingCarryForwardAmounts = nil
+            self.showCarryForwardPrompt = false
+        }
     }
 
     // MARK: - Persistence (Documents Directory)

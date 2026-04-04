@@ -1026,6 +1026,11 @@ struct AppSettings: Codable {
     /// Lists shared with this user by others; displayed below own tasks.
     var receivedSharedLists  : [ReceivedSharedList]   = []
 
+    // MARK: - Carry Forward
+    /// Tracks the last month (format "yyyy-MM") for which we prompted carry-forward.
+    /// Empty string means never prompted.
+    var lastCarryForwardMonthKey: String = ""
+
     init(isDarkMode: Bool = false,
          autoRollover: Bool = true,
          notificationsEnabled: Bool = false,
@@ -1044,7 +1049,8 @@ struct AppSettings: Codable {
          medications: [Medication] = [],
          customExpenseCategories: [String] = [],
          sharingSettings: SharingSettings = SharingSettings(),
-         receivedSharedLists: [ReceivedSharedList] = []) {
+         receivedSharedLists: [ReceivedSharedList] = [],
+         lastCarryForwardMonthKey: String = "") {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
         self.notificationsEnabled = notificationsEnabled
@@ -1064,6 +1070,7 @@ struct AppSettings: Codable {
         self.customExpenseCategories = customExpenseCategories
         self.sharingSettings = sharingSettings
         self.receivedSharedLists = receivedSharedLists
+        self.lastCarryForwardMonthKey = lastCarryForwardMonthKey
     }
 
     init(from decoder: Decoder) throws {
@@ -1082,11 +1089,12 @@ struct AppSettings: Codable {
         habits               = try c.decodeIfPresent([Habit].self,                    forKey: .habits)               ?? []
         habitLogs            = try c.decodeIfPresent([String: HabitLog].self,         forKey: .habitLogs)            ?? [:]
         categoryBudgets      = try c.decodeIfPresent([String: Double].self,           forKey: .categoryBudgets)      ?? [:]
-        themeColor              = try c.decodeIfPresent(ThemeColor.self,             forKey: .themeColor)              ?? .purple
-        medications             = try c.decodeIfPresent([Medication].self,           forKey: .medications)             ?? []
-        customExpenseCategories = try c.decodeIfPresent([String].self,              forKey: .customExpenseCategories)  ?? []
-        sharingSettings         = try c.decodeIfPresent(SharingSettings.self,       forKey: .sharingSettings)          ?? SharingSettings()
-        receivedSharedLists     = try c.decodeIfPresent([ReceivedSharedList].self,  forKey: .receivedSharedLists)      ?? []
+        themeColor                = try c.decodeIfPresent(ThemeColor.self,             forKey: .themeColor)                ?? .purple
+        medications               = try c.decodeIfPresent([Medication].self,           forKey: .medications)               ?? []
+        customExpenseCategories   = try c.decodeIfPresent([String].self,              forKey: .customExpenseCategories)    ?? []
+        sharingSettings           = try c.decodeIfPresent(SharingSettings.self,       forKey: .sharingSettings)            ?? SharingSettings()
+        receivedSharedLists       = try c.decodeIfPresent([ReceivedSharedList].self,  forKey: .receivedSharedLists)        ?? []
+        lastCarryForwardMonthKey  = try c.decodeIfPresent(String.self,               forKey: .lastCarryForwardMonthKey)   ?? ""
     }
 }
 

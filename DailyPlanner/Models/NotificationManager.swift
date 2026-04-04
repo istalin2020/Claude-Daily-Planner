@@ -230,6 +230,32 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         )
     }
 
+    // MARK: - Share Received Notification
+    /// Schedules an immediate (1-second delay) local notification to confirm
+    /// that a shared task list has been accepted on this device.
+    func scheduleShareReceivedNotification(
+        senderName  : String,
+        sectionName : String,
+        taskCount   : Int,
+        isUpdate    : Bool
+    ) {
+        let content = UNMutableNotificationContent()
+        content.title = isUpdate ? "Shared List Updated" : "New Shared List Received"
+        let verb = isUpdate ? "updated" : "shared"
+        content.body  = "\(senderName) \(verb) \(taskCount) task\(taskCount == 1 ? "" : "s") in \(sectionName) with you."
+        content.sound = .default
+
+        // Fire after 1 second so the notification is visible even if the app
+        // goes to the foreground immediately after the deep-link is processed.
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "dp_share_received_\(UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
+
     // MARK: - Cancel helpers
     func cancelAll() {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()

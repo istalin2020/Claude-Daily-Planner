@@ -14,6 +14,7 @@ struct ProUpgradeView: View {
 
     private let proFeatures: [(icon: String, name: String, desc: String)] = [
         ("icloud.fill",              "iCloud Sync",           "Sync across all your Apple devices"),
+        ("square.and.arrow.up.fill", "Task Sharing",          "Share task categories & receive notifications when accepted"),
         ("rectangle.on.rectangle",  "Home Screen Widgets",    "At-a-glance widgets on your home screen"),
         ("arrow.clockwise",          "Recurring Tasks",        "Daily, weekly & monthly auto-scheduling"),
         ("magnifyingglass",          "Global Search",          "Search tasks, notes & expenses instantly"),

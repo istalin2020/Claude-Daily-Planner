@@ -122,28 +122,61 @@ struct SharingView: View {
                             Text("After adding a person, choose which categories to share with them. All tasks in a selected category will be shared.")
                         }
 
+                        // ── HOW SHARING WORKS ───────────────────────────────
+                        Section {
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: "info.circle.fill")
+                                    .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                                    .font(.system(size: 16))
+                                    .padding(.top, 1)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("How Sharing Works")
+                                        .font(.system(size: 13, weight: .semibold))
+                                    Text("1. Add a recipient and choose categories to share.\n2. Tap Done — an invitation email/message is created.\n3. The recipient taps the link to accept.\n4. They receive a notification and the shared tasks appear in their app instantly via iCloud sync.")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+
                         // ── RECEIVED SHARES ─────────────────────────────────
                         if !vm.settings.receivedSharedLists.isEmpty {
                             Section {
                                 ForEach(vm.settings.receivedSharedLists) { sharedList in
                                     HStack(spacing: 12) {
-                                        Image(systemName: sharedList.section.icon)
-                                            .foregroundColor(sharedList.section.color)
-                                            .frame(width: 28)
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(sharedList.section.color.opacity(0.12))
+                                                .frame(width: 36, height: 36)
+                                            Image(systemName: sharedList.section.icon)
+                                                .foregroundColor(sharedList.section.color)
+                                                .font(.system(size: 16))
+                                        }
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text("\(sharedList.senderName)'s shared to-do list")
+                                            Text("\(sharedList.senderName)'s \(sharedList.section.rawValue)")
                                                 .font(.system(size: 14, weight: .semibold))
-                                            Text("\(sharedList.tasks.count) tasks · Updated \(sharedList.lastUpdated.formatted(.relative(presentation: .named)))")
+                                            Text("\(sharedList.tasks.count) task\(sharedList.tasks.count == 1 ? "" : "s") · Updated \(sharedList.lastUpdated.formatted(.relative(presentation: .named)))")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }
                                         Spacer()
+                                        // Accepted badge
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
+                                                .font(.system(size: 12))
+                                            Text("Accepted")
+                                                .font(.system(size: 11, weight: .semibold))
+                                                .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
+                                        }
                                         Button {
                                             vm.removeReceivedSharedList(sharedList)
                                         } label: {
                                             Image(systemName: "trash")
                                                 .font(.system(size: 13))
                                                 .foregroundColor(.red.opacity(0.7))
+                                                .padding(4)
                                         }
                                         .buttonStyle(PlainButtonStyle())
                                     }
@@ -152,7 +185,7 @@ struct SharingView: View {
                             } header: {
                                 Text("Shared With Me")
                             } footer: {
-                                Text("Shared lists appear below your own tasks in each section view.")
+                                Text("Accepted shared lists appear below your own tasks in each section view. You'll receive a notification whenever the sender updates and re-shares.")
                             }
                         }
                     }
@@ -245,6 +278,7 @@ struct SharingView: View {
             dismiss()
         }
     }
+
 
     private func isValidEmail(_ email: String) -> Bool {
         let pattern = #"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$"#
@@ -534,6 +568,8 @@ extension PlannerViewModel {
               let data   = Data(base64Encoded: raw),
               let payload = try? JSONDecoder().decode(SharePayload.self, from: data) else { return }
 
+        let isUpdate = settings.receivedSharedLists.contains { $0.shareToken == payload.token }
+
         let newList = ReceivedSharedList(
             shareToken  : payload.token,
             senderName  : payload.senderName,
@@ -549,6 +585,26 @@ extension PlannerViewModel {
             settings.receivedSharedLists.append(newList)
         }
         saveSettings()
+
+        // Fire a local notification so the recipient is alerted even if the
+        // app was not in the foreground when the deep-link was tapped.
+        let senderDisplay = payload.senderName.isEmpty ? payload.senderEmail : payload.senderName
+        NotificationManager.shared.scheduleShareReceivedNotification(
+            senderName  : senderDisplay,
+            sectionName : payload.section.rawValue,
+            taskCount   : payload.tasks.count,
+            isUpdate    : isUpdate
+        )
+
+        // Publish so the active view can show an in-app banner.
+        DispatchQueue.main.async {
+            self.lastAcceptedShareInfo = PlannerViewModel.ShareAcceptedInfo(
+                senderName  : senderDisplay,
+                sectionName : payload.section.rawValue,
+                taskCount   : payload.tasks.count,
+                isUpdate    : isUpdate
+            )
+        }
     }
 
     // MARK: - Invitation Email (per-recipient, per-category)
