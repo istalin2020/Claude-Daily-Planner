@@ -824,6 +824,11 @@ class PlannerViewModel: ObservableObject {
     func deleteHabit(_ habit: Habit) {
         settings.habits.removeAll { $0.id == habit.id }
     }
+    func updateHabit(_ habit: Habit) {
+        if let i = settings.habits.firstIndex(where: { $0.id == habit.id }) {
+            settings.habits[i] = habit
+        }
+    }
     func toggleHabit(_ habit: Habit, for date: Date) {
         let key = dateKey(for: date)
         var log = settings.habitLogs[key] ?? HabitLog()

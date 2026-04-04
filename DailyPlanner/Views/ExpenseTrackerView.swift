@@ -160,32 +160,37 @@ struct ExpenseTrackerView: View {
         }
     }
 
-    // MARK: - Monthly Snapshot Cards (replaces "Today" snapshot)
+    // MARK: - Today's Snapshot Cards
+
+    private var todayIncome: Double {
+        entry.expenses.filter { $0.isIncome }.reduce(0) { $0 + $1.amount }
+    }
+    private var todayExpenses: Double {
+        entry.expenses.filter { !$0.isDeposit && !$0.isIncome }.reduce(0) { $0 + $1.amount }
+    }
+    private var todaySavings: Double {
+        entry.expenses.filter { $0.isDeposit }.reduce(0) { $0 + $1.amount }
+    }
 
     private var monthlySnapshotSection: some View {
-        let income   = vm.monthlyTotalIncome(for: summaryDate)
-        let expenses = vm.monthlyTotalExpenses(for: summaryDate)
-        let savings  = vm.monthlyTotalSavings(for: summaryDate)
-        let label    = isCurrentMonth ? "This Month" : summaryMonthLabel
-
-        return HStack(spacing: 10) {
+        HStack(spacing: 10) {
             TodayFinanceCard(
-                title: "\(label)\nIncome",
-                amount: income,
+                title: "Today's\nIncome",
+                amount: todayIncome,
                 icon: "arrow.down.circle.fill",
                 gradient: [Color(red: 0.1, green: 0.75, blue: 0.4), Color(red: 0.0, green: 0.55, blue: 0.3)],
                 sym: sym
             )
             TodayFinanceCard(
-                title: "\(label)\nExpenses",
-                amount: expenses,
+                title: "Today's\nExpenses",
+                amount: todayExpenses,
                 icon: "arrow.up.circle.fill",
                 gradient: [Color(red: 0.95, green: 0.35, blue: 0.3), Color(red: 0.8, green: 0.15, blue: 0.15)],
                 sym: sym
             )
             TodayFinanceCard(
-                title: "\(label)\nSavings",
-                amount: savings,
+                title: "Today's\nSavings",
+                amount: todaySavings,
                 icon: "banknote.fill",
                 gradient: [Color(red: 0.3, green: 0.5, blue: 0.95), Color(red: 0.15, green: 0.3, blue: 0.8)],
                 sym: sym

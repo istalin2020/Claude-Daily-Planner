@@ -180,23 +180,22 @@ struct MedicationRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Button(action: onToggle) {
-                ZStack {
-                    if isTaken {
-                        Circle()
-                            .fill(medication.swiftUIColor)
-                            .frame(width: 42, height: 42)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                    } else {
-                        Circle()
-                            .strokeBorder(medication.swiftUIColor, lineWidth: 2)
-                            .frame(width: 42, height: 42)
-                    }
+            ZStack {
+                if isTaken {
+                    Circle()
+                        .fill(medication.swiftUIColor)
+                        .frame(width: 42, height: 42)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                } else {
+                    Circle()
+                        .strokeBorder(medication.swiftUIColor, lineWidth: 2)
+                        .frame(width: 42, height: 42)
                 }
             }
-            .buttonStyle(PlainButtonStyle())
+            .contentShape(Circle())
+            .onTapGesture { onToggle() }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(medication.name)

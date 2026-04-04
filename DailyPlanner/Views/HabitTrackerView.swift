@@ -3,7 +3,7 @@ import SwiftUI
 struct HabitTrackerView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddHabit = false
-    @State private var selectedHabit: Habit? = nil
+    @State private var habitToEdit: Habit? = nil
 
     private var todayHabits: [Habit] {
         let weekday = Calendar.current.component(.weekday, from: vm.selectedDate)
@@ -93,13 +93,17 @@ struct HabitTrackerView: View {
                             .padding(.horizontal, 16)
 
                         ForEach(vm.settings.habits) { habit in
-                            AllHabitRow(habit: habit) {
-                                vm.deleteHabit(habit)
-                            }
-                            .padding(.horizontal, 16)
+                            AllHabitRow(habit: habit,
+                                        onEdit: { habitToEdit = habit },
+                                        onDelete: { vm.deleteHabit(habit) })
+                                .padding(.horizontal, 16)
                         }
                     }
                     .padding(.top, 20)
+
+                    // Weekly Statistics Table
+                    weeklyStatisticsSection
+                        .padding(.top, 20)
                 }
 
                 if !vm.isFuture {
@@ -120,7 +124,10 @@ struct HabitTrackerView: View {
             }
         }
         .sheet(isPresented: $showAddHabit) {
-            AddHabitSheet { habit in vm.addHabit(habit) }
+            HabitEditSheet(habit: nil) { habit in vm.addHabit(habit) }
+        }
+        .sheet(item: $habitToEdit) { habit in
+            HabitEditSheet(habit: habit) { updated in vm.updateHabit(updated) }
         }
     }
 
@@ -134,6 +141,105 @@ struct HabitTrackerView: View {
         let weekStart = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
         return (0..<7).map { offset in
             cal.date(byAdding: .day, value: offset, to: weekStart)!
+        }
+    }
+
+    // MARK: - Weekly Statistics Table
+
+    private var weeklyStatisticsSection: some View {
+        let dates = weekDates()
+        let cal = Calendar.current
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM d"
+        let weekLabel = "\(fmt.string(from: dates[0])) – \(fmt.string(from: dates[6]))"
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Weekly Statistics")
+                    .font(.system(size: 15, weight: .bold))
+                Spacer()
+                Text(weekLabel)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+
+            // Table header
+            HStack {
+                Text("Habit")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Done")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 44, alignment: .center)
+                Text("Plan")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 44, alignment: .center)
+                Text("Rate")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 44, alignment: .trailing)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 6)
+            .background(Color(.systemBackground).opacity(0.6))
+
+            VStack(spacing: 6) {
+                ForEach(vm.settings.habits) { habit in
+                    let achieved = dates.filter { date in
+                        let wd = cal.component(.weekday, from: date)
+                        return habit.targetDays.contains(wd) && vm.isHabitCompleted(habit, for: date)
+                    }.count
+                    let planned = dates.filter { date in
+                        let wd = cal.component(.weekday, from: date)
+                        return habit.targetDays.contains(wd)
+                    }.count
+                    let percent = planned > 0 ? Int(Double(achieved) / Double(planned) * 100) : 0
+                    let rateColor: Color = percent == 100 ? Color(red: 0.1, green: 0.75, blue: 0.4)
+                        : percent >= 50 ? .orange : .red
+
+                    HStack {
+                        HStack(spacing: 6) {
+                            ZStack {
+                                Circle()
+                                    .fill(habit.swiftUIColor.opacity(0.15))
+                                    .frame(width: 24, height: 24)
+                                Image(systemName: habit.icon)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(habit.swiftUIColor)
+                            }
+                            Text(habit.name)
+                                .font(.system(size: 13))
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Text("\(achieved)")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(habit.swiftUIColor)
+                            .frame(width: 44, alignment: .center)
+
+                        Text("\(planned)")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .frame(width: 44, alignment: .center)
+
+                        Text("\(percent)%")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(rateColor)
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(10)
+                    .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
+                    .padding(.horizontal, 16)
+                }
+            }
         }
     }
 }
@@ -174,7 +280,7 @@ struct HabitRow: View {
                         .foregroundColor(habit.swiftUIColor)
                 }
             }
-            // Week mini-progress — each day circle is tappable to toggle that day
+            // Week mini-progress (Sun–Sat) — each day is tappable
             HStack(spacing: 4) {
                 let days = ["S","M","T","W","T","F","S"]
                 ForEach(0..<7) { i in
@@ -200,7 +306,9 @@ struct HabitRow: View {
 
 struct AllHabitRow: View {
     let habit: Habit
+    let onEdit: () -> Void
     let onDelete: () -> Void
+
     var body: some View {
         HStack(spacing: 10) {
             ZStack {
@@ -209,6 +317,12 @@ struct AllHabitRow: View {
             }
             Text(habit.name).font(.system(size: 13, weight: .medium))
             Spacer()
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+                    .font(.caption)
+                    .foregroundColor(.secondary.opacity(0.7))
+            }
+            .buttonStyle(BorderlessButtonStyle())
             Button(action: onDelete) {
                 Image(systemName: "trash").font(.caption).foregroundColor(.secondary.opacity(0.5))
             }
@@ -221,18 +335,31 @@ struct AllHabitRow: View {
     }
 }
 
-struct AddHabitSheet: View {
+// MARK: - Unified Add/Edit Habit Sheet
+
+struct HabitEditSheet: View {
     @Environment(\.dismiss) var dismiss
-    @State private var name = ""
-    @State private var icon = "star.fill"
-    @State private var color = "purple"
-    @State private var targetDays = Set<Int>()
+    @State private var name: String
+    @State private var icon: String
+    @State private var color: String
+    @State private var targetDays: Set<Int>
+
+    let existingHabit: Habit?
     let onSave: (Habit) -> Void
 
     let icons = ["star.fill","heart.fill","flame.fill","bolt.fill","drop.fill","figure.run",
                  "book.fill","moon.fill","sun.max.fill","music.note","dumbbell.fill","leaf.fill"]
     let colors = ["purple","red","orange","yellow","green","blue","indigo","pink"]
     let dayNames = ["S","M","T","W","T","F","S"]
+
+    init(habit: Habit?, onSave: @escaping (Habit) -> Void) {
+        self.existingHabit = habit
+        self.onSave = onSave
+        _name       = State(initialValue: habit?.name ?? "")
+        _icon       = State(initialValue: habit?.icon ?? "star.fill")
+        _color      = State(initialValue: habit?.color ?? "purple")
+        _targetDays = State(initialValue: habit.map { Set($0.targetDays) } ?? Set<Int>())
+    }
 
     var body: some View {
         NavigationView {
@@ -323,9 +450,9 @@ struct AddHabitSheet: View {
                         .padding(.horizontal, 16)
                     }
 
-                    // REPEAT
+                    // REPEAT (Sunday to Saturday)
                     Group {
-                        Text("REPEAT")
+                        Text("REPEAT (Sun – Sat)")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.secondary)
                             .padding(.horizontal, 16)
@@ -363,15 +490,23 @@ struct AddHabitSheet: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("New Habit")
+            .navigationTitle(existingHabit == nil ? "New Habit" : "Edit Habit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button(existingHabit == nil ? "Add" : "Save") {
                         guard !name.isEmpty else { return }
-                        onSave(Habit(name: name, icon: icon, color: color,
-                                     targetDays: Array(targetDays).sorted()))
+                        let habit = Habit(
+                            id: existingHabit?.id ?? UUID(),
+                            name: name,
+                            icon: icon,
+                            color: color,
+                            targetDays: Array(targetDays).sorted(),
+                            reminderTime: existingHabit?.reminderTime,
+                            createdDate: existingHabit?.createdDate ?? Date()
+                        )
+                        onSave(habit)
                         dismiss()
                     }
                     .disabled(name.isEmpty || targetDays.isEmpty)
@@ -382,3 +517,6 @@ struct AddHabitSheet: View {
 
     private var selectedColor: Color { Habit(name: "", color: color).swiftUIColor }
 }
+
+// Keep AddHabitSheet as a typealias for backward compatibility
+typealias AddHabitSheet = HabitEditSheet
