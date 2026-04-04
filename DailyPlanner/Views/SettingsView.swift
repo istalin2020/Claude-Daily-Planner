@@ -9,7 +9,6 @@ struct SettingsView: View {
     @State private var showTimePicker     = false
     @State private var pickerTime         = defaultPickerTime()
     @State private var permissionDenied   = false
-    @State private var monthlyIncomeText  = ""
     @State private var showExport         = false
     @State private var showWeeklySummary  = false
     @State private var showPomodoro       = false
@@ -20,7 +19,47 @@ struct SettingsView: View {
         NavigationView {
             Form {
 
-                // ── 1. iCLOUD SYNC ────────────────────────────────────────
+                // ── 1. ROLL OVER PENDING TASKS ─────────────────────────────
+                Section {
+                    Toggle(isOn: $vm.settings.autoRollover) {
+                        Label("Roll Over Pending Tasks Daily",
+                              systemImage: "arrow.uturn.right.circle.fill")
+                    }
+                    .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
+
+                    if vm.settings.autoRollover {
+                        Text("Incomplete tasks from the previous day are automatically carried forward to today.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Incomplete tasks stay on the day they were created and are not carried forward.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("Rollover")
+                }
+
+                // ── 2. FOCUS TIMER (POMODORO) ──────────────────────────────
+                Section("Focus Time") {
+                    Button {
+                        if pro.isPro { showPomodoro = true } else { showProUpgrade = true }
+                    } label: {
+                        HStack {
+                            Label("Open Focus Timer", systemImage: "timer")
+                                .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.5))
+                            Spacer()
+                            if !pro.isPro {
+                                ProInlineBadge()
+                            } else {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                // ── 3. iCLOUD SYNC ────────────────────────────────────────
                 Section {
                     HStack {
                         Label("iCloud Sync", systemImage: "icloud.fill")
@@ -45,26 +84,7 @@ struct SettingsView: View {
                          : "iCloud Sync is a PRO feature. Upgrade to sync across all your Apple devices.")
                 }
 
-                // ── 2. POMODORO TIMER ──────────────────────────────────────
-                Section("Pomodoro Timer") {
-                    Button {
-                        if pro.isPro { showPomodoro = true } else { showProUpgrade = true }
-                    } label: {
-                        HStack {
-                            Label("Open Focus Timer", systemImage: "timer")
-                                .foregroundColor(Color(red: 0.9, green: 0.3, blue: 0.5))
-                            Spacer()
-                            if !pro.isPro {
-                                ProInlineBadge()
-                            } else {
-                                Image(systemName: "chevron.right")
-                                    .font(.caption).foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                }
-
-                // ── 3. CURRENCY ────────────────────────────────────────────
+                // ── 4. CURRENCY ────────────────────────────────────────────
                 Section("Currency") {
                     Picker(selection: $vm.settings.currency) {
                         ForEach(Currency.allCases) { currency in
@@ -73,28 +93,6 @@ struct SettingsView: View {
                     } label: {
                         Label("Currency", systemImage: "dollarsign.circle.fill")
                     }
-                }
-
-                // ── 4. SALARY ──────────────────────────────────────────────
-                Section {
-                    HStack(spacing: 8) {
-                        Label("Monthly Salary", systemImage: "banknote.fill")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Text(vm.settings.currency.symbol)
-                            .foregroundColor(.secondary)
-                        TextField("0.00", text: $monthlyIncomeText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 100)
-                            .onChange(of: monthlyIncomeText) { _, val in
-                                vm.settings.monthlyIncome = Double(val) ?? 0
-                            }
-                    }
-                } header: {
-                    Text("Salary")
-                } footer: {
-                    Text("Monthly salary is used in the income summary in Expense Tracker. The currency symbol applies throughout the app.")
                 }
 
                 // ── 5. ENABLE DAILY REMINDERS + HORIZONTAL TIME BAR ───────
@@ -208,54 +206,39 @@ struct SettingsView: View {
                     }
                 }
 
-                // ── 7. ROLL OVER PENDING TASKS ─────────────────────────────
-                Section {
-                    Toggle(isOn: $vm.settings.autoRollover) {
-                        Label("Roll Over Pending Tasks Daily",
-                              systemImage: "arrow.uturn.right.circle.fill")
-                    }
-                    .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
-
-                    if vm.settings.autoRollover {
-                        Text("Incomplete tasks from the previous day are automatically carried forward to today.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("Incomplete tasks stay on the day they were created and are not carried forward.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                } header: {
-                    Text("Task Management")
-                }
-
-                // ── 8. SHARING TASKS ───────────────────────────────────────
+                // ── 7. SHARING TASKS (PRO) ─────────────────────────────────
                 Section {
                     Button {
-                        showSharing = true
+                        if pro.isPro { showSharing = true } else { showProUpgrade = true }
                     } label: {
                         HStack {
                             Label("Share Tasks", systemImage: "square.and.arrow.up.fill")
                                 .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
                             Spacer()
-                            if vm.settings.sharingSettings.isEnabled {
-                                HStack(spacing: 4) {
-                                    Circle()
-                                        .fill(Color.green)
-                                        .frame(width: 8, height: 8)
-                                    Text("On")
-                                        .font(.caption)
-                                        .foregroundColor(.green)
+                            if !pro.isPro {
+                                ProInlineBadge()
+                            } else {
+                                if vm.settings.sharingSettings.isEnabled {
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(Color.green)
+                                            .frame(width: 8, height: 8)
+                                        Text("On")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                    }
                                 }
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundColor(.secondary)
                             }
-                            Image(systemName: "chevron.right")
-                                .font(.caption).foregroundColor(.secondary)
                         }
                     }
                 } header: {
                     Text("Sharing")
                 } footer: {
-                    Text("Share your to-do lists, trackers, and individual tasks with family or friends via Gmail or iCloud.")
+                    Text(pro.isPro
+                         ? "Share your task categories with family or friends. The entire category will be shared."
+                         : "Task Sharing is a PRO feature. Upgrade to share your task lists with others.")
                 }
 
                 // ── 9. EXPORT DATA ─────────────────────────────────────────
@@ -416,11 +399,6 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
-            .onAppear {
-                if vm.settings.monthlyIncome > 0 {
-                    monthlyIncomeText = String(format: "%.2f", vm.settings.monthlyIncome)
-                }
-            }
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
@@ -449,7 +427,7 @@ struct SettingsView: View {
                 ProUpgradeView().environmentObject(pro)
             }
             .sheet(isPresented: $showSharing) {
-                SharingView().environmentObject(vm)
+                SharingView().environmentObject(vm).environmentObject(pro)
             }
         }
     }

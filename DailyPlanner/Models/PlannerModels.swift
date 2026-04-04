@@ -82,6 +82,8 @@ struct ShareRecipient: Identifiable, Codable, Equatable {
     var email          : String          // Gmail or iCloud email
     /// IDs of PlannerTask items specifically selected to share with this person.
     var sharedTaskIDs  : [UUID]   = []
+    /// Categories selected to share with this person (category-level sharing).
+    var sharedSections : [SharableSection] = []
     /// Stable token used in the accept deep-link so re-shares update in-place.
     var shareToken     : String   = UUID().uuidString
 
@@ -111,18 +113,21 @@ struct ShareRecipient: Identifiable, Codable, Equatable {
     }
 
     init(id: UUID = UUID(), name: String = "", email: String,
-         sharedTaskIDs: [UUID] = [], shareToken: String = UUID().uuidString) {
+         sharedTaskIDs: [UUID] = [], sharedSections: [SharableSection] = [],
+         shareToken: String = UUID().uuidString) {
         self.id = id; self.name = name; self.email = email
-        self.sharedTaskIDs = sharedTaskIDs; self.shareToken = shareToken
+        self.sharedTaskIDs = sharedTaskIDs; self.sharedSections = sharedSections
+        self.shareToken = shareToken
     }
 
     init(from decoder: Decoder) throws {
-        let c          = try decoder.container(keyedBy: CodingKeys.self)
-        id             = try c.decodeIfPresent(UUID.self,   forKey: .id)            ?? UUID()
-        name           = try c.decodeIfPresent(String.self, forKey: .name)          ?? ""
-        email          = try c.decode(String.self,           forKey: .email)
-        sharedTaskIDs  = try c.decodeIfPresent([UUID].self, forKey: .sharedTaskIDs) ?? []
-        shareToken     = try c.decodeIfPresent(String.self, forKey: .shareToken)    ?? UUID().uuidString
+        let c             = try decoder.container(keyedBy: CodingKeys.self)
+        id                = try c.decodeIfPresent(UUID.self,              forKey: .id)             ?? UUID()
+        name              = try c.decodeIfPresent(String.self,            forKey: .name)           ?? ""
+        email             = try c.decode(String.self,                      forKey: .email)
+        sharedTaskIDs     = try c.decodeIfPresent([UUID].self,            forKey: .sharedTaskIDs)  ?? []
+        sharedSections    = try c.decodeIfPresent([SharableSection].self, forKey: .sharedSections) ?? []
+        shareToken        = try c.decodeIfPresent(String.self,            forKey: .shareToken)     ?? UUID().uuidString
     }
 }
 

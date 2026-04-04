@@ -1,122 +1,159 @@
 import SwiftUI
 import MessageUI
 
-// MARK: - Sharing View (Settings Screen)
+// MARK: - Sharing View (Settings Screen) — PRO only
 struct SharingView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     @Environment(\.dismiss) var dismiss
 
-    @State private var showAddRecipient        = false
-    @State private var recipientName           = ""
-    @State private var recipientEmail          = ""
-    @State private var emailError              = ""
-    @State private var showInviteSheet         = false
-    @State private var inviteContent           = ""
-    @State private var showSentBanner          = false
+    @State private var showAddRecipient    = false
+    @State private var recipientName       = ""
+    @State private var recipientEmail      = ""
+    @State private var emailError          = ""
+    @State private var showInviteSheet     = false
+    @State private var inviteContent       = ""
+    @State private var showSentBanner      = false
+    @State private var showProUpgrade      = false
 
-    // Task selection after adding / editing a recipient
-    @State private var pendingRecipient        : ShareRecipient? = nil
-    @State private var showTaskSelection       = false
-    @State private var editingRecipient        : ShareRecipient? = nil
+    // Category selection after adding / editing a recipient
+    @State private var pendingRecipient    : ShareRecipient? = nil
+    @State private var showCategorySelect  = false
+    @State private var editingRecipient    : ShareRecipient? = nil
 
     var body: some View {
         NavigationView {
             Form {
 
-                // ── ENABLE SHARING ──────────────────────────────────────────
-                Section {
-                    Toggle(isOn: Binding(
-                        get: { vm.settings.sharingSettings.isEnabled },
-                        set: { vm.settings.sharingSettings.isEnabled = $0; vm.saveSettings() }
-                    )) {
-                        Label("Enable Task Sharing", systemImage: "square.and.arrow.up.fill")
-                    }
-                    .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
-                } header: {
-                    Text("Sharing")
-                } footer: {
-                    Text("Share your tasks and trackers with family members or friends via Gmail or iCloud.")
-                }
-
-                if vm.settings.sharingSettings.isEnabled {
-
-                    // ── YOUR NAME ────────────────────────────────────────────
+                // ── PRO GATE ────────────────────────────────────────────────
+                if !pro.isPro {
                     Section {
-                        HStack(spacing: 10) {
-                            Image(systemName: "person.circle.fill")
-                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
-                            TextField("Your name (shown to recipients)", text: Binding(
-                                get: { vm.settings.sharingSettings.ownerName },
-                                set: { vm.settings.sharingSettings.ownerName = $0; vm.saveSettings() }
-                            ))
-                        }
-                    } header: {
-                        Text("Your Name")
-                    } footer: {
-                        Text("This name appears as the list heading in recipients' apps, e.g. \"Alice's shared tasks\".")
-                    }
-
-                    // ── RECIPIENTS ──────────────────────────────────────────
-                    Section {
-                        ForEach(vm.settings.sharingSettings.recipients) { recipient in
-                            RecipientRow(
-                                recipient: recipient,
-                                onEdit: {
-                                    editingRecipient = recipient
-                                    showTaskSelection = true
-                                },
-                                onDelete: {
-                                    vm.settings.sharingSettings.recipients.removeAll { $0.id == recipient.id }
-                                    vm.saveSettings()
+                        Button(action: { showProUpgrade = true }) {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .fill(LinearGradient(
+                                            colors: [Color(red: 1.0, green: 0.78, blue: 0.0),
+                                                     Color(red: 1.0, green: 0.45, blue: 0.0)],
+                                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "crown.fill")
+                                        .foregroundColor(.white).font(.system(size: 18))
                                 }
-                            )
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Task Sharing is a PRO Feature")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.primary)
+                                    Text("Upgrade to PRO to share task categories with others.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
                         }
-                        Button {
-                            recipientName  = ""
-                            recipientEmail = ""
-                            emailError     = ""
-                            showAddRecipient = true
-                        } label: {
-                            Label("Add Person to Share With", systemImage: "plus.circle.fill")
-                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .sheet(isPresented: $showProUpgrade) {
+                        ProUpgradeView().environmentObject(pro)
+                    }
+                } else {
+                    // ── ENABLE SHARING ──────────────────────────────────────
+                    Section {
+                        Toggle(isOn: Binding(
+                            get: { vm.settings.sharingSettings.isEnabled },
+                            set: { vm.settings.sharingSettings.isEnabled = $0; vm.saveSettings() }
+                        )) {
+                            Label("Enable Task Sharing", systemImage: "square.and.arrow.up.fill")
                         }
+                        .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
                     } header: {
-                        Text("Share With")
+                        Text("Sharing")
                     } footer: {
-                        Text("After adding a person, choose which tasks to share with them individually.")
+                        Text("Share your task categories with family members or friends. The entire category list will be shared with the recipient.")
                     }
 
-                    // ── RECEIVED SHARES ─────────────────────────────────────
-                    if !vm.settings.receivedSharedLists.isEmpty {
+                    if vm.settings.sharingSettings.isEnabled {
+
+                        // ── YOUR NAME ────────────────────────────────────────
                         Section {
-                            ForEach(vm.settings.receivedSharedLists) { sharedList in
-                                HStack(spacing: 12) {
-                                    Image(systemName: sharedList.section.icon)
-                                        .foregroundColor(sharedList.section.color)
-                                        .frame(width: 28)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(sharedList.senderName)'s \(sharedList.section.rawValue)")
-                                            .font(.system(size: 14, weight: .semibold))
-                                        Text("\(sharedList.tasks.count) tasks · Updated \(sharedList.lastUpdated.formatted(.relative(presentation: .named)))")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Button {
-                                        vm.removeReceivedSharedList(sharedList)
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .font(.system(size: 13))
-                                            .foregroundColor(.red.opacity(0.7))
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                                .padding(.vertical, 3)
+                            HStack(spacing: 10) {
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                                TextField("Your name (shown to recipients)", text: Binding(
+                                    get: { vm.settings.sharingSettings.ownerName },
+                                    set: { vm.settings.sharingSettings.ownerName = $0; vm.saveSettings() }
+                                ))
                             }
                         } header: {
-                            Text("Shared With Me")
+                            Text("Your Name")
                         } footer: {
-                            Text("Lists shared by others appear below your own tasks in each section view.")
+                            Text("This name appears as the list heading in recipients' apps, e.g. \"Alice's shared to-do list\".")
+                        }
+
+                        // ── RECIPIENTS ──────────────────────────────────────
+                        Section {
+                            ForEach(vm.settings.sharingSettings.recipients) { recipient in
+                                RecipientRow(
+                                    recipient: recipient,
+                                    onEdit: {
+                                        editingRecipient = recipient
+                                        showCategorySelect = true
+                                    },
+                                    onDelete: {
+                                        vm.settings.sharingSettings.recipients.removeAll { $0.id == recipient.id }
+                                        vm.saveSettings()
+                                    }
+                                )
+                            }
+                            Button {
+                                recipientName  = ""
+                                recipientEmail = ""
+                                emailError     = ""
+                                showAddRecipient = true
+                            } label: {
+                                Label("Add Person to Share With", systemImage: "plus.circle.fill")
+                                    .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                            }
+                        } header: {
+                            Text("Share With")
+                        } footer: {
+                            Text("After adding a person, choose which categories to share with them. All tasks in a selected category will be shared.")
+                        }
+
+                        // ── RECEIVED SHARES ─────────────────────────────────
+                        if !vm.settings.receivedSharedLists.isEmpty {
+                            Section {
+                                ForEach(vm.settings.receivedSharedLists) { sharedList in
+                                    HStack(spacing: 12) {
+                                        Image(systemName: sharedList.section.icon)
+                                            .foregroundColor(sharedList.section.color)
+                                            .frame(width: 28)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("\(sharedList.senderName)'s shared to-do list")
+                                                .font(.system(size: 14, weight: .semibold))
+                                            Text("\(sharedList.tasks.count) tasks · Updated \(sharedList.lastUpdated.formatted(.relative(presentation: .named)))")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Spacer()
+                                        Button {
+                                            vm.removeReceivedSharedList(sharedList)
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.red.opacity(0.7))
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                    .padding(.vertical, 3)
+                                }
+                            } header: {
+                                Text("Shared With Me")
+                            } footer: {
+                                Text("Shared lists appear below your own tasks in each section view.")
+                            }
                         }
                     }
                 }
@@ -125,10 +162,8 @@ struct SharingView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        handleDone()
-                    }
-                    .fontWeight(.semibold)
+                    Button("Done") { handleDone() }
+                        .fontWeight(.semibold)
                 }
             }
             // ── Add Recipient Sheet ──────────────────────────────────────────
@@ -140,32 +175,30 @@ struct SharingView: View {
                 ) {
                     let trimmed = recipientEmail.trimmingCharacters(in: .whitespaces)
                     guard isValidEmail(trimmed) else {
-                        emailError = "Please enter a valid Gmail or iCloud email address."
+                        emailError = "Please enter a valid email address."
                         return
                     }
                     let newRecipient = ShareRecipient(
                         name: recipientName.trimmingCharacters(in: .whitespaces),
                         email: trimmed
                     )
-                    // Store as pending; task selection comes next
                     pendingRecipient = newRecipient
                     showAddRecipient = false
                 }
                 .onDisappear {
                     if let pending = pendingRecipient {
                         editingRecipient = pending
-                        showTaskSelection = true
+                        showCategorySelect = true
                     }
                 }
             }
-            // ── Task Selection Sheet (add or edit recipient tasks) ───────────
-            .sheet(isPresented: $showTaskSelection, onDismiss: {
+            // ── Category Selection Sheet ─────────────────────────────────────
+            .sheet(isPresented: $showCategorySelect, onDismiss: {
                 pendingRecipient = nil
                 editingRecipient = nil
             }) {
                 if let recipient = editingRecipient {
-                    TaskSelectionSheet(recipient: recipient) { updatedRecipient in
-                        // Save or update recipient with selected tasks
+                    CategorySelectionSheet(recipient: recipient) { updatedRecipient in
                         if let idx = vm.settings.sharingSettings.recipients.firstIndex(where: { $0.id == updatedRecipient.id }) {
                             vm.settings.sharingSettings.recipients[idx] = updatedRecipient
                         } else {
@@ -203,9 +236,9 @@ struct SharingView: View {
     private func handleDone() {
         let sharing       = vm.settings.sharingSettings
         let hasRecipients = !sharing.recipients.isEmpty
-        let anyHasTasks   = sharing.recipients.contains { !$0.sharedTaskIDs.isEmpty }
+        let anyHasSections = sharing.recipients.contains { !$0.sharedSections.isEmpty }
 
-        if sharing.isEnabled && hasRecipients && anyHasTasks {
+        if sharing.isEnabled && hasRecipients && anyHasSections {
             inviteContent = vm.buildInvitationEmailBody()
             showInviteSheet = true
         } else {
@@ -219,7 +252,7 @@ struct SharingView: View {
     }
 }
 
-// MARK: - Recipient Row (with edit button)
+// MARK: - Recipient Row
 private struct RecipientRow: View {
     let recipient : ShareRecipient
     let onEdit    : () -> Void
@@ -238,18 +271,18 @@ private struct RecipientRow: View {
                 Text(recipient.email)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                if !recipient.sharedTaskIDs.isEmpty {
-                    Text("\(recipient.sharedTaskIDs.count) task\(recipient.sharedTaskIDs.count == 1 ? "" : "s") selected")
+                if !recipient.sharedSections.isEmpty {
+                    Text(recipient.sharedSections.map { $0.rawValue }.joined(separator: ", "))
                         .font(.system(size: 11))
                         .foregroundColor(.green)
+                        .lineLimit(1)
                 } else {
-                    Text("No tasks selected yet")
+                    Text("No categories selected yet")
                         .font(.system(size: 11))
                         .foregroundColor(.orange)
                 }
             }
             Spacer()
-            // Edit tasks button
             Button(action: onEdit) {
                 Image(systemName: "square.and.pencil")
                     .font(.system(size: 14))
@@ -257,7 +290,6 @@ private struct RecipientRow: View {
                     .padding(6)
             }
             .buttonStyle(PlainButtonStyle())
-            // Delete recipient
             Button(action: onDelete) {
                 Image(systemName: "trash")
                     .font(.system(size: 14))
@@ -269,80 +301,53 @@ private struct RecipientRow: View {
     }
 }
 
-// MARK: - Task Selection Sheet
-struct TaskSelectionSheet: View {
+// MARK: - Category Selection Sheet
+// Shows shareable categories (not individual tasks). Toggling a category
+// shares ALL tasks under that category with the recipient.
+struct CategorySelectionSheet: View {
     @EnvironmentObject var vm: PlannerViewModel
     @Environment(\.dismiss) var dismiss
 
-    let recipient   : ShareRecipient
-    let onDone      : (ShareRecipient) -> Void
+    let recipient : ShareRecipient
+    let onDone    : (ShareRecipient) -> Void
 
-    @State private var selectedIDs: Set<UUID> = []
+    // The categories the user can share
+    private let shareableCategories: [SharableSection] = [
+        .topPriorities, .toDoLists, .personalList, .callsEmails,
+        .appointments, .notes
+    ]
 
-    private var allTaskGroups: [(section: SharableSection, tasks: [PlannerTask])] {
-        let entry = vm.currentEntry
-        var groups: [(SharableSection, [PlannerTask])] = []
-        if !entry.topPriorities.isEmpty  { groups.append((.topPriorities, entry.topPriorities)) }
-        if !entry.toDoLists.isEmpty      { groups.append((.toDoLists,     entry.toDoLists)) }
-        if !entry.callsEmails.isEmpty    { groups.append((.callsEmails,   entry.callsEmails)) }
-        if !entry.personalTodo.isEmpty   { groups.append((.personalList,  entry.personalTodo)) }
-        return groups
-    }
-
-    private var totalTaskCount: Int {
-        allTaskGroups.reduce(0) { $0 + $1.tasks.count }
-    }
+    @State private var selectedSections: Set<SharableSection> = []
 
     var body: some View {
         NavigationView {
-            Group {
-                if totalTaskCount == 0 {
-                    VStack(spacing: 16) {
-                        Image(systemName: "tray")
-                            .font(.system(size: 44))
-                            .foregroundColor(.secondary)
-                        Text("No tasks available for today.")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        Text("Add tasks to Top Priorities, To-Do Lists, Calls & Emails, or Personal List first.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(allTaskGroups, id: \.section) { group in
-                            Section {
-                                ForEach(group.tasks) { task in
-                                    TaskSelectionRow(
-                                        task: task,
-                                        sectionColor: group.section.color,
-                                        isSelected: selectedIDs.contains(task.id)
-                                    ) {
-                                        if selectedIDs.contains(task.id) {
-                                            selectedIDs.remove(task.id)
-                                        } else {
-                                            selectedIDs.insert(task.id)
-                                        }
-                                    }
-                                }
-                            } header: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: group.section.icon)
-                                        .foregroundColor(group.section.color)
-                                    Text(group.section.rawValue)
-                                        .foregroundColor(group.section.color)
-                                        .font(.system(size: 13, weight: .semibold))
-                                }
+            List {
+                Section {
+                    Text("Select the categories to share with \(recipient.name.isEmpty ? recipient.email : recipient.name). All tasks in each selected category will be shared.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .listRowBackground(Color.clear)
+                }
+
+                Section {
+                    ForEach(shareableCategories) { section in
+                        CategoryToggleRow(
+                            section: section,
+                            isSelected: selectedSections.contains(section)
+                        ) {
+                            if selectedSections.contains(section) {
+                                selectedSections.remove(section)
+                            } else {
+                                selectedSections.insert(section)
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
+                } header: {
+                    Text("Categories")
                 }
             }
-            .navigationTitle("Choose Tasks for \(recipient.name.isEmpty ? recipient.email : recipient.name)")
+            .listStyle(.insetGrouped)
+            .navigationTitle("Choose Categories")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -351,49 +356,51 @@ struct TaskSelectionSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
                         var updated = recipient
-                        updated.sharedTaskIDs = Array(selectedIDs)
+                        updated.sharedSections = Array(selectedSections)
                         onDone(updated)
                         dismiss()
                     }
                     .fontWeight(.semibold)
-                    .disabled(selectedIDs.isEmpty && recipient.sharedTaskIDs.isEmpty)
+                    .disabled(selectedSections.isEmpty && recipient.sharedSections.isEmpty)
                 }
             }
             .onAppear {
-                selectedIDs = Set(recipient.sharedTaskIDs)
+                selectedSections = Set(recipient.sharedSections)
             }
         }
     }
 }
 
-// MARK: - Task Selection Row
-private struct TaskSelectionRow: View {
-    let task         : PlannerTask
-    let sectionColor : Color
-    let isSelected   : Bool
-    let onToggle     : () -> Void
+// MARK: - Category Toggle Row
+private struct CategoryToggleRow: View {
+    let section    : SharableSection
+    let isSelected : Bool
+    let onToggle   : () -> Void
 
     var body: some View {
         Button(action: onToggle) {
-            HStack(spacing: 12) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundColor(isSelected ? sectionColor : Color(.systemGray3))
-                    .animation(.spring(response: 0.25), value: isSelected)
-
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(section.color.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: section.icon)
+                        .font(.system(size: 16))
+                        .foregroundColor(section.color)
+                }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(task.title)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(task.isCompleted ? .secondary : .primary)
-                        .strikethrough(task.isCompleted)
-                    if !task.notes.isEmpty {
-                        Text(task.notes)
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
+                    Text(section.rawValue)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                    Text("All tasks in this category")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 Spacer()
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundColor(isSelected ? section.color : Color(.systemGray3))
+                    .animation(.spring(response: 0.25), value: isSelected)
             }
             .contentShape(Rectangle())
         }
@@ -422,7 +429,7 @@ struct AddRecipientSheet: View {
                     HStack(spacing: 10) {
                         Image(systemName: emailIcon)
                             .foregroundColor(emailColor)
-                        TextField("Gmail or iCloud email", text: $email)
+                        TextField("Email address", text: $email)
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
                             .focused($emailFocused)
@@ -446,7 +453,7 @@ struct AddRecipientSheet: View {
                     Button(action: onAdd) {
                         HStack {
                             Spacer()
-                            Label("Add & Choose Tasks", systemImage: "checklist")
+                            Label("Add & Select Categories", systemImage: "square.grid.2x2.fill")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.white)
                             Spacer()
@@ -544,9 +551,9 @@ extension PlannerViewModel {
         saveSettings()
     }
 
-    // MARK: - Invitation Email (per-recipient, per-task)
+    // MARK: - Invitation Email (per-recipient, per-category)
 
-    /// Builds one invitation email body that contains one accept link per section per recipient.
+    /// Builds one invitation email body with one accept link per category per recipient.
     func buildInvitationEmailBody() -> String {
         let sharing   = settings.sharingSettings
         let ownerName = sharing.ownerName.isEmpty ? "Someone" : sharing.ownerName
@@ -554,17 +561,15 @@ extension PlannerViewModel {
 
         lines.append("Hi,")
         lines.append("")
-        lines.append("\(ownerName) has shared specific tasks from their Daily Planner with you.")
+        lines.append("\(ownerName) has shared task categories from their Daily Planner with you.")
         lines.append("")
 
-        for recipient in sharing.recipients where !recipient.sharedTaskIDs.isEmpty {
+        for recipient in sharing.recipients where !recipient.sharedSections.isEmpty {
             lines.append("To: \(recipient.email)")
             lines.append("")
 
-            // Collect tasks matching recipient's sharedTaskIDs, grouped by section
-            let taskGroups = recipientTaskGroups(for: recipient)
-
-            for (section, tasks) in taskGroups {
+            for section in recipient.sharedSections {
+                let tasks = sharedTaskItems(for: section)
                 lines.append("• \(section.rawValue)")
                 for t in tasks {
                     lines.append("   \(t.isCompleted ? "✅" : "⬜") \(t.title)")
@@ -588,36 +593,18 @@ extension PlannerViewModel {
         lines.append("HOW TO SYNC:")
         lines.append("1. Open Daily Planner on your device.")
         lines.append("2. Tap each \"Accept & sync\" link above.")
-        lines.append("3. Shared tasks appear below your own tasks with \"\(ownerName)'s shared tasks\" heading.")
+        lines.append("3. Shared tasks appear below your own tasks with \"\(ownerName)'s shared to-do list\" heading.")
         lines.append("4. You can mark tasks as complete or add notes. Changes are saved on your device.")
         lines.append("")
         lines.append("Shared from Daily Planner")
         return lines.joined(separator: "\n")
     }
 
-    /// Groups tasks that belong to a recipient's sharedTaskIDs by their source section.
+    /// Returns all tasks for a given section (for category-level sharing).
     func recipientTaskGroups(for recipient: ShareRecipient) -> [(section: SharableSection, tasks: [SharedTaskItem])] {
-        let entry = currentEntry
-        let idSet = Set(recipient.sharedTaskIDs)
-
-        func filterAndConvert(_ tasks: [PlannerTask], section: SharableSection) -> [SharedTaskItem] {
-            tasks.compactMap { t in
-                guard idSet.contains(t.id) else { return nil }
-                return SharedTaskItem(id: t.id, title: t.title, isCompleted: t.isCompleted,
-                                      notes: t.notes, subtasks: t.subtasks, section: section)
-            }
+        recipient.sharedSections.map { section in
+            (section, sharedTaskItems(for: section))
         }
-
-        var groups: [(SharableSection, [SharedTaskItem])] = []
-        let tp = filterAndConvert(entry.topPriorities, section: .topPriorities)
-        let td = filterAndConvert(entry.toDoLists,     section: .toDoLists)
-        let ce = filterAndConvert(entry.callsEmails,   section: .callsEmails)
-        let pl = filterAndConvert(entry.personalTodo,  section: .personalList)
-        if !tp.isEmpty { groups.append((.topPriorities, tp)) }
-        if !td.isEmpty { groups.append((.toDoLists,     td)) }
-        if !ce.isEmpty { groups.append((.callsEmails,   ce)) }
-        if !pl.isEmpty { groups.append((.personalList,  pl)) }
-        return groups
     }
 
     // MARK: - Payload Helpers
@@ -637,7 +624,7 @@ extension PlannerViewModel {
                             section: section, tasks: tasks, sentAt: Date())
     }
 
-    private func sharedTaskItems(for section: SharableSection) -> [SharedTaskItem] {
+    func sharedTaskItems(for section: SharableSection) -> [SharedTaskItem] {
         let entry = currentEntry
         func convert(_ tasks: [PlannerTask], sec: SharableSection) -> [SharedTaskItem] {
             tasks.map { t in
@@ -655,6 +642,15 @@ extension PlannerViewModel {
         case .toDoLists:     return convert(entry.toDoLists,     sec: .toDoLists)
         case .personalList:  return convert(entry.personalTodo,  sec: .personalList)
         case .callsEmails:   return convert(entry.callsEmails,   sec: .callsEmails)
+        case .appointments:
+            return entry.appointments.map { a in
+                SharedTaskItem(id: a.id, title: a.title, isCompleted: a.isCompleted,
+                               notes: a.notes, subtasks: [], section: .appointments)
+            }
+        case .notes:
+            guard !entry.notes.isEmpty else { return [] }
+            return [SharedTaskItem(id: UUID(), title: entry.notes, isCompleted: false,
+                                   notes: "", subtasks: [], section: .notes)]
         default:             return []
         }
     }

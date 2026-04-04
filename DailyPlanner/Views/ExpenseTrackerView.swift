@@ -248,36 +248,7 @@ struct ExpenseTrackerView: View {
 
             // ── Income rows ──
             VStack(spacing: 0) {
-                // Monthly salary row (if set)
-                if vm.settings.monthlyIncome > 0 {
-                    SummaryRow(
-                        label: "Monthly Salary",
-                        amount: vm.settings.monthlyIncome,
-                        sym: sym,
-                        color: Color(red: 0.1, green: 0.85, blue: 0.5),
-                        isHeader: false
-                    )
-                    .padding(.horizontal, 16)
-                }
-
-                // Daily income entries summed for month
-                let dailyIncome = vm.monthlyEntries(for: summaryDate)
-                    .flatMap { $0.expenses }
-                    .filter { $0.isIncome }
-                    .reduce(0) { $0 + $1.amount }
-
-                if dailyIncome > 0 {
-                    SummaryRow(
-                        label: "Other Income",
-                        amount: dailyIncome,
-                        sym: sym,
-                        color: Color(red: 0.1, green: 0.85, blue: 0.5),
-                        isHeader: false
-                    )
-                    .padding(.horizontal, 16)
-                }
-
-                // Total income (bold header row)
+                // Total income (bold header row) — no breakdown rows
                 SummaryRow(
                     label: "Income",
                     amount: totalIncome,
@@ -575,9 +546,12 @@ struct TransactionRow: View {
                 .foregroundColor(rowColor)
             Button(action: onDelete) {
                 Image(systemName: "trash")
-                    .font(.caption)
-                    .foregroundColor(.secondary.opacity(0.5))
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary.opacity(0.6))
+                    .padding(6)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(PlainButtonStyle())
         }
         .padding(10)
         .background(Color(.systemBackground))

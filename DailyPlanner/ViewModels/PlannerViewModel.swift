@@ -761,11 +761,10 @@ class PlannerViewModel: ObservableObject {
     }
 
     func monthlyTotalIncome(for date: Date) -> Double {
-        let fromEntries = monthlyEntries(for: date)
+        monthlyEntries(for: date)
             .flatMap { $0.expenses }
             .filter { $0.isIncome }
             .reduce(0) { $0 + $1.amount }
-        return settings.monthlyIncome + fromEntries
     }
 
     func monthlyExpensesByCategory(for date: Date) -> [(ExpenseCategory, Double)] {
@@ -852,12 +851,15 @@ class PlannerViewModel: ObservableObject {
 
     func toggleMedicationTaken(_ med: Medication) {
         let key = dateKey(for: Date())
-        var logs = medicationLogsForToday()
+        // Use the in-memory state to avoid stale reads on rapid taps
+        var logs = todayMedicationLogs
         if logs.contains(med.id) { logs.remove(med.id) } else { logs.insert(med.id) }
+        // Update in-memory state immediately so rapid taps see the correct state
+        todayMedicationLogs = logs
+        // Persist to UserDefaults asynchronously
         if let data = try? JSONEncoder().encode(logs) {
             UserDefaults.standard.set(data, forKey: "\(medLogsKey)_\(key)")
         }
-        todayMedicationLogs = logs
     }
 
     func addMedication(_ med: Medication) {
