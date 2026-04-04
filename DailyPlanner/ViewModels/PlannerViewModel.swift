@@ -695,6 +695,7 @@ class PlannerViewModel: ObservableObject {
     func deleteExpense(byID id: UUID) {
         var e = currentEntry
         e.expenses.removeAll { $0.id == id }
+        e.deletedExpenseIDs.insert(id)
         currentEntry = e
     }
 
@@ -1528,8 +1529,13 @@ class PlannerViewModel: ObservableObject {
         // Notes — prefer non-empty memory over empty disk.
         if !memory.notes.isEmpty { result.notes = memory.notes }
 
-        // Expenses — union; savings scalar from memory.
+        // Expenses — union deleted-ID sets first so that items explicitly
+        // removed on this device are never resurrected from an older disk/iCloud
+        // snapshot.  Then union the live lists and filter out any deleted IDs.
+        let allDeletedExpenseIDs = disk.deletedExpenseIDs.union(memory.deletedExpenseIDs)
+        result.deletedExpenseIDs = allDeletedExpenseIDs
         result.expenses = union(result.expenses, memory.expenses)
+            .filter { !allDeletedExpenseIDs.contains($0.id) }
         if memory.savings != 0 { result.savings = memory.savings }
 
         // Day rating — memory wins.

@@ -1130,6 +1130,11 @@ struct DailyEntry: Codable {
     var expenses: [Expense] = []
     var savings: Double = 0.0
 
+    /// Persistent set of expense UUIDs that the user has explicitly deleted.
+    /// Survives disk serialisation and iCloud sync so the merge engine never
+    /// re-adds a deleted expense from an older snapshot.
+    var deletedExpenseIDs: Set<UUID> = []
+
     var rating: DayRating = DayRating()
     var sleep: SleepEntry = SleepEntry()
 
@@ -1171,8 +1176,9 @@ struct DailyEntry: Codable {
         deletedScheduleBlockIDs = try c.decodeIfPresent(Set<UUID>.self,       forKey: .deletedScheduleBlockIDs) ?? []
         deletedAppointmentIDs   = try c.decodeIfPresent(Set<UUID>.self,       forKey: .deletedAppointmentIDs)   ?? []
         notes          = try c.decodeIfPresent(String.self,          forKey: .notes)          ?? ""
-        expenses       = try c.decodeIfPresent([Expense].self,       forKey: .expenses)       ?? []
-        savings        = try c.decodeIfPresent(Double.self,          forKey: .savings)        ?? 0.0
+        expenses           = try c.decodeIfPresent([Expense].self,    forKey: .expenses)           ?? []
+        savings            = try c.decodeIfPresent(Double.self,      forKey: .savings)            ?? 0.0
+        deletedExpenseIDs  = try c.decodeIfPresent(Set<UUID>.self,   forKey: .deletedExpenseIDs)  ?? []
         rating         = try c.decodeIfPresent(DayRating.self,       forKey: .rating)         ?? DayRating()
         sleep          = try c.decodeIfPresent(SleepEntry.self,      forKey: .sleep)          ?? SleepEntry()
     }
