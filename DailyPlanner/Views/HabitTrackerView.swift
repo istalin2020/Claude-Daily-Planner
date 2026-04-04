@@ -104,6 +104,10 @@ struct HabitTrackerView: View {
                     // Weekly Statistics Table
                     weeklyStatisticsSection
                         .padding(.top, 20)
+
+                    // Monthly Statistics Table
+                    monthlyStatisticsSection
+                        .padding(.top, 20)
                 }
 
                 if !vm.isFuture {
@@ -144,6 +148,91 @@ struct HabitTrackerView: View {
         }
     }
 
+    // MARK: - Helpers
+
+    private func monthDates() -> [Date] {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: vm.selectedDate)
+        guard let monthStart = cal.date(from: comps),
+              let range = cal.range(of: .day, in: .month, for: monthStart) else { return [] }
+        return range.compactMap { day -> Date? in
+            var dc = comps; dc.day = day
+            return cal.date(from: dc)
+        }
+    }
+
+    // MARK: - Shared Stats Row
+
+    @ViewBuilder
+    private func statsRow(habit: Habit, achieved: Int, planned: Int) -> some View {
+        let percent = planned > 0 ? Int(Double(achieved) / Double(planned) * 100) : 0
+        let rateColor: Color = percent == 100 ? Color(red: 0.1, green: 0.75, blue: 0.4)
+            : percent >= 50 ? .orange : .red
+
+        HStack {
+            HStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(habit.swiftUIColor.opacity(0.15))
+                        .frame(width: 24, height: 24)
+                    Image(systemName: habit.icon)
+                        .font(.system(size: 11))
+                        .foregroundColor(habit.swiftUIColor)
+                }
+                Text(habit.name)
+                    .font(.system(size: 13))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("\(achieved)")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(habit.swiftUIColor)
+                .frame(width: 44, alignment: .center)
+
+            Text("\(planned)")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .frame(width: 44, alignment: .center)
+
+            Text("\(percent)%")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(rateColor)
+                .frame(width: 44, alignment: .trailing)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private func statsTableHeader() -> some View {
+        HStack {
+            Text("Habit")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("Done")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .frame(width: 44, alignment: .center)
+            Text("Plan")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .frame(width: 44, alignment: .center)
+            Text("Rate")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .frame(width: 44, alignment: .trailing)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 6)
+        .background(Color(.systemBackground).opacity(0.6))
+    }
+
     // MARK: - Weekly Statistics Table
 
     private var weeklyStatisticsSection: some View {
@@ -164,28 +253,7 @@ struct HabitTrackerView: View {
             }
             .padding(.horizontal, 16)
 
-            // Table header
-            HStack {
-                Text("Habit")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text("Done")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(width: 44, alignment: .center)
-                Text("Plan")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(width: 44, alignment: .center)
-                Text("Rate")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(width: 44, alignment: .trailing)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
-            .background(Color(.systemBackground).opacity(0.6))
+            statsTableHeader()
 
             VStack(spacing: 6) {
                 ForEach(vm.settings.habits) { habit in
@@ -197,49 +265,96 @@ struct HabitTrackerView: View {
                         let wd = cal.component(.weekday, from: date)
                         return habit.targetDays.contains(wd)
                     }.count
-                    let percent = planned > 0 ? Int(Double(achieved) / Double(planned) * 100) : 0
-                    let rateColor: Color = percent == 100 ? Color(red: 0.1, green: 0.75, blue: 0.4)
-                        : percent >= 50 ? .orange : .red
-
-                    HStack {
-                        HStack(spacing: 6) {
-                            ZStack {
-                                Circle()
-                                    .fill(habit.swiftUIColor.opacity(0.15))
-                                    .frame(width: 24, height: 24)
-                                Image(systemName: habit.icon)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(habit.swiftUIColor)
-                            }
-                            Text(habit.name)
-                                .font(.system(size: 13))
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                        Text("\(achieved)")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(habit.swiftUIColor)
-                            .frame(width: 44, alignment: .center)
-
-                        Text("\(planned)")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                            .frame(width: 44, alignment: .center)
-
-                        Text("\(percent)%")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(rateColor)
-                            .frame(width: 44, alignment: .trailing)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color(.systemBackground))
-                    .cornerRadius(10)
-                    .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
-                    .padding(.horizontal, 16)
+                    statsRow(habit: habit, achieved: achieved, planned: planned)
                 }
             }
+        }
+    }
+
+    // MARK: - Monthly Statistics Table
+
+    private var monthlyStatisticsSection: some View {
+        let dates = monthDates()
+        let cal = Calendar.current
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMMM yyyy"
+        let monthLabel = fmt.string(from: vm.selectedDate)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Monthly Statistics")
+                    .font(.system(size: 15, weight: .bold))
+                Spacer()
+                Text(monthLabel)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+
+            statsTableHeader()
+
+            VStack(spacing: 6) {
+                ForEach(vm.settings.habits) { habit in
+                    let achieved = dates.filter { date in
+                        let wd = cal.component(.weekday, from: date)
+                        return habit.targetDays.contains(wd) && vm.isHabitCompleted(habit, for: date)
+                    }.count
+                    let planned = dates.filter { date in
+                        let wd = cal.component(.weekday, from: date)
+                        return habit.targetDays.contains(wd)
+                    }.count
+                    statsRow(habit: habit, achieved: achieved, planned: planned)
+                }
+            }
+
+            // Month summary bar
+            let totalAchieved = vm.settings.habits.reduce(0) { sum, habit in
+                sum + dates.filter { date in
+                    let wd = cal.component(.weekday, from: date)
+                    return habit.targetDays.contains(wd) && vm.isHabitCompleted(habit, for: date)
+                }.count
+            }
+            let totalPlanned = vm.settings.habits.reduce(0) { sum, habit in
+                sum + dates.filter { date in
+                    let wd = cal.component(.weekday, from: date)
+                    return habit.targetDays.contains(wd)
+                }.count
+            }
+            let overallRate = totalPlanned > 0 ? Double(totalAchieved) / Double(totalPlanned) : 0
+
+            VStack(spacing: 6) {
+                HStack {
+                    Text("Overall completion")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(totalAchieved) / \(totalPlanned)")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.primary)
+                    Text("(\(Int(overallRate * 100))%)")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(overallRate == 1 ? Color(red: 0.1, green: 0.75, blue: 0.4)
+                                         : overallRate >= 0.5 ? .orange : .red)
+                }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.secondary.opacity(0.15))
+                            .frame(height: 8)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(overallRate == 1 ? Color(red: 0.1, green: 0.75, blue: 0.4)
+                                  : overallRate >= 0.5 ? Color.orange : Color.red)
+                            .frame(width: geo.size.width * overallRate, height: 8)
+                    }
+                }
+                .frame(height: 8)
+            }
+            .padding(14)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
         }
     }
 }
