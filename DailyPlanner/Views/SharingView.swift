@@ -290,13 +290,19 @@ struct SharingView: View {
             .map { (recipient: $0, text: vm.buildCompactInvitation(for: $0)) }
 
         if queue.count == 1 {
-            // Single recipient → go straight to the share sheet
+            // Single recipient → go straight to the share sheet.
+            // Assign content first, then set the flag on the next run-loop tick
+            // so SwiftUI re-renders with the text before the sheet is created.
             inviteContent = queue[0].text
-            showInviteSheet = true
+            DispatchQueue.main.async {
+                self.showInviteSheet = true
+            }
         } else {
             // Multiple recipients → show the queue so user sends one per person
             shareQueue = queue
-            showShareQueue = true
+            DispatchQueue.main.async {
+                self.showShareQueue = true
+            }
         }
     }
 
@@ -545,42 +551,19 @@ struct AddRecipientSheet: View {
     }
 }
 
-// MARK: - UIActivityItemSource: reliable text passing for WhatsApp, Messages, etc.
-// Using the UIActivityItemSource protocol ensures apps like WhatsApp (which ignore
-// plain Swift String items) still receive the invitation text in the compose window.
-final class ShareTextItemSource: NSObject, UIActivityItemSource {
-    let body: String
-
-    init(body: String) {
-        self.body = body
-        super.init()
-    }
-
-    // Placeholder shown while the user is browsing the share sheet
-    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
-        body
-    }
-
-    // Actual content delivered to the chosen app
-    func activityViewController(_ activityViewController: UIActivityViewController,
-                                 itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
-        body
-    }
-
-    // Subject line for email clients
-    func activityViewController(_ activityViewController: UIActivityViewController,
-                                 subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
-        "Daily Planner – Shared Task List"
-    }
-}
-
 // MARK: - iOS Share Sheet Wrapper
+// Passes text as a plain String — the most reliable approach for WhatsApp,
+// Gmail, Messages, and all other share targets. Custom UIActivityItemSource
+// wrappers are ignored by many apps (especially WhatsApp), causing blank
+// compose windows. A plain String is universally supported.
 struct ActivityShareSheet: UIViewControllerRepresentable {
     let text: String
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        let provider = ShareTextItemSource(body: text)
-        return UIActivityViewController(activityItems: [provider], applicationActivities: nil)
+        // text is passed directly; Swift String bridges to NSString automatically.
+        // This guarantees WhatsApp, Gmail, Messages, etc. receive the content.
+        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        return vc
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

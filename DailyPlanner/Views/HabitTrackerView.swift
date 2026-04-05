@@ -55,6 +55,21 @@ struct HabitTrackerView: View {
                     .padding(.top, 12)
                 }
 
+                // Add New Habit button — pinned near the top for easy access
+                if !vm.isFuture {
+                    Button { showAddHabit = true } label: {
+                        Label("Add New Habit", systemImage: "plus.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(vm.settings.themeColor.primary.opacity(0.1))
+                            .foregroundColor(vm.settings.themeColor.primary)
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                }
+
                 // Today's habits
                 if todayHabits.isEmpty && vm.settings.habits.isEmpty {
                     EmptySectionView(section: .habits,
@@ -108,20 +123,6 @@ struct HabitTrackerView: View {
                     // Monthly Statistics Table
                     monthlyStatisticsSection
                         .padding(.top, 20)
-                }
-
-                if !vm.isFuture {
-                    Button { showAddHabit = true } label: {
-                        Label("Add New Habit", systemImage: "plus.circle.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(vm.settings.themeColor.primary.opacity(0.1))
-                            .foregroundColor(vm.settings.themeColor.primary)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
                 }
 
                 Spacer(minLength: 40)
