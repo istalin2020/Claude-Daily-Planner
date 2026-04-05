@@ -16,6 +16,10 @@ struct SharingView: View {
     @State private var showSentBanner      = false
     @State private var showProUpgrade      = false
 
+    // Per-recipient share queue (used when there are multiple recipients)
+    @State private var shareQueue          : [(recipient: ShareRecipient, text: String)] = []
+    @State private var showShareQueue      = false
+
     // Category selection after adding / editing a recipient
     @State private var pendingRecipient    : ShareRecipient? = nil
     @State private var showCategorySelect  = false
@@ -244,9 +248,14 @@ struct SharingView: View {
                     .environmentObject(vm)
                 }
             }
-            // ── Invite Share Sheet ───────────────────────────────────────────
+            // ── Invite Share Sheet (single recipient) ───────────────────────
             .sheet(isPresented: $showInviteSheet, onDismiss: { dismiss() }) {
                 ActivityShareSheet(text: inviteContent)
+            }
+            // ── Share Queue Sheet (multiple recipients) ──────────────────────
+            .sheet(isPresented: $showShareQueue, onDismiss: { dismiss() }) {
+                ShareQueueSheet(invitations: shareQueue)
+                    .environmentObject(vm)
             }
             .overlay(alignment: .top) {
                 if showSentBanner {
@@ -267,15 +276,27 @@ struct SharingView: View {
 
     // MARK: - Done Action
     private func handleDone() {
-        let sharing       = vm.settings.sharingSettings
-        let hasRecipients = !sharing.recipients.isEmpty
-        let anyHasSections = sharing.recipients.contains { !$0.sharedSections.isEmpty }
+        let sharing = vm.settings.sharingSettings
+        guard sharing.isEnabled,
+              !sharing.recipients.isEmpty,
+              sharing.recipients.contains(where: { !$0.sharedSections.isEmpty }) else {
+            dismiss()
+            return
+        }
 
-        if sharing.isEnabled && hasRecipients && anyHasSections {
-            inviteContent = vm.buildInvitationEmailBody()
+        // Build a compact, per-recipient invitation (short enough for WhatsApp/SMS)
+        let queue = sharing.recipients
+            .filter { !$0.sharedSections.isEmpty }
+            .map { (recipient: $0, text: vm.buildCompactInvitation(for: $0)) }
+
+        if queue.count == 1 {
+            // Single recipient → go straight to the share sheet
+            inviteContent = queue[0].text
             showInviteSheet = true
         } else {
-            dismiss()
+            // Multiple recipients → show the queue so user sends one per person
+            shareQueue = queue
+            showShareQueue = true
         }
     }
 
@@ -472,7 +493,7 @@ struct AddRecipientSheet: View {
                     Text("Recipient Details")
                 } footer: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Accepted: @gmail.com · @icloud.com · @me.com · @mac.com")
+                        Text("Any valid email address is accepted. The recipient must have Daily Planner installed to accept the shared list.")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         if !errorMessage.isEmpty {
@@ -524,15 +545,161 @@ struct AddRecipientSheet: View {
     }
 }
 
+// MARK: - UIActivityItemSource: reliable text passing for WhatsApp, Messages, etc.
+// Using the UIActivityItemSource protocol ensures apps like WhatsApp (which ignore
+// plain Swift String items) still receive the invitation text in the compose window.
+final class ShareTextItemSource: NSObject, UIActivityItemSource {
+    let body: String
+
+    init(body: String) {
+        self.body = body
+        super.init()
+    }
+
+    // Placeholder shown while the user is browsing the share sheet
+    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
+        body
+    }
+
+    // Actual content delivered to the chosen app
+    func activityViewController(_ activityViewController: UIActivityViewController,
+                                 itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
+        body
+    }
+
+    // Subject line for email clients
+    func activityViewController(_ activityViewController: UIActivityViewController,
+                                 subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
+        "Daily Planner – Shared Task List"
+    }
+}
+
 // MARK: - iOS Share Sheet Wrapper
 struct ActivityShareSheet: UIViewControllerRepresentable {
     let text: String
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        let provider = ShareTextItemSource(body: text)
+        return UIActivityViewController(activityItems: [provider], applicationActivities: nil)
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Share Queue Sheet (one send button per recipient)
+struct ShareQueueSheet: View {
+    @EnvironmentObject var vm: PlannerViewModel
+    @Environment(\.dismiss) var dismiss
+
+    let invitations: [(recipient: ShareRecipient, text: String)]
+
+    @State private var activeRecipientID: UUID? = nil
+    @State private var copiedRecipientID: UUID? = nil
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section {
+                    Text("Tap \"Send\" for each person. Each recipient gets their own personalised invitation with their accept link.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .listRowBackground(Color.clear)
+                }
+
+                ForEach(invitations, id: \.recipient.id) { item in
+                    Section {
+                        HStack(spacing: 12) {
+                            Image(systemName: item.recipient.accountType.icon)
+                                .font(.system(size: 22))
+                                .foregroundColor(item.recipient.accountType.color)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                if !item.recipient.name.isEmpty {
+                                    Text(item.recipient.name)
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                                Text(item.recipient.email)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(item.recipient.sharedSections.map { $0.rawValue }.joined(separator: ", "))
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.green)
+                                    .lineLimit(2)
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 10) {
+                                // Copy invitation to clipboard
+                                Button {
+                                    UIPasteboard.general.string = item.text
+                                    copiedRecipientID = item.recipient.id
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                        if copiedRecipientID == item.recipient.id {
+                                            copiedRecipientID = nil
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: copiedRecipientID == item.recipient.id
+                                          ? "checkmark.circle.fill" : "doc.on.doc")
+                                        .font(.system(size: 18))
+                                        .foregroundColor(copiedRecipientID == item.recipient.id
+                                                         ? .green
+                                                         : Color(red: 0.45, green: 0.25, blue: 0.85))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+
+                                // Open share sheet for this recipient
+                                Button {
+                                    activeRecipientID = item.recipient.id
+                                } label: {
+                                    Label("Send", systemImage: "square.and.arrow.up")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color(red: 0.45, green: 0.25, blue: 0.85))
+                                        .cornerRadius(8)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+
+                Section {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 14))
+                            .padding(.top, 1)
+                        Text("Recipients must have Daily Planner installed. When they tap the accept link, the shared tasks appear in their app immediately.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .listRowBackground(Color.clear)
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Send Invitations")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
+            .sheet(item: Binding<ShareRecipient?>(
+                get: { invitations.first(where: { $0.recipient.id == activeRecipientID })?.recipient },
+                set: { activeRecipientID = $0?.id }
+            )) { recipient in
+                if let inv = invitations.first(where: { $0.recipient.id == recipient.id }) {
+                    ActivityShareSheet(text: inv.text)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - ViewModel Extension: Sharing
@@ -653,6 +820,36 @@ extension PlannerViewModel {
         lines.append("4. You can mark tasks as complete or add notes. Changes are saved on your device.")
         lines.append("")
         lines.append("Shared from Daily Planner")
+        return lines.joined(separator: "\n")
+    }
+
+    /// Builds a compact, WhatsApp/SMS-friendly invitation for a single recipient.
+    /// Links are placed right after each section header so they're immediately visible.
+    func buildCompactInvitation(for recipient: ShareRecipient) -> String {
+        let sharing   = settings.sharingSettings
+        let ownerName = sharing.ownerName.isEmpty ? "Someone" : sharing.ownerName
+        let greeting  = recipient.name.isEmpty ? "Hi!" : "Hi \(recipient.name)!"
+        var lines: [String] = []
+
+        lines.append(greeting)
+        lines.append("")
+        lines.append("\(ownerName) is sharing task lists with you on Daily Planner.")
+        lines.append("")
+
+        for section in recipient.sharedSections {
+            let tasks   = sharedTaskItems(for: section)
+            let payload = buildPerRecipientPayload(
+                tasks: tasks, section: section,
+                ownerName: ownerName, ownerEmail: recipient.email,
+                token: recipient.shareToken)
+            guard let link = encodedShareLink(for: payload) else { continue }
+
+            lines.append("📋 \(section.rawValue)")
+            lines.append(link)
+            lines.append("")
+        }
+
+        lines.append("Tap the link(s) above with Daily Planner installed to accept.")
         return lines.joined(separator: "\n")
     }
 
