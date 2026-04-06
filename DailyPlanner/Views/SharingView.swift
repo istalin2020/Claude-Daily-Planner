@@ -714,8 +714,18 @@ extension PlannerViewModel {
     }
 
     func acceptSharedList(fromData encoded: String) {
-        guard let raw    = encoded.removingPercentEncoding ?? Optional(encoded),
-              let data   = Data(base64Encoded: raw),
+        // 1. Percent-decode in case the caller passed a still-encoded string.
+        let raw = encoded.removingPercentEncoding ?? encoded
+        // 2. Convert URL-safe base64 (- → +, _ → /) back to standard base64,
+        //    then restore any stripped = padding so Data(base64Encoded:) works.
+        //    This is backward-compatible: links generated before this change
+        //    already use + / = and the replacements are idempotent for them.
+        var standard = raw
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = standard.count % 4
+        if remainder != 0 { standard += String(repeating: "=", count: 4 - remainder) }
+        guard let data    = Data(base64Encoded: standard),
               let payload = try? JSONDecoder().decode(SharePayload.self, from: data) else { return }
 
         let isUpdate = settings.receivedSharedLists.contains { $0.shareToken == payload.token }
@@ -892,10 +902,18 @@ extension PlannerViewModel {
     }
 
     func encodedShareLink(for payload: SharePayload) -> String? {
-        guard let data    = try? JSONEncoder().encode(payload) else { return nil }
-        let base64        = data.base64EncodedString()
-        guard let encoded = base64.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return nil }
-        return "dailyplanner://accept-share?data=\(encoded)"
+        guard let data = try? JSONEncoder().encode(payload) else { return nil }
+        // URL-safe base64 (RFC 4648 §5): replace + → -, / → _, strip = padding.
+        // This produces a plain alphanumeric+dash+underscore string that needs no
+        // further percent-encoding and is safe in any URL query parameter.
+        let base64 = data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        // Use an HTTPS link so messaging apps (iMessage, WhatsApp, SMS, email)
+        // render it as a tappable hyperlink.  The GitHub Pages redirect page
+        // opens the dailyplanner:// deep link in the app.
+        return "https://istalin2020.github.io/Daily-Planner/share/?data=\(base64)"
     }
 
     // MARK: - Share Text Generation (kept for backward compatibility)

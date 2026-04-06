@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Planner – Shared Tasks</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #7340d8 0%, #4a1f9e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px 32px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .icon {
+            font-size: 56px;
+            margin-bottom: 16px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #7340d8, #4a1f9e);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            margin-bottom: 16px;
+            width: 100%;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        .btn:active { opacity: 0.85; }
+        .appstore-btn {
+            display: inline-block;
+            margin-top: 8px;
+        }
+        .appstore-btn img {
+            height: 44px;
+        }
+        .divider {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 24px 0;
+        }
+        .note {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.5;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #eee;
+            border-top-color: #7340d8;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #opening { display: block; }
+        #fallback { display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <!-- Opening state -->
+        <div id="opening">
+            <div class="spinner"></div>
+            <h1>Opening Daily Planner…</h1>
+            <p class="subtitle">Accepting your shared task list.</p>
+        </div>
+
+        <!-- Fallback state (shown if app doesn't open) -->
+        <div id="fallback">
+            <div class="icon">📋</div>
+            <h1>Shared Tasks Waiting</h1>
+            <p class="subtitle">
+                Someone has shared their task list with you via Daily Planner.
+                Tap the button below to open it in the app.
+            </p>
+            <a id="openAppBtn" href="#" class="btn">Open in Daily Planner</a>
+            <hr class="divider">
+            <p class="note">Don't have Daily Planner yet?</p>
+            <a class="appstore-btn" href="https://apps.apple.com/app/daily-planner/id6736770987" target="_blank">
+                <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                     alt="Download on the App Store">
+            </a>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            // Extract the `data` parameter from the current URL
+            var params = new URLSearchParams(window.location.search);
+            var data   = params.get('data');
+
+            if (!data) {
+                // No payload – show generic fallback
+                document.getElementById('opening').style.display  = 'none';
+                document.getElementById('fallback').style.display = 'block';
+                return;
+            }
+
+            // Build the deep link. The data value is URL-safe base64 (no padding,
+            // - instead of +, _ instead of /). Re-encode it for the query string.
+            var deepLink = 'dailyplanner://accept-share?data=' + encodeURIComponent(data);
+
+            // Wire up the fallback button
+            document.getElementById('openAppBtn').href = deepLink;
+
+            // Attempt to open the app immediately
+            window.location.href = deepLink;
+
+            // After a short delay, if we're still here the app didn't open —
+            // show the manual fallback UI.
+            setTimeout(function () {
+                document.getElementById('opening').style.display  = 'none';
+                document.getElementById('fallback').style.display = 'block';
+            }, 2500);
+        })();
+    </script>
+</body>
+</html>
