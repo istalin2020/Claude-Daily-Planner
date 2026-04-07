@@ -1,5 +1,6 @@
 import SwiftUI
 import MessageUI
+import CloudKit
 
 // MARK: - Sharing View (Settings Screen) — PRO only
 struct SharingView: View {
@@ -581,7 +582,7 @@ struct ActivityShareSheet: UIViewControllerRepresentable {
 /// UIActivityItemProvider that returns the correct content type per activity.
 /// - Mail apps (Gmail, Outlook, Mail): get subject + body → no blank compose screen
 /// - Messaging apps (WhatsApp, iMessage): get plain text → fills message body
-private final class ShareTextProvider: UIActivityItemProvider {
+private final class ShareTextProvider: UIActivityItemProvider, @unchecked Sendable {
     private let shareText : String
     private let subject   : String
 
@@ -879,7 +880,7 @@ extension PlannerViewModel {
         }
 
         // Fetch the real data from CloudKit.
-        CloudKitSharingService.shared.fetchSharedList(shareToken: shareToken) { [weak self] result in
+        CloudKitSharingService.shared.fetchSharedList(shareToken: shareToken) { [weak self] (result: Result<CKSharedListPayload, Error>) in
             guard let self else { return }
             switch result {
             case .success(let payload):
@@ -908,7 +909,7 @@ extension PlannerViewModel {
         let tokens = settings.receivedSharedLists.map { $0.shareToken }
         guard !tokens.isEmpty else { return }
 
-        CloudKitSharingService.shared.refreshReceivedLists(tokens: tokens) { [weak self] payloads in
+        CloudKitSharingService.shared.refreshReceivedLists(tokens: tokens) { [weak self] (payloads: [CKSharedListPayload]) in
             guard let self else { return }
             for payload in payloads {
                 let list = ReceivedSharedList(

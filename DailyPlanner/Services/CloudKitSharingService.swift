@@ -95,13 +95,13 @@ final class CloudKitSharingService {
         op.desiredKeys = ["senderName", "senderEmail", "recipientEmail", "section", "tasksJSON", "updatedAt"]
 
         var results: [CKSharedListPayload] = []
-        op.perRecordResultBlock = { _, result in
+        op.perRecordResultBlock = { (_: CKRecord.ID, result: Result<CKRecord, Error>) in
             if case .success(let record) = result,
                let payload = CKSharedListPayload(from: record) {
                 results.append(payload)
             }
         }
-        op.fetchRecordsResultBlock = { _ in
+        op.fetchRecordsResultBlock = { (_: Result<Void, Error>) in
             DispatchQueue.main.async { completion(results) }
         }
         publicDB.add(op)
