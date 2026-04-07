@@ -13,15 +13,34 @@ struct DailyPlannerApp: App {
                 .environmentObject(proManager)
                 .preferredColorScheme(viewModel.settings.isDarkMode ? .dark : .light)
                 .tint(viewModel.settings.themeColor.primary)
-                // Handle dailyplanner://accept-share?data=<base64payload> deep links.
+                // Handle deep links for accepting shared task lists.
+                // Two formats are supported:
+                //   New (CloudKit live sync): dailyplanner://accept-share?token=X&name=Y&section=Z
+                //   Legacy (base64 payload):  dailyplanner://accept-share?data=<base64>
                 // Register the "dailyplanner" URL scheme in Xcode → Target → Info → URL Types.
                 .onOpenURL { url in
                     guard url.scheme?.lowercased() == "dailyplanner",
                           url.host?.lowercased() == "accept-share",
-                          let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-                          let dataParam  = components.queryItems?.first(where: { $0.name == "data" }),
-                          let encoded    = dataParam.value else { return }
-                    viewModel.acceptSharedList(fromData: encoded)
+                          let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+                    else { return }
+
+                    let items = components.queryItems ?? []
+
+                    if let tokenItem = items.first(where: { $0.name == "token" }),
+                       let token = tokenItem.value, !token.isEmpty {
+                        // New format — fetch live data from CloudKit
+                        let name    = items.first(where: { $0.name == "name"    })?.value ?? ""
+                        let section = items.first(where: { $0.name == "section" })?.value ?? ""
+                        viewModel.acceptSharedListFromToken(
+                            shareToken : token,
+                            senderName : name,
+                            sectionRaw : section
+                        )
+                    } else if let dataParam = items.first(where: { $0.name == "data" }),
+                              let encoded   = dataParam.value {
+                        // Legacy format — decode base64 payload directly
+                        viewModel.acceptSharedList(fromData: encoded)
+                    }
                 }
                 // Monthly carry-forward prompt — shown once at the start of each new month.
                 .sheet(isPresented: $viewModel.showCarryForwardPrompt) {
@@ -63,6 +82,9 @@ struct DailyPlannerApp: App {
                 viewModel.checkRolloverIfNeeded()
                 viewModel.syncHealthKitForToday()
                 viewModel.checkMonthlyCarryForward()
+                // Refresh received shared lists from CloudKit every time the app
+                // comes to the foreground so recipients always see the latest tasks.
+                viewModel.refreshReceivedSharedLists()
             case .background, .inactive:
                 viewModel.saveDataNow()
                 viewModel.saveSettings()

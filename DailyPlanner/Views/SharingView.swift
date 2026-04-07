@@ -250,7 +250,10 @@ struct SharingView: View {
             }
             // ── Invite Share Sheet (single recipient) ───────────────────────
             .sheet(isPresented: $showInviteSheet, onDismiss: { dismiss() }) {
-                ActivityShareSheet(text: inviteContent)
+                ActivityShareSheet(
+                    text: inviteContent,
+                    subject: "You've been invited to a shared task list on Daily Planner"
+                )
             }
             // ── Share Queue Sheet (multiple recipients) ──────────────────────
             .sheet(isPresented: $showShareQueue, onDismiss: { dismiss() }) {
@@ -552,21 +555,86 @@ struct AddRecipientSheet: View {
 }
 
 // MARK: - iOS Share Sheet Wrapper
-// Passes text as a plain String — the most reliable approach for WhatsApp,
-// Gmail, Messages, and all other share targets. Custom UIActivityItemSource
-// wrappers are ignored by many apps (especially WhatsApp), causing blank
-// compose windows. A plain String is universally supported.
+// Uses a custom UIActivityItemSource to provide:
+//   • A short URL for email clients (subject + body with link) — fixes Gmail blank compose
+//   • Plain text for WhatsApp, iMessage, and other messaging apps
 struct ActivityShareSheet: UIViewControllerRepresentable {
-    let text: String
+    let text    : String
+    let subject : String
+
+    init(text: String, subject: String = "You've been invited to a shared task list") {
+        self.text    = text
+        self.subject = subject
+    }
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        // text is passed directly; Swift String bridges to NSString automatically.
-        // This guarantees WhatsApp, Gmail, Messages, etc. receive the content.
-        let vc = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        let provider = ShareTextProvider(text: text, subject: subject)
+        let vc = UIActivityViewController(activityItems: [provider], applicationActivities: nil)
+        // Exclude activities that don't handle text properly
+        vc.excludedActivityTypes = [.assignToContact, .saveToCameraRoll, .addToReadingList]
         return vc
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+/// UIActivityItemProvider that returns the correct content type per activity.
+/// - Mail apps (Gmail, Outlook, Mail): get subject + body → no blank compose screen
+/// - Messaging apps (WhatsApp, iMessage): get plain text → fills message body
+private final class ShareTextProvider: UIActivityItemProvider {
+    private let shareText : String
+    private let subject   : String
+
+    init(text: String, subject: String) {
+        self.shareText = text
+        self.subject   = subject
+        super.init(placeholderItem: text)
+    }
+
+    override var item: Any { shareText }
+
+    // Provide an email subject for mail-type activities
+    override func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        subjectForActivityType activityType: UIActivity.ActivityType?
+    ) -> String {
+        guard let type = activityType else { return subject }
+        let mailTypes: [UIActivity.ActivityType] = [.mail]
+        return mailTypes.contains(type) ? subject : ""
+    }
+}
+
+// MARK: - Mail Compose View (MFMailComposeViewController wrapper)
+// Used as a dedicated "Email" button — guarantees Gmail, Apple Mail, and
+// Outlook all receive the subject + body, eliminating blank compose screens.
+struct MailComposeView: UIViewControllerRepresentable {
+    let subject : String
+    let body    : String
+    let toEmail : String
+    @Binding var isPresented: Bool
+
+    func makeUIViewController(context: Context) -> MFMailComposeViewController {
+        let vc = MFMailComposeViewController()
+        vc.mailComposeDelegate  = context.coordinator
+        vc.setSubject(subject)
+        vc.setMessageBody(body, isHTML: false)
+        if !toEmail.isEmpty { vc.setToRecipients([toEmail]) }
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(isPresented: $isPresented) }
+
+    final class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
+        @Binding var isPresented: Bool
+        init(isPresented: Binding<Bool>) { _isPresented = isPresented }
+        func mailComposeController(_ controller: MFMailComposeViewController,
+                                   didFinishWith result: MFMailComposeResult,
+                                   error: Error?) {
+            isPresented = false
+        }
+    }
 }
 
 // MARK: - Share Queue Sheet (one send button per recipient)
@@ -576,17 +644,29 @@ struct ShareQueueSheet: View {
 
     let invitations: [(recipient: ShareRecipient, text: String)]
 
-    @State private var activeRecipientID: UUID? = nil
-    @State private var copiedRecipientID: UUID? = nil
+    @State private var activeRecipientID   : UUID?   = nil
+    @State private var copiedRecipientID   : UUID?   = nil
+    @State private var mailRecipientID     : UUID?   = nil
+    @State private var showMailCompose     : Bool    = false
+
+    private let emailSubject = "You've been invited to a shared task list on Daily Planner"
 
     var body: some View {
         NavigationView {
             List {
                 Section {
-                    Text("Tap \"Send\" for each person. Each recipient gets their own personalised invitation with their accept link.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .listRowBackground(Color.clear)
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "livephoto")
+                            .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Live Sync Enabled")
+                                .font(.system(size: 13, weight: .bold))
+                            Text("When you make changes, they update automatically in the recipient's app.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .listRowBackground(Color.clear)
                 }
 
                 ForEach(invitations, id: \.recipient.id) { item in
@@ -612,8 +692,8 @@ struct ShareQueueSheet: View {
 
                             Spacer()
 
-                            HStack(spacing: 10) {
-                                // Copy invitation to clipboard
+                            HStack(spacing: 8) {
+                                // Copy to clipboard
                                 Button {
                                     UIPasteboard.general.string = item.text
                                     copiedRecipientID = item.recipient.id
@@ -632,14 +712,31 @@ struct ShareQueueSheet: View {
                                 }
                                 .buttonStyle(PlainButtonStyle())
 
-                                // Open share sheet for this recipient
+                                // Email button (MFMailComposeViewController — always pre-fills body)
+                                if MFMailComposeViewController.canSendMail() {
+                                    Button {
+                                        mailRecipientID = item.recipient.id
+                                        showMailCompose = true
+                                    } label: {
+                                        Image(systemName: "envelope.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(Color.red)
+                                            .cornerRadius(8)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+
+                                // Generic share sheet (WhatsApp, iMessage, etc.)
                                 Button {
                                     activeRecipientID = item.recipient.id
                                 } label: {
                                     Label("Send", systemImage: "square.and.arrow.up")
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
+                                        .padding(.horizontal, 10)
                                         .padding(.vertical, 6)
                                         .background(Color(red: 0.45, green: 0.25, blue: 0.85))
                                         .cornerRadius(8)
@@ -657,7 +754,7 @@ struct ShareQueueSheet: View {
                             .foregroundColor(.secondary)
                             .font(.system(size: 14))
                             .padding(.top, 1)
-                        Text("Recipients must have Daily Planner installed. When they tap the accept link, the shared tasks appear in their app immediately.")
+                        Text("Recipients must have Daily Planner installed. When they tap the accept link, the shared tasks appear in their app and update automatically whenever you make changes.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -673,12 +770,25 @@ struct ShareQueueSheet: View {
                         .fontWeight(.semibold)
                 }
             }
+            // Generic share sheet (WhatsApp, iMessage, Telegram, etc.)
             .sheet(item: Binding<ShareRecipient?>(
                 get: { invitations.first(where: { $0.recipient.id == activeRecipientID })?.recipient },
                 set: { activeRecipientID = $0?.id }
             )) { recipient in
                 if let inv = invitations.first(where: { $0.recipient.id == recipient.id }) {
-                    ActivityShareSheet(text: inv.text)
+                    ActivityShareSheet(text: inv.text, subject: emailSubject)
+                }
+            }
+            // Dedicated email composer — pre-fills Gmail/Mail/Outlook body correctly
+            .sheet(isPresented: $showMailCompose) {
+                if let id = mailRecipientID,
+                   let inv = invitations.first(where: { $0.recipient.id == id }) {
+                    MailComposeView(
+                        subject    : emailSubject,
+                        body       : inv.text,
+                        toEmail    : inv.recipient.email,
+                        isPresented: $showMailCompose
+                    )
                 }
             }
         }
@@ -691,6 +801,8 @@ extension PlannerViewModel {
     // MARK: - Received Shares Management
 
     func removeReceivedSharedList(_ list: ReceivedSharedList) {
+        // Unsubscribe from CloudKit change notifications before removing
+        CloudKitSharingService.shared.unsubscribe(shareToken: list.shareToken)
         settings.receivedSharedLists.removeAll { $0.id == list.id }
         saveSettings()
     }
@@ -713,13 +825,13 @@ extension PlannerViewModel {
         saveSettings()
     }
 
+    // MARK: - Accept via legacy base64 deep link (backward compatibility)
+
     func acceptSharedList(fromData encoded: String) {
         // 1. Percent-decode in case the caller passed a still-encoded string.
         let raw = encoded.removingPercentEncoding ?? encoded
         // 2. Convert URL-safe base64 (- → +, _ → /) back to standard base64,
         //    then restore any stripped = padding so Data(base64Encoded:) works.
-        //    This is backward-compatible: links generated before this change
-        //    already use + / = and the replacements are idempotent for them.
         var standard = raw
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
@@ -739,29 +851,108 @@ extension PlannerViewModel {
             lastUpdated : payload.sentAt
         )
 
-        if let idx = settings.receivedSharedLists.firstIndex(where: { $0.shareToken == payload.token }) {
+        applyReceivedList(newList, isUpdate: isUpdate)
+
+        // Also subscribe to future CloudKit updates for this list.
+        CloudKitSharingService.shared.subscribeToChanges(shareToken: payload.token)
+    }
+
+    // MARK: - Accept via new CloudKit token deep link
+
+    /// Called when recipient taps a token-based share link.
+    /// Fetches the current task list from CloudKit and subscribes to live updates.
+    func acceptSharedListFromToken(shareToken: String, senderName: String, sectionRaw: String) {
+        // Show provisional entry immediately with empty tasks so the UI responds fast.
+        let section = SharableSection(rawValue: sectionRaw) ?? .toDoLists
+        let isUpdate = settings.receivedSharedLists.contains { $0.shareToken == shareToken }
+
+        if !isUpdate {
+            let provisional = ReceivedSharedList(
+                shareToken  : shareToken,
+                senderName  : senderName.isEmpty ? "Someone" : senderName,
+                senderEmail : "",
+                section     : section,
+                tasks       : [],
+                lastUpdated : Date()
+            )
+            applyReceivedList(provisional, isUpdate: false)
+        }
+
+        // Fetch the real data from CloudKit.
+        CloudKitSharingService.shared.fetchSharedList(shareToken: shareToken) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let payload):
+                let list = ReceivedSharedList(
+                    shareToken  : payload.shareToken,
+                    senderName  : payload.senderName.isEmpty ? senderName : payload.senderName,
+                    senderEmail : payload.senderEmail,
+                    section     : payload.section,
+                    tasks       : payload.tasks,
+                    lastUpdated : payload.updatedAt
+                )
+                self.applyReceivedList(list, isUpdate: true)
+                // Subscribe to future updates (CloudKit sends silent push when sender saves).
+                CloudKitSharingService.shared.subscribeToChanges(shareToken: shareToken)
+            case .failure:
+                // CloudKit unavailable or record not yet uploaded — keep provisional entry,
+                // it will be refreshed next time the app foregrounds.
+                break
+            }
+        }
+    }
+
+    // MARK: - Refresh all received lists from CloudKit (called on app foreground)
+
+    func refreshReceivedSharedLists() {
+        let tokens = settings.receivedSharedLists.map { $0.shareToken }
+        guard !tokens.isEmpty else { return }
+
+        CloudKitSharingService.shared.refreshReceivedLists(tokens: tokens) { [weak self] payloads in
+            guard let self else { return }
+            for payload in payloads {
+                let list = ReceivedSharedList(
+                    shareToken  : payload.shareToken,
+                    senderName  : payload.senderName,
+                    senderEmail : payload.senderEmail,
+                    section     : payload.section,
+                    tasks       : payload.tasks,
+                    lastUpdated : payload.updatedAt
+                )
+                // Only update if the cloud version is newer or tasks changed.
+                if let idx = self.settings.receivedSharedLists.firstIndex(where: { $0.shareToken == payload.shareToken }) {
+                    if payload.updatedAt > self.settings.receivedSharedLists[idx].lastUpdated {
+                        self.settings.receivedSharedLists[idx] = list
+                    }
+                }
+            }
+            if !payloads.isEmpty { self.saveSettings() }
+        }
+    }
+
+    // MARK: - Shared helper
+
+    private func applyReceivedList(_ newList: ReceivedSharedList, isUpdate: Bool) {
+        if let idx = settings.receivedSharedLists.firstIndex(where: { $0.shareToken == newList.shareToken }) {
             settings.receivedSharedLists[idx] = newList
         } else {
             settings.receivedSharedLists.append(newList)
         }
         saveSettings()
 
-        // Fire a local notification so the recipient is alerted even if the
-        // app was not in the foreground when the deep-link was tapped.
-        let senderDisplay = payload.senderName.isEmpty ? payload.senderEmail : payload.senderName
+        let senderDisplay = newList.senderName.isEmpty ? newList.senderEmail : newList.senderName
         NotificationManager.shared.scheduleShareReceivedNotification(
             senderName  : senderDisplay,
-            sectionName : payload.section.rawValue,
-            taskCount   : payload.tasks.count,
+            sectionName : newList.section.rawValue,
+            taskCount   : newList.tasks.count,
             isUpdate    : isUpdate
         )
 
-        // Publish so the active view can show an in-app banner.
         DispatchQueue.main.async {
             self.lastAcceptedShareInfo = PlannerViewModel.ShareAcceptedInfo(
                 senderName  : senderDisplay,
-                sectionName : payload.section.rawValue,
-                taskCount   : payload.tasks.count,
+                sectionName : newList.section.rawValue,
+                taskCount   : newList.tasks.count,
                 isUpdate    : isUpdate
             )
         }
@@ -816,8 +1007,9 @@ extension PlannerViewModel {
         return lines.joined(separator: "\n")
     }
 
-    /// Builds a compact, WhatsApp/SMS-friendly invitation for a single recipient.
-    /// Links are placed right after each section header so they're immediately visible.
+    /// Builds a compact, WhatsApp/SMS/Gmail-friendly invitation for a single recipient.
+    /// Uses short token-based URLs (no base64 payload) so messaging apps never truncate
+    /// or show blank compose windows. Data is served live from CloudKit.
     func buildCompactInvitation(for recipient: ShareRecipient) -> String {
         let sharing   = settings.sharingSettings
         let ownerName = sharing.ownerName.isEmpty ? "Someone" : sharing.ownerName
@@ -827,6 +1019,7 @@ extension PlannerViewModel {
         lines.append(greeting)
         lines.append("")
         lines.append("\(ownerName) is sharing task lists with you on Daily Planner.")
+        lines.append("Changes they make will appear in your app automatically. ✨")
         lines.append("")
 
         for section in recipient.sharedSections {
@@ -835,8 +1028,18 @@ extension PlannerViewModel {
                 tasks: tasks, section: section,
                 ownerName: ownerName, ownerEmail: recipient.email,
                 token: recipient.shareToken)
-            guard let link = encodedShareLink(for: payload) else { continue }
 
+            // Upload to CloudKit so the recipient gets live data when they accept.
+            CloudKitSharingService.shared.uploadSharedList(
+                shareToken    : recipient.shareToken,
+                senderName    : ownerName,
+                senderEmail   : settings.sharingSettings.ownerName,
+                recipientEmail: recipient.email,
+                section       : section,
+                tasks         : tasks
+            )
+
+            guard let link = encodedShareLink(for: payload) else { continue }
             lines.append("📋 \(section.rawValue)")
             lines.append(link)
             lines.append("")
@@ -901,18 +1104,27 @@ extension PlannerViewModel {
         }
     }
 
+    /// Returns a SHORT token-based share link (CloudKit real-time sync).
+    /// Format: https://…/share/?token=<uuid>&name=<ownerName>&section=<rawValue>
+    /// This is safe for WhatsApp, iMessage, Gmail and any other messaging app
+    /// because the URL is only ~120 chars — no base64 payload embedded.
     func encodedShareLink(for payload: SharePayload) -> String? {
+        var comps = URLComponents(string: "https://istalin2020.github.io/Daily-Planner/share/")!
+        comps.queryItems = [
+            URLQueryItem(name: "token",   value: payload.token),
+            URLQueryItem(name: "name",    value: payload.senderName),
+            URLQueryItem(name: "section", value: payload.section.rawValue)
+        ]
+        return comps.url?.absoluteString
+    }
+
+    /// Legacy base64 link kept for backward compatibility (old app versions).
+    func legacyEncodedShareLink(for payload: SharePayload) -> String? {
         guard let data = try? JSONEncoder().encode(payload) else { return nil }
-        // URL-safe base64 (RFC 4648 §5): replace + → -, / → _, strip = padding.
-        // This produces a plain alphanumeric+dash+underscore string that needs no
-        // further percent-encoding and is safe in any URL query parameter.
         let base64 = data.base64EncodedString()
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
-        // Use an HTTPS link so messaging apps (iMessage, WhatsApp, SMS, email)
-        // render it as a tappable hyperlink.  The GitHub Pages redirect page
-        // opens the dailyplanner:// deep link in the app.
         return "https://istalin2020.github.io/Daily-Planner/share/?data=\(base64)"
     }
 

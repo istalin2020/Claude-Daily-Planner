@@ -1297,6 +1297,14 @@ class PlannerViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // Push shared task lists to CloudKit 3 seconds after any task change.
+        // The debounce avoids flooding CloudKit on rapid edits.
+        $entries
+            .dropFirst()
+            .debounce(for: .seconds(3), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.pushSharedListsToCloud() }
+            .store(in: &cancellables)
+
         // Settings are small; a short debounce avoids redundant writes when
         // the user rapidly toggles options, while still being fast enough to
         // survive a quick rebuild.
@@ -1305,6 +1313,32 @@ class PlannerViewModel: ObservableObject {
             .debounce(for: .milliseconds(200), scheduler: saveQueue)
             .sink { [weak self] _ in self?.saveSettings() }
             .store(in: &cancellables)
+    }
+
+    // MARK: - CloudKit Live Sync (Sender side)
+
+    /// Pushes all currently-shared task categories to CloudKit Public Database.
+    /// Called automatically 3 seconds after any task change (debounced).
+    /// Called explicitly when a new invitation is built.
+    func pushSharedListsToCloud() {
+        let sharing   = settings.sharingSettings
+        guard sharing.isEnabled, !sharing.recipients.isEmpty else { return }
+
+        let ownerName = sharing.ownerName.isEmpty ? "Someone" : sharing.ownerName
+
+        for recipient in sharing.recipients where !recipient.sharedSections.isEmpty {
+            for section in recipient.sharedSections {
+                let tasks = sharedTaskItems(for: section)
+                CloudKitSharingService.shared.uploadSharedList(
+                    shareToken     : recipient.shareToken,
+                    senderName     : ownerName,
+                    senderEmail    : recipient.email,
+                    recipientEmail : recipient.email,
+                    section        : section,
+                    tasks          : tasks
+                )
+            }
+        }
     }
 
     // MARK: - iCloud Sync

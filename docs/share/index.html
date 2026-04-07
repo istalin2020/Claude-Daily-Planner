@@ -40,6 +40,30 @@
             margin-bottom: 28px;
             line-height: 1.5;
         }
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            color: #0369a1;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+        }
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
         .btn {
             display: inline-block;
             background: linear-gradient(135deg, #7340d8, #4a1f9e);
@@ -99,8 +123,12 @@
         <!-- Fallback state (shown if app doesn't open) -->
         <div id="fallback">
             <div class="icon">📋</div>
-            <h1>Shared Tasks Waiting</h1>
-            <p class="subtitle">
+            <h1 id="fallbackTitle">Shared Tasks Waiting</h1>
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                Live Sync — updates automatically
+            </div>
+            <p class="subtitle" id="fallbackSubtitle">
                 Someone has shared their task list with you via Daily Planner.
                 Tap the button below to open it in the app.
             </p>
@@ -116,20 +144,40 @@
 
     <script>
         (function () {
-            // Extract the `data` parameter from the current URL
-            var params = new URLSearchParams(window.location.search);
-            var data   = params.get('data');
+            var params  = new URLSearchParams(window.location.search);
+            var token   = params.get('token');
+            var data    = params.get('data');
+            var name    = params.get('name')    || '';
+            var section = params.get('section') || '';
 
-            if (!data) {
-                // No payload – show generic fallback
+            var deepLink;
+
+            if (token) {
+                // New CloudKit live-sync format
+                var q = 'token=' + encodeURIComponent(token);
+                if (name)    q += '&name='    + encodeURIComponent(name);
+                if (section) q += '&section=' + encodeURIComponent(section);
+                deepLink = 'dailyplanner://accept-share?' + q;
+
+                // Personalise fallback UI
+                if (name) {
+                    document.getElementById('fallbackTitle').textContent =
+                        name + ' shared a task list with you';
+                }
+                if (section) {
+                    document.getElementById('fallbackSubtitle').textContent =
+                        (name || 'Someone') + ' has shared their "' + section +
+                        '" list with you. Tap below to accept and get live updates in Daily Planner.';
+                }
+            } else if (data) {
+                // Legacy base64 format (backward compatibility)
+                deepLink = 'dailyplanner://accept-share?data=' + encodeURIComponent(data);
+            } else {
+                // No payload — show generic fallback
                 document.getElementById('opening').style.display  = 'none';
                 document.getElementById('fallback').style.display = 'block';
                 return;
             }
-
-            // Build the deep link. The data value is URL-safe base64 (no padding,
-            // - instead of +, _ instead of /). Re-encode it for the query string.
-            var deepLink = 'dailyplanner://accept-share?data=' + encodeURIComponent(data);
 
             // Wire up the fallback button
             document.getElementById('openAppBtn').href = deepLink;
