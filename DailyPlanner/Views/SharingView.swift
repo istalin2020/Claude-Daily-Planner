@@ -556,9 +556,9 @@ struct AddRecipientSheet: View {
 }
 
 // MARK: - iOS Share Sheet Wrapper
-// Uses a custom UIActivityItemSource to provide:
-//   • A short URL for email clients (subject + body with link) — fixes Gmail blank compose
-//   • Plain text for WhatsApp, iMessage, and other messaging apps
+// Uses UIActivityItemSource (synchronous) so every app — WhatsApp, iMessage,
+// Telegram, Gmail — immediately receives the full invitation text.
+// (UIActivityItemProvider was async/background-queued and caused blank WhatsApp messages.)
 struct ActivityShareSheet: UIViewControllerRepresentable {
     let text    : String
     let subject : String
@@ -569,9 +569,8 @@ struct ActivityShareSheet: UIViewControllerRepresentable {
     }
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        let provider = ShareTextProvider(text: text, subject: subject)
-        let vc = UIActivityViewController(activityItems: [provider], applicationActivities: nil)
-        // Exclude activities that don't handle text properly
+        let source = ShareTextSource(text: text, subject: subject)
+        let vc = UIActivityViewController(activityItems: [source], applicationActivities: nil)
         vc.excludedActivityTypes = [.assignToContact, .saveToCameraRoll, .addToReadingList]
         return vc
     }
@@ -579,29 +578,39 @@ struct ActivityShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
-/// UIActivityItemProvider that returns the correct content type per activity.
-/// - Mail apps (Gmail, Outlook, Mail): get subject + body → no blank compose screen
-/// - Messaging apps (WhatsApp, iMessage): get plain text → fills message body
-private final class ShareTextProvider: UIActivityItemProvider, @unchecked Sendable {
+/// UIActivityItemSource provides share data synchronously on the main thread.
+/// Unlike UIActivityItemProvider (which runs on a background queue), this guarantees
+/// WhatsApp, Telegram, iMessage and all other apps always receive the full text.
+private final class ShareTextSource: NSObject, UIActivityItemSource {
     private let shareText : String
     private let subject   : String
 
     init(text: String, subject: String) {
         self.shareText = text
         self.subject   = subject
-        super.init(placeholderItem: text)
     }
 
-    override var item: Any { shareText }
+    // Placeholder shown while the share sheet loads — must match the real item type.
+    func activityViewControllerPlaceholderItem(
+        _ activityViewController: UIActivityViewController
+    ) -> Any {
+        shareText
+    }
 
-    // Provide an email subject for mail-type activities
-    override func activityViewController(
+    // Actual item delivered to every share target — always the full invitation text.
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        itemForActivityType activityType: UIActivity.ActivityType?
+    ) -> Any? {
+        shareText
+    }
+
+    // Email subject — only used by Mail.app; ignored by WhatsApp, iMessage, etc.
+    func activityViewController(
         _ activityViewController: UIActivityViewController,
         subjectForActivityType activityType: UIActivity.ActivityType?
     ) -> String {
-        guard let type = activityType else { return subject }
-        let mailTypes: [UIActivity.ActivityType] = [.mail]
-        return mailTypes.contains(type) ? subject : ""
+        activityType == .mail ? subject : ""
     }
 }
 
