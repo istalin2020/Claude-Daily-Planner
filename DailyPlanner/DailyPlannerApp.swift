@@ -85,6 +85,8 @@ struct DailyPlannerApp: App {
                 // Refresh received shared lists from CloudKit every time the app
                 // comes to the foreground so recipients always see the latest tasks.
                 viewModel.refreshReceivedSharedLists()
+                // Process any tasks/water-glass actions queued by Siri Shortcuts.
+                viewModel.processPendingShortcutActions()
             case .background, .inactive:
                 viewModel.saveDataNow()
                 viewModel.saveSettings()

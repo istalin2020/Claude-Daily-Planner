@@ -935,6 +935,34 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    // MARK: - Siri Shortcut Pending Actions
+    /// Reads any tasks or water-log actions queued by Siri Shortcuts / AppIntents
+    /// and applies them to today's entry. Called every time the app foregrounds.
+    func processPendingShortcutActions() {
+        let suite = UserDefaults(suiteName: "group.com.istalin.DailyPlanner")
+
+        // ── Add Task ─────────────────────────────────────────────────────────
+        let pendingTaskKey = "shortcut_pending_task"
+        if let data = suite?.data(forKey: pendingTaskKey),
+           let payload = try? JSONDecoder().decode([String: String].self, from: data),
+           let title = payload["title"], !title.isEmpty {
+            let section = payload["section"] ?? "Top Priorities"
+            switch section {
+            case "To-Do Lists":    addToDoListItem(title)
+            case "Personal To-Do": addPersonalTodo(title)
+            default:               addTopPriority(title)
+            }
+            suite?.removeObject(forKey: pendingTaskKey)
+        }
+
+        // ── Log Water ─────────────────────────────────────────────────────────
+        let waterKey = "shortcut_log_water"
+        if suite?.bool(forKey: waterKey) == true {
+            incrementWater()
+            suite?.removeObject(forKey: waterKey)
+        }
+    }
+
     // MARK: - Rollover
     /// Automatically rolls over incomplete tasks from any missed past days
     /// (up to 30 days back) into today's entry. Uses task-ID deduplication so
