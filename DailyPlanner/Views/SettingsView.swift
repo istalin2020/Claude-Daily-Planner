@@ -95,6 +95,19 @@ struct SettingsView: View {
                     }
                 }
 
+                // ── CARRY FORWARD ─────────────────────────────────────────
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { vm.settings.autoCarryForward },
+                        set: { vm.settings.autoCarryForward = $0; vm.saveSettings() }
+                    )) {
+                        Label("Carry Forward Balance", systemImage: "arrow.triangle.2.circlepath.circle.fill")
+                    }
+                    .tint(Color(red: 0.1, green: 0.65, blue: 0.35))
+                } footer: {
+                    Text("Automatically carries the previous month's balance and savings into the new month as income and savings entries.")
+                }
+
                 // ── 5. ENABLE DAILY REMINDERS + HORIZONTAL TIME BAR ───────
                 Section {
                     Toggle(isOn: $vm.settings.notificationsEnabled) {

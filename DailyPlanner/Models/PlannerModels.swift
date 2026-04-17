@@ -1027,6 +1027,9 @@ struct AppSettings: Codable {
     var receivedSharedLists  : [ReceivedSharedList]   = []
 
     // MARK: - Carry Forward
+    /// When true, automatically carries forward the previous month's balance
+    /// and savings at the start of each new month (no popup prompt).
+    var autoCarryForward: Bool = false
     /// Tracks the last month (format "yyyy-MM") for which we prompted carry-forward.
     /// Empty string means never prompted.
     var lastCarryForwardMonthKey: String = ""
@@ -1050,6 +1053,7 @@ struct AppSettings: Codable {
          customExpenseCategories: [String] = [],
          sharingSettings: SharingSettings = SharingSettings(),
          receivedSharedLists: [ReceivedSharedList] = [],
+         autoCarryForward: Bool = false,
          lastCarryForwardMonthKey: String = "") {
         self.isDarkMode = isDarkMode
         self.autoRollover = autoRollover
@@ -1070,6 +1074,7 @@ struct AppSettings: Codable {
         self.customExpenseCategories = customExpenseCategories
         self.sharingSettings = sharingSettings
         self.receivedSharedLists = receivedSharedLists
+        self.autoCarryForward = autoCarryForward
         self.lastCarryForwardMonthKey = lastCarryForwardMonthKey
     }
 
@@ -1094,6 +1099,7 @@ struct AppSettings: Codable {
         customExpenseCategories   = try c.decodeIfPresent([String].self,              forKey: .customExpenseCategories)    ?? []
         sharingSettings           = try c.decodeIfPresent(SharingSettings.self,       forKey: .sharingSettings)            ?? SharingSettings()
         receivedSharedLists       = try c.decodeIfPresent([ReceivedSharedList].self,  forKey: .receivedSharedLists)        ?? []
+        autoCarryForward          = try c.decodeIfPresent(Bool.self,                 forKey: .autoCarryForward)           ?? false
         lastCarryForwardMonthKey  = try c.decodeIfPresent(String.self,               forKey: .lastCarryForwardMonthKey)   ?? ""
     }
 }
