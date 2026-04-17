@@ -10,9 +10,7 @@ struct SharingView: View {
 
     @State private var selectedCategories: Set<SharableSection> = []
     @State private var shareAsImage = false
-    @State private var showShareSheet = false
     @State private var showProUpgrade = false
-    @State private var shareItems: [Any] = []
 
     private static let categories: [SharableSection] = [
         .topPriorities, .toDoLists, .personalList, .callsEmails,
@@ -162,9 +160,6 @@ struct SharingView: View {
                         .fontWeight(.semibold)
                 }
             }
-            .sheet(isPresented: $showShareSheet) {
-                ShareSheet(items: shareItems)
-            }
             .sheet(isPresented: $showProUpgrade) {
                 ProUpgradeView().environmentObject(pro)
             }
@@ -175,21 +170,40 @@ struct SharingView: View {
 
     private func buildAndShare() {
         let ordered = Self.categories.filter { selectedCategories.contains($0) }
+        var items: [Any] = []
         if shareAsImage {
             let card = ShareCardView(vm: vm, selectedCategories: ordered)
             let renderer = ImageRenderer(content: card)
             renderer.scale = UIScreen.main.scale
             if let image = renderer.uiImage {
-                shareItems = [image]
+                items = [image]
             } else {
-                shareItems = [buildShareText(ordered: ordered)]
+                items = [buildShareText(ordered: ordered)]
             }
         } else {
-            shareItems = [buildShareText(ordered: ordered)]
+            items = [buildShareText(ordered: ordered)]
         }
-        DispatchQueue.main.async {
-            showShareSheet = true
+        presentActivityController(items: items)
+    }
+
+    private func presentActivityController(items: [Any]) {
+        guard let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+        else { return }
+
+        var topVC = root
+        while let presented = topVC.presentedViewController {
+            topVC = presented
         }
+
+        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = topVC.view
+            popover.sourceRect = CGRect(x: topVC.view.bounds.midX, y: topVC.view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        topVC.present(activityVC, animated: true)
     }
 
     // MARK: - Share Text Builder
