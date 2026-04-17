@@ -1126,10 +1126,14 @@ class PlannerViewModel: ObservableObject {
         prevLabelFmt.dateFormat = "MMMM yyyy"
         let prevLabel = prevLabelFmt.string(from: prevMonthDate)
 
-        // Publish to UI so the app can show the prompt sheet.
-        DispatchQueue.main.async {
-            self.pendingCarryForwardAmounts = (balance: prevBalance, savings: prevSavings, monthLabel: prevLabel)
-            self.showCarryForwardPrompt = true
+        if settings.autoCarryForward {
+            // Auto-apply without showing any popup.
+            pendingCarryForwardAmounts = (balance: prevBalance, savings: prevSavings, monthLabel: prevLabel)
+            applyCarryForward(carryBalance: true, carrySavings: prevSavings > 0)
+        } else {
+            // Setting is off — silently mark as done (no popup).
+            settings.lastCarryForwardMonthKey = thisMonthKey
+            saveSettings()
         }
     }
 
