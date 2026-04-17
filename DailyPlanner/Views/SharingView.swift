@@ -2,556 +2,517 @@ import SwiftUI
 import MessageUI
 import CloudKit
 
-// MARK: - Sharing View (Settings Screen) — PRO only
+// MARK: - Sharing View (Share Tasks Screen) — PRO only
 struct SharingView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @EnvironmentObject var pro: ProManager
     @Environment(\.dismiss) var dismiss
 
-    @State private var showAddRecipient    = false
-    @State private var recipientName       = ""
-    @State private var recipientEmail      = ""
-    @State private var emailError          = ""
-    @State private var showInviteSheet     = false
-    @State private var inviteContent       = ""
-    @State private var showSentBanner      = false
-    @State private var showProUpgrade      = false
+    @State private var selectedCategories: Set<SharableSection> = []
+    @State private var shareAsImage = false
+    @State private var showShareSheet = false
+    @State private var showProUpgrade = false
+    @State private var shareItems: [Any] = []
 
-    // Per-recipient share queue (used when there are multiple recipients)
-    @State private var shareQueue          : [(recipient: ShareRecipient, text: String)] = []
-    @State private var showShareQueue      = false
+    private static let categories: [SharableSection] = [
+        .topPriorities, .toDoLists, .personalList, .callsEmails,
+        .appointments, .notes, .foodTracker, .waterTracker,
+        .medications, .habits, .sleepTracker, .expenses
+    ]
 
-    // Category selection after adding / editing a recipient
-    @State private var pendingRecipient    : ShareRecipient? = nil
-    @State private var showCategorySelect  = false
-    @State private var editingRecipient    : ShareRecipient? = nil
+    private let purpleAccent = Color(red: 0.45, green: 0.25, blue: 0.85)
 
     var body: some View {
         NavigationView {
-            Form {
-
-                // ── PRO GATE ────────────────────────────────────────────────
-                if !pro.isPro {
-                    Section {
-                        Button(action: { showProUpgrade = true }) {
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    Circle()
-                                        .fill(LinearGradient(
-                                            colors: [Color(red: 1.0, green: 0.78, blue: 0.0),
-                                                     Color(red: 1.0, green: 0.45, blue: 0.0)],
-                                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                                        .frame(width: 40, height: 40)
-                                    Image(systemName: "crown.fill")
-                                        .foregroundColor(.white).font(.system(size: 18))
-                                }
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Task Sharing is a PRO Feature")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.primary)
-                                    Text("Upgrade to PRO to share task categories with others.")
+            VStack(spacing: 0) {
+                Form {
+                    if !pro.isPro {
+                        // ── PRO GATE ──────────────────────────────────────
+                        Section {
+                            Button(action: { showProUpgrade = true }) {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(LinearGradient(
+                                                colors: [Color(red: 1.0, green: 0.78, blue: 0.0),
+                                                         Color(red: 1.0, green: 0.45, blue: 0.0)],
+                                                startPoint: .topLeading, endPoint: .bottomTrailing))
+                                            .frame(width: 40, height: 40)
+                                        Image(systemName: "crown.fill")
+                                            .foregroundColor(.white)
+                                            .font(.system(size: 18))
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Task Sharing is a PRO Feature")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(.primary)
+                                        Text("Upgrade to PRO to share task categories with others.")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption).foregroundColor(.secondary)
                             }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .sheet(isPresented: $showProUpgrade) {
-                        ProUpgradeView().environmentObject(pro)
-                    }
-                } else {
-                    // ── ENABLE SHARING ──────────────────────────────────────
-                    Section {
-                        Toggle(isOn: Binding(
-                            get: { vm.settings.sharingSettings.isEnabled },
-                            set: { vm.settings.sharingSettings.isEnabled = $0; vm.saveSettings() }
-                        )) {
-                            Label("Enable Task Sharing", systemImage: "square.and.arrow.up.fill")
-                        }
-                        .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
-                    } header: {
-                        Text("Sharing")
-                    } footer: {
-                        Text("Share your task categories with family members or friends. The entire category list will be shared with the recipient.")
-                    }
-
-                    if vm.settings.sharingSettings.isEnabled {
-
-                        // ── YOUR NAME ────────────────────────────────────────
+                    } else {
+                        // ── FORMAT PICKER ─────────────────────────────────
                         Section {
-                            HStack(spacing: 10) {
-                                Image(systemName: "person.circle.fill")
-                                    .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
-                                TextField("Your name (shown to recipients)", text: Binding(
-                                    get: { vm.settings.sharingSettings.ownerName },
-                                    set: { vm.settings.sharingSettings.ownerName = $0; vm.saveSettings() }
-                                ))
+                            Picker("Share as", selection: $shareAsImage) {
+                                Text("Text").tag(false)
+                                Text("Image Card").tag(true)
                             }
+                            .pickerStyle(.segmented)
                         } header: {
-                            Text("Your Name")
-                        } footer: {
-                            Text("This name appears as the list heading in recipients' apps, e.g. \"Alice's shared to-do list\".")
+                            Text("Format")
                         }
 
-                        // ── RECIPIENTS ──────────────────────────────────────
+                        // ── CATEGORY CHECKBOXES ───────────────────────────
                         Section {
-                            ForEach(vm.settings.sharingSettings.recipients) { recipient in
-                                RecipientRow(
-                                    recipient: recipient,
-                                    onEdit: {
-                                        editingRecipient = recipient
-                                        showCategorySelect = true
-                                    },
-                                    onDelete: {
-                                        vm.settings.sharingSettings.recipients.removeAll { $0.id == recipient.id }
-                                        vm.saveSettings()
+                            ForEach(Self.categories) { category in
+                                Button {
+                                    withAnimation(.spring(response: 0.25)) {
+                                        if selectedCategories.contains(category) {
+                                            selectedCategories.remove(category)
+                                        } else {
+                                            selectedCategories.insert(category)
+                                        }
                                     }
-                                )
-                            }
-                            Button {
-                                recipientName  = ""
-                                recipientEmail = ""
-                                emailError     = ""
-                                showAddRecipient = true
-                            } label: {
-                                Label("Add Person to Share With", systemImage: "plus.circle.fill")
-                                    .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
-                            }
-                        } header: {
-                            Text("Share With")
-                        } footer: {
-                            Text("After adding a person, choose which categories to share with them. All tasks in a selected category will be shared.")
-                        }
-
-                        // ── HOW SHARING WORKS ───────────────────────────────
-                        Section {
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: "info.circle.fill")
-                                    .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
-                                    .font(.system(size: 16))
-                                    .padding(.top, 1)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("How Sharing Works")
-                                        .font(.system(size: 13, weight: .semibold))
-                                    Text("1. Add a recipient and choose categories to share.\n2. Tap Done — an invitation email/message is created.\n3. The recipient taps the link to accept.\n4. They receive a notification and the shared tasks appear in their app instantly via iCloud sync.")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-
-                        // ── RECEIVED SHARES ─────────────────────────────────
-                        if !vm.settings.receivedSharedLists.isEmpty {
-                            Section {
-                                ForEach(vm.settings.receivedSharedLists) { sharedList in
-                                    HStack(spacing: 12) {
+                                } label: {
+                                    HStack(spacing: 14) {
                                         ZStack {
                                             RoundedRectangle(cornerRadius: 8)
-                                                .fill(sharedList.section.color.opacity(0.12))
+                                                .fill(category.color.opacity(0.15))
                                                 .frame(width: 36, height: 36)
-                                            Image(systemName: sharedList.section.icon)
-                                                .foregroundColor(sharedList.section.color)
+                                            Image(systemName: category.icon)
                                                 .font(.system(size: 16))
+                                                .foregroundColor(category.color)
                                         }
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text("\(sharedList.senderName)'s \(sharedList.section.rawValue)")
+                                            Text(category.rawValue)
                                                 .font(.system(size: 14, weight: .semibold))
-                                            Text("\(sharedList.tasks.count) task\(sharedList.tasks.count == 1 ? "" : "s") · Updated \(sharedList.lastUpdated.formatted(.relative(presentation: .named)))")
+                                                .foregroundColor(.primary)
+                                            Text(pendingCountLabel(for: category))
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }
                                         Spacer()
-                                        // Accepted badge
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
-                                                .font(.system(size: 12))
-                                            Text("Accepted")
-                                                .font(.system(size: 11, weight: .semibold))
-                                                .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
-                                        }
-                                        Button {
-                                            vm.removeReceivedSharedList(sharedList)
-                                        } label: {
-                                            Image(systemName: "trash")
-                                                .font(.system(size: 13))
-                                                .foregroundColor(.red.opacity(0.7))
-                                                .padding(4)
-                                        }
-                                        .buttonStyle(PlainButtonStyle())
+                                        Image(systemName: selectedCategories.contains(category)
+                                              ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 22))
+                                            .foregroundColor(selectedCategories.contains(category)
+                                                             ? category.color : Color(.systemGray3))
                                     }
-                                    .padding(.vertical, 3)
+                                    .contentShape(Rectangle())
                                 }
-                            } header: {
-                                Text("Shared With Me")
-                            } footer: {
-                                Text("Accepted shared lists appear below your own tasks in each section view. You'll receive a notification whenever the sender updates and re-shares.")
+                                .buttonStyle(PlainButtonStyle())
                             }
+                        } header: {
+                            HStack {
+                                Text("Select Categories")
+                                Spacer()
+                                Button(selectedCategories.count == Self.categories.count
+                                       ? "Deselect All" : "Select All") {
+                                    withAnimation(.spring(response: 0.25)) {
+                                        if selectedCategories.count == Self.categories.count {
+                                            selectedCategories.removeAll()
+                                        } else {
+                                            selectedCategories = Set(Self.categories)
+                                        }
+                                    }
+                                }
+                                .font(.caption)
+                                .textCase(nil)
+                            }
+                        } footer: {
+                            Text("Only incomplete or pending items from selected categories will be shared.")
                         }
                     }
+                }
+
+                // ── SHARE BUTTON (pinned at bottom) ──────────────────────
+                if pro.isPro {
+                    Button(action: buildAndShare) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Share Selected Tasks")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .foregroundColor(.white)
+                        .background(selectedCategories.isEmpty ? Color(.systemGray3) : purpleAccent)
+                        .cornerRadius(14)
+                    }
+                    .disabled(selectedCategories.isEmpty)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemGroupedBackground))
                 }
             }
             .navigationTitle("Share Tasks")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { handleDone() }
+                    Button("Done") { dismiss() }
                         .fontWeight(.semibold)
                 }
             }
-            // ── Add Recipient Sheet ──────────────────────────────────────────
-            .sheet(isPresented: $showAddRecipient) {
-                AddRecipientSheet(
-                    name: $recipientName,
-                    email: $recipientEmail,
-                    errorMessage: $emailError
-                ) {
-                    let trimmed = recipientEmail.trimmingCharacters(in: .whitespaces)
-                    guard isValidEmail(trimmed) else {
-                        emailError = "Please enter a valid email address."
-                        return
-                    }
-                    let newRecipient = ShareRecipient(
-                        name: recipientName.trimmingCharacters(in: .whitespaces),
-                        email: trimmed
-                    )
-                    pendingRecipient = newRecipient
-                    showAddRecipient = false
-                }
-                .onDisappear {
-                    if let pending = pendingRecipient {
-                        editingRecipient = pending
-                        showCategorySelect = true
-                    }
-                }
+            .sheet(isPresented: $showShareSheet) {
+                ShareSheet(items: shareItems)
             }
-            // ── Category Selection Sheet ─────────────────────────────────────
-            .sheet(isPresented: $showCategorySelect, onDismiss: {
-                pendingRecipient = nil
-                editingRecipient = nil
-            }) {
-                if let recipient = editingRecipient {
-                    CategorySelectionSheet(recipient: recipient) { updatedRecipient in
-                        if let idx = vm.settings.sharingSettings.recipients.firstIndex(where: { $0.id == updatedRecipient.id }) {
-                            vm.settings.sharingSettings.recipients[idx] = updatedRecipient
-                        } else {
-                            vm.settings.sharingSettings.recipients.append(updatedRecipient)
-                        }
-                        vm.saveSettings()
-                        pendingRecipient = nil
-                        editingRecipient = nil
-                    }
-                    .environmentObject(vm)
-                }
+            .sheet(isPresented: $showProUpgrade) {
+                ProUpgradeView().environmentObject(pro)
             }
-            // ── Invite Share Sheet (single recipient) ───────────────────────
-            .sheet(isPresented: $showInviteSheet, onDismiss: { dismiss() }) {
-                ActivityShareSheet(
-                    text: inviteContent,
-                    subject: "You've been invited to a shared task list on Daily Planner"
-                )
-            }
-            // ── Share Queue Sheet (multiple recipients) ──────────────────────
-            .sheet(isPresented: $showShareQueue, onDismiss: { dismiss() }) {
-                ShareQueueSheet(invitations: shareQueue)
-                    .environmentObject(vm)
-            }
-            .overlay(alignment: .top) {
-                if showSentBanner {
-                    Text("Invitation sent!")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(Color(red: 0.1, green: 0.65, blue: 0.35))
-                        .cornerRadius(20)
-                        .padding(.top, 8)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-            }
-            .animation(.easeInOut(duration: 0.3), value: showSentBanner)
         }
     }
 
-    // MARK: - Done Action
-    private func handleDone() {
-        let sharing = vm.settings.sharingSettings
-        guard sharing.isEnabled,
-              !sharing.recipients.isEmpty,
-              sharing.recipients.contains(where: { !$0.sharedSections.isEmpty }) else {
-            dismiss()
-            return
-        }
+    // MARK: - Build & Share
 
-        // Build a compact, per-recipient invitation (short enough for WhatsApp/SMS)
-        let queue = sharing.recipients
-            .filter { !$0.sharedSections.isEmpty }
-            .map { (recipient: $0, text: vm.buildCompactInvitation(for: $0)) }
-
-        if queue.count == 1 {
-            // Single recipient → go straight to the share sheet.
-            // Assign content first, then set the flag on the next run-loop tick
-            // so SwiftUI re-renders with the text before the sheet is created.
-            inviteContent = queue[0].text
-            DispatchQueue.main.async {
-                self.showInviteSheet = true
+    private func buildAndShare() {
+        let ordered = Self.categories.filter { selectedCategories.contains($0) }
+        if shareAsImage {
+            let card = ShareCardView(vm: vm, selectedCategories: ordered)
+            let renderer = ImageRenderer(content: card)
+            renderer.scale = UIScreen.main.scale
+            if let image = renderer.uiImage {
+                shareItems = [image]
+            } else {
+                shareItems = [buildShareText(ordered: ordered)]
             }
         } else {
-            // Multiple recipients → show the queue so user sends one per person
-            shareQueue = queue
-            DispatchQueue.main.async {
-                self.showShareQueue = true
-            }
+            shareItems = [buildShareText(ordered: ordered)]
         }
+        showShareSheet = true
     }
 
+    // MARK: - Share Text Builder
 
-    private func isValidEmail(_ email: String) -> Bool {
-        let pattern = #"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$"#
-        return email.range(of: pattern, options: .regularExpression) != nil
+    private func buildShareText(ordered: [SharableSection]) -> String {
+        let entry = vm.currentEntry
+        let dateStr = DateFormatter.localizedString(from: vm.selectedDate, dateStyle: .full, timeStyle: .none)
+        var lines: [String] = []
+
+        lines.append("📋 Daily Planner — \(dateStr)")
+        lines.append(String(repeating: "─", count: 36))
+
+        let timeFmt = DateFormatter()
+        timeFmt.timeStyle = .short
+
+        for category in ordered {
+            let catLines = categoryTextLines(category, entry: entry, timeFmt: timeFmt)
+            if !catLines.isEmpty {
+                lines.append("")
+                lines.append(contentsOf: catLines)
+            }
+        }
+
+        if lines.count <= 2 {
+            lines.append("")
+            lines.append("All tasks completed!")
+        }
+
+        lines.append("")
+        lines.append(String(repeating: "─", count: 36))
+        lines.append("Shared from Daily Planner")
+        return lines.joined(separator: "\n")
+    }
+
+    private func categoryTextLines(_ category: SharableSection, entry: DailyEntry, timeFmt: DateFormatter) -> [String] {
+        var lines: [String] = []
+
+        switch category {
+        case .topPriorities:
+            let pending = entry.topPriorities.filter { !$0.isCompleted }
+            guard !pending.isEmpty else { return [] }
+            lines.append("⭐ Top Priorities")
+            for t in pending { lines.append("  ⬜ \(t.title)") }
+
+        case .toDoLists:
+            let pending = entry.toDoLists.filter { !$0.isCompleted }
+            guard !pending.isEmpty else { return [] }
+            lines.append("✅ To-Do Lists")
+            for t in pending { lines.append("  ⬜ \(t.title)") }
+
+        case .personalList:
+            let pending = entry.personalTodo.filter { !$0.isCompleted }
+            guard !pending.isEmpty else { return [] }
+            lines.append("👤 Personal List")
+            for t in pending { lines.append("  ⬜ \(t.title)") }
+
+        case .callsEmails:
+            let pending = entry.callsEmails.filter { !$0.isCompleted }
+            guard !pending.isEmpty else { return [] }
+            lines.append("📞 Calls & Emails")
+            for t in pending { lines.append("  ⬜ \(t.title)") }
+
+        case .appointments:
+            let pending = entry.appointments.filter { !$0.isCompleted }
+            guard !pending.isEmpty else { return [] }
+            lines.append("🕐 Appointments")
+            for a in pending {
+                lines.append("  ⬜ \(timeFmt.string(from: a.time)) — \(a.title)")
+                if !a.location.isEmpty { lines.append("     📍 \(a.location)") }
+            }
+
+        case .notes:
+            guard !entry.notes.isEmpty else { return [] }
+            lines.append("📝 Notes")
+            lines.append("  \(entry.notes)")
+
+        case .foodTracker:
+            let meals = entry.meals
+            let hasFood = !meals.breakfastItems.isEmpty || !meals.lunchItems.isEmpty
+                || !meals.dinnerItems.isEmpty || !meals.snackItems.isEmpty
+            guard hasFood else { return [] }
+            lines.append("🍴 Food Tracker")
+            func addMeal(_ label: String, _ items: [MealItem]) {
+                guard !items.isEmpty else { return }
+                lines.append("  \(label)")
+                for item in items {
+                    let cal = item.calories > 0 ? " (\(item.calories) kcal)" : ""
+                    lines.append("    • \(item.name)\(cal)")
+                }
+            }
+            addMeal("🌅 Breakfast", meals.breakfastItems)
+            addMeal("☀️ Lunch", meals.lunchItems)
+            addMeal("🌆 Dinner", meals.dinnerItems)
+            addMeal("🍎 Snacks", meals.snackItems)
+            lines.append("  Total: \(meals.totalCalories) kcal")
+
+        case .waterTracker:
+            guard entry.waterGlasses > 0 else { return [] }
+            let pct = entry.waterGoal > 0
+                ? Int(Double(entry.waterGlasses) / Double(entry.waterGoal) * 100) : 0
+            lines.append("💧 Water Tracker")
+            lines.append("  \(entry.waterGlasses)/\(entry.waterGoal) glasses (\(pct)%)")
+
+        case .medications:
+            let active = vm.settings.medications.filter { $0.isActive }
+            guard !active.isEmpty else { return [] }
+            lines.append("💊 Medications")
+            for med in active {
+                let times = med.times.map { timeFmt.string(from: $0) }.joined(separator: ", ")
+                let dosage = med.dosage.isEmpty ? "" : " — \(med.dosage)"
+                let timeStr = times.isEmpty ? "" : " @ \(times)"
+                lines.append("  💊 \(med.name)\(dosage)\(timeStr)")
+            }
+
+        case .habits:
+            let todayKey = vm.dateKey(for: vm.selectedDate)
+            let completedIDs = vm.settings.habitLogs[todayKey]?.completedIDs ?? []
+            let incomplete = vm.settings.habits.filter { !completedIDs.contains($0.id) }
+            guard !incomplete.isEmpty else { return [] }
+            lines.append("🔥 Habit Tracker")
+            for habit in incomplete { lines.append("  ⬜ \(habit.name)") }
+
+        case .sleepTracker:
+            let sleep = entry.sleep
+            guard sleep.bedtime != nil || sleep.wakeTime != nil else { return [] }
+            lines.append("🌙 Sleep Tracker")
+            if let bed = sleep.bedtime { lines.append("  Bedtime: \(timeFmt.string(from: bed))") }
+            if let wake = sleep.wakeTime { lines.append("  Wake Up: \(timeFmt.string(from: wake))") }
+            lines.append("  Duration: \(sleep.durationString)")
+            if sleep.quality > 0 {
+                lines.append("  Quality: \(String(repeating: "⭐", count: sleep.quality))")
+            }
+
+        case .expenses:
+            let items = entry.expenses.filter { !$0.isDeposit && !$0.isIncome }
+            guard !items.isEmpty else { return [] }
+            lines.append("💰 Expense Tracker")
+            lines.append("  Total: \(vm.settings.currency.symbol)\(String(format: "%.2f", entry.totalExpenses))")
+            for exp in items {
+                lines.append("  • \(exp.displayCategory): \(vm.settings.currency.symbol)\(String(format: "%.2f", exp.amount)) — \(exp.description)")
+            }
+
+        case .entireList:
+            break
+        }
+
+        return lines
+    }
+
+    // MARK: - Pending Count Label
+
+    private func pendingCountLabel(for category: SharableSection) -> String {
+        let entry = vm.currentEntry
+        switch category {
+        case .topPriorities:
+            let c = entry.topPriorities.filter { !$0.isCompleted }.count
+            return c == 0 ? "All done!" : "\(c) pending"
+        case .toDoLists:
+            let c = entry.toDoLists.filter { !$0.isCompleted }.count
+            return c == 0 ? "All done!" : "\(c) pending"
+        case .personalList:
+            let c = entry.personalTodo.filter { !$0.isCompleted }.count
+            return c == 0 ? "All done!" : "\(c) pending"
+        case .callsEmails:
+            let c = entry.callsEmails.filter { !$0.isCompleted }.count
+            return c == 0 ? "All done!" : "\(c) pending"
+        case .appointments:
+            let c = entry.appointments.filter { !$0.isCompleted }.count
+            return c == 0 ? "All done!" : "\(c) pending"
+        case .notes:
+            return entry.notes.isEmpty ? "Empty" : "Has notes"
+        case .foodTracker:
+            let m = entry.meals
+            let c = m.breakfastItems.count + m.lunchItems.count + m.dinnerItems.count + m.snackItems.count
+            return c == 0 ? "No meals logged" : "\(c) items"
+        case .waterTracker:
+            return "\(entry.waterGlasses)/\(entry.waterGoal) glasses"
+        case .medications:
+            let c = vm.settings.medications.filter { $0.isActive }.count
+            return c == 0 ? "None active" : "\(c) active"
+        case .habits:
+            let key = vm.dateKey(for: vm.selectedDate)
+            let done = vm.settings.habitLogs[key]?.completedIDs ?? []
+            let remaining = vm.settings.habits.filter { !done.contains($0.id) }.count
+            return remaining == 0 ? "All done!" : "\(remaining) remaining"
+        case .sleepTracker:
+            return entry.sleep.bedtime != nil ? entry.sleep.durationString : "Not logged"
+        case .expenses:
+            let c = entry.expenses.filter { !$0.isDeposit && !$0.isIncome }.count
+            return c == 0 ? "No expenses" : "\(c) entries"
+        case .entireList:
+            return ""
+        }
     }
 }
 
-// MARK: - Recipient Row
-private struct RecipientRow: View {
-    let recipient : ShareRecipient
-    let onEdit    : () -> Void
-    let onDelete  : () -> Void
+// MARK: - Share Card View (rendered to UIImage via ImageRenderer)
+private struct ShareCardView: View {
+    let vm: PlannerViewModel
+    let selectedCategories: [SharableSection]
+
+    private let purpleAccent = Color(red: 0.45, green: 0.25, blue: 0.85)
+    private let maxItems = 8
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: recipient.accountType.icon)
-                .font(.system(size: 22))
-                .foregroundColor(recipient.accountType.color)
-            VStack(alignment: .leading, spacing: 2) {
-                if !recipient.name.isEmpty {
-                    Text(recipient.name)
-                        .font(.system(size: 14, weight: .semibold))
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("📋 Daily Planner")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                    Text(DateFormatter.localizedString(
+                        from: vm.selectedDate, dateStyle: .full, timeStyle: .none))
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.85))
                 }
-                Text(recipient.email)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                if !recipient.sharedSections.isEmpty {
-                    Text(recipient.sharedSections.map { $0.rawValue }.joined(separator: ", "))
-                        .font(.system(size: 11))
-                        .foregroundColor(.green)
-                        .lineLimit(1)
-                } else {
-                    Text("No categories selected yet")
-                        .font(.system(size: 11))
-                        .foregroundColor(.orange)
-                }
+                Spacer()
             }
-            Spacer()
-            Button(action: onEdit) {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: 14))
-                    .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85).opacity(0.8))
-                    .padding(6)
-            }
-            .buttonStyle(PlainButtonStyle())
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.system(size: 14))
-                    .foregroundColor(.red.opacity(0.7))
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-        .padding(.vertical, 4)
-    }
-}
+            .padding(20)
+            .background(
+                LinearGradient(
+                    colors: [purpleAccent, Color(red: 0.6, green: 0.35, blue: 0.95)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
 
-// MARK: - Category Selection Sheet
-// Shows shareable categories (not individual tasks). Toggling a category
-// shares ALL tasks under that category with the recipient.
-struct CategorySelectionSheet: View {
-    @EnvironmentObject var vm: PlannerViewModel
-    @Environment(\.dismiss) var dismiss
-
-    let recipient : ShareRecipient
-    let onDone    : (ShareRecipient) -> Void
-
-    // The categories the user can share
-    private let shareableCategories: [SharableSection] = [
-        .topPriorities, .toDoLists, .personalList, .callsEmails,
-        .appointments, .notes
-    ]
-
-    @State private var selectedSections: Set<SharableSection> = []
-
-    var body: some View {
-        NavigationView {
-            List {
-                Section {
-                    Text("Select the categories to share with \(recipient.name.isEmpty ? recipient.email : recipient.name). All tasks in each selected category will be shared.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .listRowBackground(Color.clear)
-                }
-
-                Section {
-                    ForEach(shareableCategories) { section in
-                        CategoryToggleRow(
-                            section: section,
-                            isSelected: selectedSections.contains(section)
-                        ) {
-                            if selectedSections.contains(section) {
-                                selectedSections.remove(section)
-                            } else {
-                                selectedSections.insert(section)
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(selectedCategories) { section in
+                    let items = cardItems(for: section)
+                    if !items.isEmpty {
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(spacing: 6) {
+                                Image(systemName: section.icon)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(section.color)
+                                Text(section.rawValue)
+                                    .font(.system(size: 13, weight: .bold))
+                            }
+                            ForEach(Array(items.prefix(maxItems).enumerated()), id: \.offset) { _, item in
+                                Text(item)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                            }
+                            if items.count > maxItems {
+                                Text("+\(items.count - maxItems) more")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.gray.opacity(0.6))
                             }
                         }
                     }
-                } header: {
-                    Text("Categories")
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Choose Categories")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        var updated = recipient
-                        updated.sharedSections = Array(selectedSections)
-                        onDone(updated)
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                    .disabled(selectedSections.isEmpty && recipient.sharedSections.isEmpty)
-                }
-            }
-            .onAppear {
-                selectedSections = Set(recipient.sharedSections)
-            }
-        }
-    }
-}
+            .padding(20)
 
-// MARK: - Category Toggle Row
-private struct CategoryToggleRow: View {
-    let section    : SharableSection
-    let isSelected : Bool
-    let onToggle   : () -> Void
-
-    var body: some View {
-        Button(action: onToggle) {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(section.color.opacity(0.15))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: section.icon)
-                        .font(.system(size: 16))
-                        .foregroundColor(section.color)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(section.rawValue)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Text("All tasks in this category")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+            Divider().padding(.horizontal, 20)
+            HStack {
                 Spacer()
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundColor(isSelected ? section.color : Color(.systemGray3))
-                    .animation(.spring(response: 0.25), value: isSelected)
+                Text("Shared from Daily Planner")
+                    .font(.system(size: 11))
+                    .foregroundColor(.gray.opacity(0.6))
+                Spacer()
             }
-            .contentShape(Rectangle())
+            .padding(.vertical, 12)
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(width: 360)
+        .background(Color.white)
+        .cornerRadius(16)
+        .padding(16)
     }
-}
 
-// MARK: - Add Recipient Sheet
-struct AddRecipientSheet: View {
-    @Binding var name          : String
-    @Binding var email         : String
-    @Binding var errorMessage  : String
-    let onAdd                  : () -> Void
-    @Environment(\.dismiss) var dismiss
-    @FocusState private var emailFocused: Bool
+    private func cardItems(for section: SharableSection) -> [String] {
+        let entry = vm.currentEntry
+        let timeFmt = DateFormatter()
+        timeFmt.timeStyle = .short
 
-    var body: some View {
-        NavigationView {
-            Form {
-                Section {
-                    HStack(spacing: 10) {
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.secondary)
-                        TextField("Name (optional)", text: $name)
-                    }
-                    HStack(spacing: 10) {
-                        Image(systemName: emailIcon)
-                            .foregroundColor(emailColor)
-                        TextField("Email address", text: $email)
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
-                            .focused($emailFocused)
-                    }
-                } header: {
-                    Text("Recipient Details")
-                } footer: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Any valid email address is accepted. The recipient must have Daily Planner installed to accept the shared list.")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        if !errorMessage.isEmpty {
-                            Text(errorMessage)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                        }
-                    }
-                }
-
-                Section {
-                    Button(action: onAdd) {
-                        HStack {
-                            Spacer()
-                            Label("Add & Select Categories", systemImage: "square.grid.2x2.fill")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(.white)
-                            Spacer()
-                        }
-                        .padding(.vertical, 6)
-                    }
-                    .listRowBackground(Color(red: 0.45, green: 0.25, blue: 0.85))
-                }
+        switch section {
+        case .topPriorities:
+            return entry.topPriorities.filter { !$0.isCompleted }.map { "⬜ \($0.title)" }
+        case .toDoLists:
+            return entry.toDoLists.filter { !$0.isCompleted }.map { "⬜ \($0.title)" }
+        case .personalList:
+            return entry.personalTodo.filter { !$0.isCompleted }.map { "⬜ \($0.title)" }
+        case .callsEmails:
+            return entry.callsEmails.filter { !$0.isCompleted }.map { "⬜ \($0.title)" }
+        case .appointments:
+            return entry.appointments.filter { !$0.isCompleted }
+                .map { "⬜ \(timeFmt.string(from: $0.time)) — \($0.title)" }
+        case .notes:
+            return entry.notes.isEmpty ? [] : [entry.notes]
+        case .foodTracker:
+            var items: [String] = []
+            for item in entry.meals.breakfastItems { items.append("🌅 \(item.name)") }
+            for item in entry.meals.lunchItems { items.append("☀️ \(item.name)") }
+            for item in entry.meals.dinnerItems { items.append("🌆 \(item.name)") }
+            for item in entry.meals.snackItems { items.append("🍎 \(item.name)") }
+            return items
+        case .waterTracker:
+            guard entry.waterGlasses > 0 else { return [] }
+            let pct = entry.waterGoal > 0
+                ? Int(Double(entry.waterGlasses) / Double(entry.waterGoal) * 100) : 0
+            return ["\(entry.waterGlasses)/\(entry.waterGoal) glasses (\(pct)%)"]
+        case .medications:
+            return vm.settings.medications.filter { $0.isActive }.map { med in
+                let dosage = med.dosage.isEmpty ? "" : " — \(med.dosage)"
+                return "💊 \(med.name)\(dosage)"
             }
-            .navigationTitle("Add Recipient")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
+        case .habits:
+            let key = vm.dateKey(for: vm.selectedDate)
+            let done = vm.settings.habitLogs[key]?.completedIDs ?? []
+            return vm.settings.habits.filter { !done.contains($0.id) }.map { "⬜ \($0.name)" }
+        case .sleepTracker:
+            let s = entry.sleep
+            guard s.bedtime != nil || s.wakeTime != nil else { return [] }
+            var items: [String] = []
+            if let bed = s.bedtime { items.append("🌙 Bedtime: \(timeFmt.string(from: bed))") }
+            if let wake = s.wakeTime { items.append("☀️ Wake: \(timeFmt.string(from: wake))") }
+            items.append("⏱ \(s.durationString)")
+            if s.quality > 0 { items.append("Quality: \(s.quality)/5") }
+            return items
+        case .expenses:
+            return entry.expenses.filter { !$0.isDeposit && !$0.isIncome }.map { exp in
+                "\(exp.displayCategory): \(vm.settings.currency.symbol)\(String(format: "%.2f", exp.amount))"
             }
-            .onAppear { emailFocused = false }
+        case .entireList:
+            return []
         }
-        .presentationDetents([.medium])
-    }
-
-    private var emailIcon: String {
-        let lc = email.lowercased()
-        if lc.hasSuffix("@gmail.com") { return "envelope.circle.fill" }
-        if lc.hasSuffix("@icloud.com") || lc.hasSuffix("@me.com") || lc.hasSuffix("@mac.com") { return "icloud.fill" }
-        return "at.circle.fill"
-    }
-
-    private var emailColor: Color {
-        let lc = email.lowercased()
-        if lc.hasSuffix("@gmail.com")  { return .red }
-        if lc.hasSuffix("@icloud.com") || lc.hasSuffix("@me.com") || lc.hasSuffix("@mac.com") { return .blue }
-        return .secondary
     }
 }
 
@@ -643,164 +604,6 @@ struct MailComposeView: UIViewControllerRepresentable {
                                    didFinishWith result: MFMailComposeResult,
                                    error: Error?) {
             isPresented = false
-        }
-    }
-}
-
-// MARK: - Share Queue Sheet (one send button per recipient)
-struct ShareQueueSheet: View {
-    @EnvironmentObject var vm: PlannerViewModel
-    @Environment(\.dismiss) var dismiss
-
-    let invitations: [(recipient: ShareRecipient, text: String)]
-
-    @State private var activeRecipientID   : UUID?   = nil
-    @State private var copiedRecipientID   : UUID?   = nil
-    @State private var mailRecipientID     : UUID?   = nil
-    @State private var showMailCompose     : Bool    = false
-
-    private let emailSubject = "You've been invited to a shared task list on Daily Planner"
-
-    var body: some View {
-        NavigationView {
-            List {
-                Section {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "livephoto")
-                            .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Live Sync Enabled")
-                                .font(.system(size: 13, weight: .bold))
-                            Text("When you make changes, they update automatically in the recipient's app.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                }
-
-                ForEach(invitations, id: \.recipient.id) { item in
-                    Section {
-                        HStack(spacing: 12) {
-                            Image(systemName: item.recipient.accountType.icon)
-                                .font(.system(size: 22))
-                                .foregroundColor(item.recipient.accountType.color)
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                if !item.recipient.name.isEmpty {
-                                    Text(item.recipient.name)
-                                        .font(.system(size: 14, weight: .semibold))
-                                }
-                                Text(item.recipient.email)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text(item.recipient.sharedSections.map { $0.rawValue }.joined(separator: ", "))
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.green)
-                                    .lineLimit(2)
-                            }
-
-                            Spacer()
-
-                            HStack(spacing: 8) {
-                                // Copy to clipboard
-                                Button {
-                                    UIPasteboard.general.string = item.text
-                                    copiedRecipientID = item.recipient.id
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                        if copiedRecipientID == item.recipient.id {
-                                            copiedRecipientID = nil
-                                        }
-                                    }
-                                } label: {
-                                    Image(systemName: copiedRecipientID == item.recipient.id
-                                          ? "checkmark.circle.fill" : "doc.on.doc")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(copiedRecipientID == item.recipient.id
-                                                         ? .green
-                                                         : Color(red: 0.45, green: 0.25, blue: 0.85))
-                                }
-                                .buttonStyle(PlainButtonStyle())
-
-                                // Email button (MFMailComposeViewController — always pre-fills body)
-                                if MFMailComposeViewController.canSendMail() {
-                                    Button {
-                                        mailRecipientID = item.recipient.id
-                                        showMailCompose = true
-                                    } label: {
-                                        Image(systemName: "envelope.fill")
-                                            .font(.system(size: 16))
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 6)
-                                            .background(Color.red)
-                                            .cornerRadius(8)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-
-                                // Generic share sheet (WhatsApp, iMessage, etc.)
-                                Button {
-                                    activeRecipientID = item.recipient.id
-                                } label: {
-                                    Label("Send", systemImage: "square.and.arrow.up")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(Color(red: 0.45, green: 0.25, blue: 0.85))
-                                        .cornerRadius(8)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-
-                Section {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 14))
-                            .padding(.top, 1)
-                        Text("Recipients must have Daily Planner installed. When they tap the accept link, the shared tasks appear in their app and update automatically whenever you make changes.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .listRowBackground(Color.clear)
-                }
-            }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Send Invitations")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .fontWeight(.semibold)
-                }
-            }
-            // Generic share sheet (WhatsApp, iMessage, Telegram, etc.)
-            .sheet(item: Binding<ShareRecipient?>(
-                get: { invitations.first(where: { $0.recipient.id == activeRecipientID })?.recipient },
-                set: { activeRecipientID = $0?.id }
-            )) { recipient in
-                if let inv = invitations.first(where: { $0.recipient.id == recipient.id }) {
-                    ActivityShareSheet(text: inv.text, subject: emailSubject)
-                }
-            }
-            // Dedicated email composer — pre-fills Gmail/Mail/Outlook body correctly
-            .sheet(isPresented: $showMailCompose) {
-                if let id = mailRecipientID,
-                   let inv = invitations.first(where: { $0.recipient.id == id }) {
-                    MailComposeView(
-                        subject    : emailSubject,
-                        body       : inv.text,
-                        toEmail    : inv.recipient.email,
-                        isPresented: $showMailCompose
-                    )
-                }
-            }
         }
     }
 }
