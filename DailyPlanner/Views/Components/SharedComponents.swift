@@ -193,6 +193,7 @@ struct EditTaskSheet: View {
     @State private var titleText: String
     @State private var notesText: String
     @State private var subtasks: [SubTask]
+    @State private var recurrence: Recurrence
     @State private var newSubtask: String = ""
     @State private var showProUpgrade = false
     @FocusState private var titleFocused: Bool
@@ -207,9 +208,10 @@ struct EditTaskSheet: View {
         self.accentColor = accentColor
         self.icon = icon
         self.onSave = onSave
-        _titleText = State(initialValue: task.title)
-        _notesText = State(initialValue: task.notes)
-        _subtasks  = State(initialValue: task.subtasks)
+        _titleText  = State(initialValue: task.title)
+        _notesText  = State(initialValue: task.notes)
+        _subtasks   = State(initialValue: task.subtasks)
+        _recurrence = State(initialValue: task.recurrence)
     }
 
     var body: some View {
@@ -275,6 +277,22 @@ struct EditTaskSheet: View {
                         }
                     }
                 }
+
+                Section {
+                    if pro.isPro {
+                        Picker("Repeat", selection: $recurrence) {
+                            Label("No Repeat", systemImage: "slash.circle").tag(Recurrence.none)
+                            ForEach(Recurrence.allCases.filter { $0 != .none }) { r in
+                                Label(r.rawValue, systemImage: r.icon).tag(r)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    } else {
+                        proLockedRow(label: "Recurrence requires PRO")
+                    }
+                } header: {
+                    Text("Recurrence")
+                }
                 .sheet(isPresented: $showProUpgrade) {
                     ProUpgradeView().environmentObject(pro)
                 }
@@ -288,9 +306,10 @@ struct EditTaskSheet: View {
                         let trimmed = titleText.trimmingCharacters(in: .whitespaces)
                         guard !trimmed.isEmpty else { return }
                         var updated = task
-                        updated.title    = trimmed
-                        updated.notes    = notesText
-                        updated.subtasks = subtasks
+                        updated.title      = trimmed
+                        updated.notes      = notesText
+                        updated.subtasks   = subtasks
+                        updated.recurrence = recurrence
                         onSave(updated)
                         dismiss()
                     }
