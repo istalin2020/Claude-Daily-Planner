@@ -187,7 +187,9 @@ struct SharingView: View {
         } else {
             shareItems = [buildShareText(ordered: ordered)]
         }
-        showShareSheet = true
+        DispatchQueue.main.async {
+            showShareSheet = true
+        }
     }
 
     // MARK: - Share Text Builder
