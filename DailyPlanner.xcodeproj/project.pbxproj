@@ -15,7 +15,6 @@
 		AA1A0000000000000000001A /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA190000000000000000001A /* SharedComponents.swift */; };
 		AA1C0000000000000000001A /* OverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B0000000000000000001A /* OverviewView.swift */; };
 		AA1E0000000000000000001A /* TopPrioritiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1D0000000000000000001A /* TopPrioritiesView.swift */; };
-		AA3E0000000000000000001A /* ToDoListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3D0000000000000000001A /* ToDoListsView.swift */; };
 		AA200000000000000000001A /* CallsEmailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1F0000000000000000001A /* CallsEmailsView.swift */; };
 		AA220000000000000000001A /* PersonalTodoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA210000000000000000001A /* PersonalTodoView.swift */; };
 		AA240000000000000000001A /* HealthFitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA230000000000000000001A /* HealthFitnessView.swift */; };
@@ -27,11 +26,11 @@
 		AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA310000000000000000001A /* ExpenseTrackerView.swift */; };
 		AA340000000000000000001A /* RateYourDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA330000000000000000001A /* RateYourDayView.swift */; };
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
+		AA3E0000000000000000001A /* ToDoListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3D0000000000000000001A /* ToDoListsView.swift */; };
 		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
-		AA440000000000000000001A /* CalorieEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA430000000000000000001A /* CalorieEstimator.swift */; };
 		AA420000000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA410000000000000000001A /* SettingsView.swift */; };
+		AA440000000000000000001A /* CalorieEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA430000000000000000001A /* CalorieEstimator.swift */; };
 		AA470000000000000000001A /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA460000000000000000001A /* HealthKitManager.swift */; };
-		AA6400000000000000001A /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA6500000000000000001A /* HealthKit.framework */; };
 		AA490000000000000000001A /* RecurrencePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4A0000000000000000001A /* RecurrencePicker.swift */; };
 		AA4B0000000000000000001A /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4C0000000000000000001A /* SearchView.swift */; };
 		AA4D0000000000000000001A /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4E0000000000000000001A /* ExportView.swift */; };
@@ -45,61 +44,22 @@
 		AA5E0000000000000000001A /* MedicationTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5F0000000000000000001A /* MedicationTrackerView.swift */; };
 		AA600000000000000000001A /* ProManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA610000000000000000001A /* ProManager.swift */; };
 		AA620000000000000000001A /* ProUpgradeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA630000000000000000001A /* ProUpgradeView.swift */; };
+		AA6400000000000000001A /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA6500000000000000001A /* HealthKit.framework */; };
 		AA680000000000000000001A /* SharingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA690000000000000000001A /* SharingView.swift */; };
 		AA6C0000000000000000001A /* CloudKitSharingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6A0000000000000000001A /* CloudKitSharingService.swift */; };
 		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
 		BB810000000000000000001A /* DailyPlannerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB900000000000000000001A /* DailyPlannerWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
-/* Begin PBXFileReference section */
-		AA0E0000000000000000001A /* DailyPlanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyPlanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA0F0000000000000000001A /* DailyPlannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerApp.swift; sourceTree = "<group>"; };
-		AA110000000000000000001A /* PlannerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerModels.swift; sourceTree = "<group>"; };
-		AA130000000000000000001A /* PlannerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerViewModel.swift; sourceTree = "<group>"; };
-		AA150000000000000000001A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AA170000000000000000001A /* DateScrollerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateScrollerView.swift; sourceTree = "<group>"; };
-		AA190000000000000000001A /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
-		AA1B0000000000000000001A /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
-		AA1D0000000000000000001A /* TopPrioritiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopPrioritiesView.swift; sourceTree = "<group>"; };
-		AA3D0000000000000000001A /* ToDoListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToDoListsView.swift; sourceTree = "<group>"; };
-		AA1F0000000000000000001A /* CallsEmailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsEmailsView.swift; sourceTree = "<group>"; };
-		AA210000000000000000001A /* PersonalTodoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalTodoView.swift; sourceTree = "<group>"; };
-		AA230000000000000000001A /* HealthFitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthFitnessView.swift; sourceTree = "<group>"; };
-		AA250000000000000000001A /* WaterTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterTrackerView.swift; sourceTree = "<group>"; };
-		AA270000000000000000001A /* FoodTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTrackerView.swift; sourceTree = "<group>"; };
-		AA290000000000000000001A /* DailyScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScheduleView.swift; sourceTree = "<group>"; };
-		AA2B0000000000000000001A /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
-		AA2D0000000000000000001A /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
-		AA310000000000000000001A /* ExpenseTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTrackerView.swift; sourceTree = "<group>"; };
-		AA330000000000000000001A /* RateYourDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateYourDayView.swift; sourceTree = "<group>"; };
-		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
-		AA430000000000000000001A /* CalorieEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieEstimator.swift; sourceTree = "<group>"; };
-		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		AA460000000000000000001A /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
-		AA6500000000000000001A /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
-		AA480000000000000000001A /* DailyPlanner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlanner.entitlements; sourceTree = "<group>"; };
-		AA4A0000000000000000001A /* RecurrencePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurrencePicker.swift; sourceTree = "<group>"; };
-		AA4C0000000000000000001A /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
-		AA4E0000000000000000001A /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
-		AA500000000000000000001A /* PomodoroTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroTimerView.swift; sourceTree = "<group>"; };
-		AA520000000000000000001A /* HabitTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitTrackerView.swift; sourceTree = "<group>"; };
-		AA540000000000000000001A /* BudgetSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetSettingsView.swift; sourceTree = "<group>"; };
-		AA570000000000000000001A /* SleepTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTrackerView.swift; sourceTree = "<group>"; };
-		AA590000000000000000001A /* WeeklySummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummaryView.swift; sourceTree = "<group>"; };
-		AA5B0000000000000000001A /* AppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShortcuts.swift; sourceTree = "<group>"; };
-		AA5D0000000000000000001A /* SpendingTrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingTrendsView.swift; sourceTree = "<group>"; };
-		AA5F0000000000000000001A /* MedicationTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTrackerView.swift; sourceTree = "<group>"; };
-		AA610000000000000000001A /* ProManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProManager.swift; sourceTree = "<group>"; };
-		AA630000000000000000001A /* ProUpgradeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUpgradeView.swift; sourceTree = "<group>"; };
-		AA690000000000000000001A /* SharingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingView.swift; sourceTree = "<group>"; };
-		AA6A0000000000000000001A /* CloudKitSharingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitSharingService.swift; sourceTree = "<group>"; };
-		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
-		BB110000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		BB120000000000000000001A /* DailyPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlannerWidget.entitlements; sourceTree = "<group>"; };
-		BB900000000000000000001A /* DailyPlannerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DailyPlannerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
+/* Begin PBXContainerItemProxy section */
+		BB520000000000000000001A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA000000000000000000001A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB500000000000000000001A;
+			remoteInfo = DailyPlannerWidget;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		BB800000000000000000001A /* Embed Foundation Extensions */ = {
@@ -114,6 +74,56 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		AA0E0000000000000000001A /* DailyPlanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyPlanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0F0000000000000000001A /* DailyPlannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerApp.swift; sourceTree = "<group>"; };
+		AA110000000000000000001A /* PlannerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerModels.swift; sourceTree = "<group>"; };
+		AA130000000000000000001A /* PlannerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerViewModel.swift; sourceTree = "<group>"; };
+		AA150000000000000000001A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA170000000000000000001A /* DateScrollerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateScrollerView.swift; sourceTree = "<group>"; };
+		AA190000000000000000001A /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
+		AA1B0000000000000000001A /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
+		AA1D0000000000000000001A /* TopPrioritiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopPrioritiesView.swift; sourceTree = "<group>"; };
+		AA1F0000000000000000001A /* CallsEmailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsEmailsView.swift; sourceTree = "<group>"; };
+		AA210000000000000000001A /* PersonalTodoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalTodoView.swift; sourceTree = "<group>"; };
+		AA230000000000000000001A /* HealthFitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthFitnessView.swift; sourceTree = "<group>"; };
+		AA250000000000000000001A /* WaterTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterTrackerView.swift; sourceTree = "<group>"; };
+		AA270000000000000000001A /* FoodTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTrackerView.swift; sourceTree = "<group>"; };
+		AA290000000000000000001A /* DailyScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScheduleView.swift; sourceTree = "<group>"; };
+		AA2B0000000000000000001A /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
+		AA2D0000000000000000001A /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
+		AA310000000000000000001A /* ExpenseTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTrackerView.swift; sourceTree = "<group>"; };
+		AA330000000000000000001A /* RateYourDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateYourDayView.swift; sourceTree = "<group>"; };
+		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA3D0000000000000000001A /* ToDoListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToDoListsView.swift; sourceTree = "<group>"; };
+		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA430000000000000000001A /* CalorieEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieEstimator.swift; sourceTree = "<group>"; };
+		AA460000000000000000001A /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
+		AA480000000000000000001A /* DailyPlanner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlanner.entitlements; sourceTree = "<group>"; };
+		AA4A0000000000000000001A /* RecurrencePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurrencePicker.swift; sourceTree = "<group>"; };
+		AA4C0000000000000000001A /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		AA4E0000000000000000001A /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
+		AA500000000000000000001A /* PomodoroTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroTimerView.swift; sourceTree = "<group>"; };
+		AA520000000000000000001A /* HabitTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitTrackerView.swift; sourceTree = "<group>"; };
+		AA540000000000000000001A /* BudgetSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetSettingsView.swift; sourceTree = "<group>"; };
+		AA570000000000000000001A /* SleepTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTrackerView.swift; sourceTree = "<group>"; };
+		AA590000000000000000001A /* WeeklySummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummaryView.swift; sourceTree = "<group>"; };
+		AA5B0000000000000000001A /* AppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShortcuts.swift; sourceTree = "<group>"; };
+		AA5D0000000000000000001A /* SpendingTrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingTrendsView.swift; sourceTree = "<group>"; };
+		AA5F0000000000000000001A /* MedicationTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTrackerView.swift; sourceTree = "<group>"; };
+		AA610000000000000000001A /* ProManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProManager.swift; sourceTree = "<group>"; };
+		AA630000000000000000001A /* ProUpgradeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUpgradeView.swift; sourceTree = "<group>"; };
+		AA6500000000000000001A /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		AA690000000000000000001A /* SharingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingView.swift; sourceTree = "<group>"; };
+		AA6A0000000000000000001A /* CloudKitSharingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitSharingService.swift; sourceTree = "<group>"; };
+		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
+		BB110000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB120000000000000000001A /* DailyPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlannerWidget.entitlements; sourceTree = "<group>"; };
+		BB900000000000000000001A /* DailyPlannerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DailyPlannerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AA0D0000000000000000001A /* Frameworks */ = {
@@ -177,16 +187,6 @@
 			path = ViewModels;
 			sourceTree = "<group>";
 		};
-		AA450000000000000000001A /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				AA460000000000000000001A /* HealthKitManager.swift */,
-				AA610000000000000000001A /* ProManager.swift */,
-				AA6A0000000000000000001A /* CloudKitSharingService.swift */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
 		AA3A0000000000000000001A /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -231,16 +231,6 @@
 			path = Components;
 			sourceTree = "<group>";
 		};
-		BB300000000000000000001A /* DailyPlannerWidget */ = {
-			isa = PBXGroup;
-			children = (
-				BB100000000000000000001A /* DailyPlannerWidget.swift */,
-				BB110000000000000000001A /* Info.plist */,
-				BB120000000000000000001A /* DailyPlannerWidget.entitlements */,
-			);
-			path = DailyPlannerWidget;
-			sourceTree = "<group>";
-		};
 		AA3C0000000000000000001A = {
 			isa = PBXGroup;
 			children = (
@@ -251,12 +241,32 @@
 			);
 			sourceTree = "<group>";
 		};
+		AA450000000000000000001A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AA460000000000000000001A /* HealthKitManager.swift */,
+				AA610000000000000000001A /* ProManager.swift */,
+				AA6A0000000000000000001A /* CloudKitSharingService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		AA6600000000000000001A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				AA6500000000000000001A /* HealthKit.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BB300000000000000000001A /* DailyPlannerWidget */ = {
+			isa = PBXGroup;
+			children = (
+				BB100000000000000000001A /* DailyPlannerWidget.swift */,
+				BB110000000000000000001A /* Info.plist */,
+				BB120000000000000000001A /* DailyPlannerWidget.entitlements */,
+			);
+			path = DailyPlannerWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -301,18 +311,6 @@
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		BB510000000000000000001A /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = BB500000000000000000001A /* DailyPlannerWidget */;
-			targetProxy = BB520000000000000000001A /* PBXContainerItemProxy */;
-		};
-		BB520000000000000000001A /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AA000000000000000000001A /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = BB500000000000000000001A;
-			remoteInfo = DailyPlannerWidget;
-		};
 		AA000000000000000000001A /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
@@ -322,7 +320,6 @@
 				TargetAttributes = {
 					AA040000000000000000001A = {
 						CreatedOnToolsVersion = 16.2;
-						DevelopmentTeam = YOURTEAMID;
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
 								enabled = 1;
@@ -337,7 +334,6 @@
 					};
 					BB500000000000000000001A = {
 						CreatedOnToolsVersion = 16.2;
-						DevelopmentTeam = YOURTEAMID;
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
 								enabled = 1;
@@ -384,14 +380,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		BB400000000000000000001A /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		AA0B0000000000000000001A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -437,59 +425,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB400000000000000000001A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		BB510000000000000000001A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB500000000000000000001A /* DailyPlannerWidget */;
+			targetProxy = BB520000000000000000001A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
-		BB600000000000000000001A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = DailyPlannerWidget/DailyPlannerWidget.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = YOURTEAMID;
-				CURRENT_PROJECT_VERSION = 2;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = DailyPlannerWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner.widget;
-				PRODUCT_NAME = DailyPlannerWidget;
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		BB610000000000000000001A /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = DailyPlannerWidget/DailyPlannerWidget.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = YOURTEAMID;
-				CURRENT_PROJECT_VERSION = 2;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = DailyPlannerWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner.widget;
-				PRODUCT_NAME = DailyPlannerWidget;
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 		AA070000000000000000001A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -613,9 +567,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DailyPlanner/DailyPlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = YOURTEAMID;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 3VU3B66P6J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyPlanner/Info.plist;
@@ -640,9 +594,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DailyPlanner/DailyPlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = YOURTEAMID;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 3VU3B66P6J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyPlanner/Info.plist;
@@ -654,6 +608,56 @@
 				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		BB600000000000000000001A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = DailyPlannerWidget/DailyPlannerWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 3VU3B66P6J;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DailyPlannerWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner.widget;
+				PRODUCT_NAME = DailyPlannerWidget;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BB610000000000000000001A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = DailyPlannerWidget/DailyPlannerWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 3VU3B66P6J;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DailyPlannerWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner.widget;
+				PRODUCT_NAME = DailyPlannerWidget;
+				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
