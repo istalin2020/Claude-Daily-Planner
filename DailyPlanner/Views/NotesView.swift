@@ -47,7 +47,7 @@ struct NotesView: View {
                             .padding(4)
                             .background(Color(.secondarySystemBackground))
                             .cornerRadius(10)
-                            .onChange(of: text) { _, _ in
+                            .onChange(of: text) { _ in
                                 vm.updateNotes(text)
                             }
                     } else {

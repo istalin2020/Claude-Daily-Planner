@@ -130,7 +130,7 @@ struct TopPrioritiesView: View {
                     .ignoresSafeArea()
             }
         }
-        .onChange(of: vm.topPrioritiesCompletionPercent) { _, newVal in
+        .onChange(of: vm.topPrioritiesCompletionPercent) { newVal in
             if newVal == 100 { showPopper = true }
         }
     }

@@ -810,7 +810,7 @@ struct NotesCard: View {
                     .padding(4)
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
-                    .onChange(of: text) { _, newText in onSave(newText) }
+                    .onChange(of: text) { newText in onSave(newText) }
             } else if text.isEmpty {
                 Text(placeholder)
                     .font(.caption)

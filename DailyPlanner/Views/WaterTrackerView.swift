@@ -122,7 +122,7 @@ struct WaterTrackerView: View {
             // does NOT immediately fire the popper.
             prevWaterCount = entry.waterGlasses
         }
-        .onChange(of: entry.waterGlasses) { _, newVal in
+        .onChange(of: entry.waterGlasses) { newVal in
             let goal = entry.waterGoal
             // Fire only on the transition that crosses the goal threshold
             // (e.g. 7→8 when goal is 8). Re-adding a glass after already

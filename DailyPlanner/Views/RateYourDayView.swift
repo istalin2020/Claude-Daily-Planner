@@ -103,7 +103,7 @@ struct RateYourDayView: View {
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(10)
                         .disabled(vm.isFuture)
-                        .onChange(of: notesText) { _, _ in
+                        .onChange(of: notesText) { _ in
                             rating.notes = notesText
                             save()
                         }
@@ -134,7 +134,7 @@ struct RateYourDayView: View {
         // Fire whenever any individual category reaches 5 stars.
         // Using the max so that tapping 5 on a second category doesn't
         // re-trigger (maxRating stays 5, no change event).
-        .onChange(of: maxRating) { _, newMax in
+        .onChange(of: maxRating) { newMax in
             if newMax == 5 && isLoaded { showPopper = true }
         }
     }

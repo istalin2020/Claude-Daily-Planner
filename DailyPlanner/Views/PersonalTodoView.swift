@@ -129,7 +129,7 @@ struct PersonalTodoView: View {
                     .ignoresSafeArea()
             }
         }
-        .onChange(of: vm.personalTodoCompletionPercent) { _, newVal in
+        .onChange(of: vm.personalTodoCompletionPercent) { newVal in
             if newVal == 100 { showPopper = true }
         }
     }
