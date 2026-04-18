@@ -11,6 +11,7 @@ struct SharingView: View {
     @State private var selectedCategories: Set<SharableSection> = []
     @State private var shareAsImage = false
     @State private var showProUpgrade = false
+    @State private var pendingShareItems: [Any]?
 
     private static let categories: [SharableSection] = [
         .topPriorities, .toDoLists, .personalList, .callsEmails,
@@ -160,6 +161,7 @@ struct SharingView: View {
                         .fontWeight(.semibold)
                 }
             }
+            .background(ActivityPresenterBridge(items: $pendingShareItems))
             .sheet(isPresented: $showProUpgrade) {
                 ProUpgradeView().environmentObject(pro)
             }
@@ -183,27 +185,7 @@ struct SharingView: View {
         } else {
             items = [buildShareText(ordered: ordered)]
         }
-        presentActivityController(items: items)
-    }
-
-    private func presentActivityController(items: [Any]) {
-        guard let scene = UIApplication.shared.connectedScenes
-                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
-        else { return }
-
-        var topVC = root
-        while let presented = topVC.presentedViewController {
-            topVC = presented
-        }
-
-        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
-        if let popover = activityVC.popoverPresentationController {
-            popover.sourceView = topVC.view
-            popover.sourceRect = CGRect(x: topVC.view.bounds.midX, y: topVC.view.bounds.midY, width: 0, height: 0)
-            popover.permittedArrowDirections = []
-        }
-        topVC.present(activityVC, animated: true)
+        pendingShareItems = items
     }
 
     // MARK: - Share Text Builder
@@ -529,6 +511,58 @@ private struct ShareCardView: View {
         case .entireList:
             return []
         }
+    }
+}
+
+// MARK: - UIKit Activity Presenter Bridge
+// Embeds a hidden UIView in the hierarchy; when `items` is set, it walks the
+// responder chain to find the hosting UIViewController and presents
+// UIActivityViewController directly — bypassing SwiftUI sheet timing issues
+// that can cause a blank share sheet on the first tap.
+private struct ActivityPresenterBridge: UIViewRepresentable {
+    @Binding var items: [Any]?
+
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView(frame: .zero)
+        v.isHidden = true
+        v.isUserInteractionEnabled = false
+        return v
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        guard let items = items, !items.isEmpty,
+              uiView.window != nil else { return }
+
+        DispatchQueue.main.async {
+            guard let vc = uiView.nearestViewController,
+                  vc.presentedViewController == nil else { return }
+
+            let activity = UIActivityViewController(
+                activityItems: items, applicationActivities: nil)
+            activity.completionWithItemsHandler = { _, _, _, _ in
+                DispatchQueue.main.async { self.items = nil }
+            }
+            if let pop = activity.popoverPresentationController {
+                pop.sourceView = vc.view
+                pop.sourceRect = CGRect(
+                    x: vc.view.bounds.midX,
+                    y: vc.view.bounds.midY,
+                    width: 0, height: 0)
+                pop.permittedArrowDirections = []
+            }
+            vc.present(activity, animated: true)
+        }
+    }
+}
+
+private extension UIView {
+    var nearestViewController: UIViewController? {
+        var responder: UIResponder? = self
+        while let next = responder?.next {
+            if let vc = next as? UIViewController { return vc }
+            responder = next
+        }
+        return nil
     }
 }
 
