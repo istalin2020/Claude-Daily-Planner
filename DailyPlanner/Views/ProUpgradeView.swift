@@ -326,6 +326,8 @@ struct ProUpgradeView: View {
                 .cornerRadius(18)
                 .shadow(color: Color(red: 1.0, green: 0.5, blue: 0.0).opacity(0.35), radius: 12, y: 6)
             }
+            .disabled(pro.products.isEmpty || pro.isLoading)
+            .opacity(pro.products.isEmpty || pro.isLoading ? 0.5 : 1.0)
             .padding(.horizontal, 16)
             .padding(.top, 20)
 
@@ -367,9 +369,7 @@ struct ProUpgradeView: View {
         guard !isPurchasing else { return }
         let product = selectedPlan == .yearly ? pro.yearlyProduct : pro.monthlyProduct
         guard let product else {
-            // No StoreKit product — dev/testing fallback: grant pro directly
-            pro.setPro(true)
-            dismiss()
+            pro.purchaseError = "Unable to connect to the App Store. Please check your internet connection and try again."
             return
         }
         isPurchasing = true
