@@ -177,7 +177,7 @@ struct HealthFitnessView: View {
             Text("Please go to Settings → Privacy & Security → Health → Daily Planner and enable all health data categories.")
         }
         .onAppear { autoSync() }
-        .onChange(of: vm.selectedDate) { _ in autoSync() }
+        .onChange(of: vm.selectedDate) { _, _ in autoSync() }
     }
 
     // MARK: - Sync Logic
@@ -354,7 +354,7 @@ struct HealthRingCard: View {
                 animatedProgress = progress
             }
         }
-        .onChange(of: value) { _ in
+        .onChange(of: value) { _, _ in
             animatedProgress = progress
         }
     }

@@ -129,7 +129,7 @@ struct CallsEmailsView: View {
                     .ignoresSafeArea()
             }
         }
-        .onChange(of: vm.callsEmailsCompletionPercent) { newVal in
+        .onChange(of: vm.callsEmailsCompletionPercent) { _, newVal in
             if newVal == 100 { showPopper = true }
         }
     }

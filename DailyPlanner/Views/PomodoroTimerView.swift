@@ -312,7 +312,7 @@ struct PomodoroTimerView: View {
             .onAppear {
                 pomodoro.notificationTone = vm.settings.notificationTone
             }
-            .onChange(of: vm.settings.notificationTone) { tone in
+            .onChange(of: vm.settings.notificationTone) { _, tone in
                 pomodoro.notificationTone = tone
             }
         }

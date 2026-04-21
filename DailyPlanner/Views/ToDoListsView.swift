@@ -125,7 +125,7 @@ struct ToDoListsView: View {
                     .ignoresSafeArea()
             }
         }
-        .onChange(of: vm.toDoListsCompletionPercent) { newVal in
+        .onChange(of: vm.toDoListsCompletionPercent) { _, newVal in
             if newVal == 100 { showPopper = true }
         }
     }

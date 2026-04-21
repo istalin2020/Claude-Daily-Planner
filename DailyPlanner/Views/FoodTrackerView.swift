@@ -418,7 +418,7 @@ struct AddMealItemSheet: View {
                     .padding(12)
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
-                    .onChange(of: manualCalText) { v in
+                    .onChange(of: manualCalText) { _, v in
                         manualCalText = v.filter(\.isNumber)
                     }
                 Text("cal")
@@ -514,7 +514,7 @@ struct EditMealItemSheet: View {
                     HStack {
                         TextField("0", text: $calText)
                             .keyboardType(.numberPad)
-                            .onChange(of: calText) { v in
+                            .onChange(of: calText) { _, v in
                                 calText = v.filter(\.isNumber)
                             }
                         Text("cal")

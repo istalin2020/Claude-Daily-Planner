@@ -60,7 +60,7 @@ struct DailyPlannerApp: App {
                 }
                 .animation(.easeInOut(duration: 0.35), value: viewModel.lastAcceptedShareInfo != nil)
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
                 viewModel.checkRolloverIfNeeded()
