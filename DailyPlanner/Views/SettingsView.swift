@@ -406,7 +406,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0").foregroundColor(.secondary).font(.caption)
+                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.1").foregroundColor(.secondary).font(.caption)
                     }
                 }
             }
