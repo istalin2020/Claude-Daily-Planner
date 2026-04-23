@@ -306,8 +306,13 @@ struct ProUpgradeView: View {
         VStack(spacing: 12) {
             Button(action: performPurchase) {
                 HStack(spacing: 10) {
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 16))
+                    if isPurchasing {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "crown.fill")
+                            .font(.system(size: 16))
+                    }
                     Text(selectedPlan == .yearly
                          ? "Start PRO — \(pro.yearlyPriceString)/year"
                          : "Start PRO — \(pro.monthlyPriceString)/month")
@@ -326,16 +331,23 @@ struct ProUpgradeView: View {
                 .cornerRadius(18)
                 .shadow(color: Color(red: 1.0, green: 0.5, blue: 0.0).opacity(0.35), radius: 12, y: 6)
             }
-            .disabled(pro.products.isEmpty || pro.isLoading)
-            .opacity(pro.products.isEmpty || pro.isLoading ? 0.5 : 1.0)
+            .disabled(isPurchasing || pro.isLoading)
             .padding(.horizontal, 16)
             .padding(.top, 20)
 
             if pro.isLoading {
-                Text("Loading pricing…")
+                Text("Connecting to App Store…")
                     .font(.caption)
                     .foregroundColor(.secondary)
-            } else if let error = pro.purchaseError {
+            } else if !pro.productsLoaded && !pro.isLoading {
+                Text("Tap the button to retry connecting to the App Store")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
+
+            if let error = pro.purchaseError {
                 Text(error)
                     .font(.caption)
                     .foregroundColor(.red)
@@ -367,13 +379,17 @@ struct ProUpgradeView: View {
     // MARK: - Actions
     private func performPurchase() {
         guard !isPurchasing else { return }
-        let product = selectedPlan == .yearly ? pro.yearlyProduct : pro.monthlyProduct
-        guard let product else {
-            pro.purchaseError = "Unable to connect to the App Store. Please check your internet connection and try again."
-            return
-        }
         isPurchasing = true
         Task {
+            if pro.products.isEmpty {
+                await pro.loadProducts()
+            }
+            let product = selectedPlan == .yearly ? pro.yearlyProduct : pro.monthlyProduct
+            guard let product else {
+                isPurchasing = false
+                pro.purchaseError = "Unable to load subscriptions from the App Store. Please check your internet connection and try again."
+                return
+            }
             let success = await pro.purchase(product)
             isPurchasing = false
             if success { dismiss() }

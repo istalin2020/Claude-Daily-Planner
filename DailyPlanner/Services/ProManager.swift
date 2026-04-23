@@ -10,6 +10,7 @@ class ProManager: ObservableObject {
     @Published var products: [Product] = []
     @Published var isLoading = false
     @Published var purchaseError: String? = nil
+    @Published var productsLoaded = false
 
     private let monthlyID = "com.istalin.dailyplanner.pro.monthly"
     private let yearlyID  = "com.istalin.dailyplanner.pro.yearly"
@@ -31,11 +32,17 @@ class ProManager: ObservableObject {
     // MARK: - Load Products
     func loadProducts() async {
         isLoading = true
+        purchaseError = nil
         do {
             let loaded = try await Product.products(for: [monthlyID, yearlyID])
             products = loaded.sorted { $0.price < $1.price }
+            productsLoaded = !loaded.isEmpty
+            if loaded.isEmpty {
+                purchaseError = "Subscriptions are being set up. Please try again in a few minutes."
+            }
         } catch {
-            // StoreKit unavailable (simulator / no App Store Connect config) — use display fallback
+            purchaseError = "Could not connect to the App Store: \(error.localizedDescription)"
+            productsLoaded = false
         }
         isLoading = false
     }
@@ -52,7 +59,10 @@ class ProManager: ObservableObject {
                 await transaction.finish()
                 setPro(true)
                 return true
-            case .userCancelled, .pending:
+            case .userCancelled:
+                return false
+            case .pending:
+                purchaseError = "Purchase is pending approval (e.g. Ask to Buy)."
                 return false
             @unknown default:
                 return false
@@ -69,6 +79,9 @@ class ProManager: ObservableObject {
         do {
             try await AppStore.sync()
             await verifyProStatus()
+            if !isPro {
+                purchaseError = "No active subscription found for this Apple ID."
+            }
         } catch {
             purchaseError = error.localizedDescription
         }
@@ -123,7 +136,6 @@ class ProManager: ObservableObject {
     var monthlyPriceString: String { monthlyProduct?.displayPrice ?? "₹99" }
     var yearlyPriceString:  String { yearlyProduct?.displayPrice  ?? "₹999" }
 
-    /// How much the user saves per year by choosing yearly vs monthly
     var yearlySavings: String {
         if let m = monthlyProduct, let y = yearlyProduct {
             let diff = (m.price * 12) - y.price
