@@ -631,7 +631,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 2.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner.widget;
 				PRODUCT_NAME = DailyPlannerWidget;
 				SKIP_INSTALL = YES;
@@ -656,7 +656,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1;
+				MARKETING_VERSION = 2.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner.widget;
 				PRODUCT_NAME = DailyPlannerWidget;
 				SKIP_INSTALL = YES;
