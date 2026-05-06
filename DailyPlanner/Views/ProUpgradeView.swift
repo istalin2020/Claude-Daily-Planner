@@ -358,22 +358,39 @@ struct ProUpgradeView: View {
                 .foregroundColor(Color(.systemGray3))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
-                .padding(.bottom, 30)
+
+            HStack(spacing: 16) {
+                Link("Privacy Policy", destination: URL(string: "https://istalin2020.github.io/Claude-Daily-Planner/privacy-policy.html")!)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+
+                Text("·")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(.systemGray3))
+
+                Link("Terms of Use", destination: URL(string: "https://istalin2020.github.io/Claude-Daily-Planner/terms-of-use.html")!)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+            }
+            .padding(.top, 4)
+            .padding(.bottom, 30)
         }
     }
 
     // MARK: - Actions
     private func performPurchase() {
         guard !isPurchasing else { return }
-        let product = selectedPlan == .yearly ? pro.yearlyProduct : pro.monthlyProduct
-        guard let product else {
-            // No StoreKit product — dev/testing fallback: grant pro directly
-            pro.setPro(true)
-            dismiss()
-            return
-        }
         isPurchasing = true
         Task {
+            if pro.products.isEmpty {
+                await pro.loadProducts()
+            }
+            let product = selectedPlan == .yearly ? pro.yearlyProduct : pro.monthlyProduct
+            guard let product else {
+                isPurchasing = false
+                pro.purchaseError = "Unable to load subscriptions from the App Store. Please check your internet connection and try again."
+                return
+            }
             let success = await pro.purchase(product)
             isPurchasing = false
             if success { dismiss() }

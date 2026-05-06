@@ -84,11 +84,7 @@ class ProManager: ObservableObject {
                 }
             }
         }
-        // If we can confirm no active entitlement through StoreKit AND
-        // products were loaded successfully, clear the pro flag.
-        if !products.isEmpty {
-            setPro(false)
-        }
+        setPro(false)
     }
 
     // MARK: - Transaction Listener
