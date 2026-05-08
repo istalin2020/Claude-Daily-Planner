@@ -66,18 +66,6 @@ struct ExpenseTrackerView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
 
-                // ── SMS Clipboard Banner ──────────────────────────────
-                if let parsed = vm.pendingSMSTransaction {
-                    SMSClipboardBanner(parsed: parsed, sym: sym) {
-                        vm.addExpenseFromSMS(parsed)
-                    } onDismiss: {
-                        vm.dismissSMSHash(parsed.rawText)
-                        vm.pendingSMSTransaction = nil
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                }
-
                 // ── Budget Alerts ──────────────────────────────────────
                 let alerts = budgetAlerts()
                 if !alerts.isEmpty {
@@ -1001,74 +989,6 @@ struct FinanceSummaryCard: View {
     }
 }
 
-// MARK: - SMS Clipboard Banner
-
-struct SMSClipboardBanner: View {
-    let parsed: ParsedTransaction
-    let sym: String
-    let onAdd: () -> Void
-    let onDismiss: () -> Void
-
-    var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(Color.purple.opacity(0.15))
-                        .frame(width: 40, height: 40)
-                    Image(systemName: "building.columns.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.purple)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Bank SMS Detected")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("\(parsed.isCredit ? "Credit" : "Debit") of \(sym)\(String(format: "%.2f", parsed.amount))")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                    if !parsed.merchant.isEmpty {
-                        Text(parsed.merchant)
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                Spacer()
-            }
-            HStack(spacing: 10) {
-                Button(action: onDismiss) {
-                    Text("Dismiss")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(Color(.systemGray5))
-                        .foregroundColor(.secondary)
-                        .cornerRadius(8)
-                }
-                Button(action: onAdd) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 13))
-                        Text(parsed.isCredit ? "Add Income" : "Add Expense")
-                            .font(.system(size: 13, weight: .bold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(parsed.isCredit ? Color(red: 0.1, green: 0.65, blue: 0.35) : Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-                }
-            }
-        }
-        .padding(14)
-        .background(Color.purple.opacity(0.06))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(Color.purple.opacity(0.2), lineWidth: 1)
-        )
-        .cornerRadius(14)
-    }
-}
-
 // MARK: - SMS Paste Sheet
 
 struct SMSPasteSheet: View {
@@ -1077,8 +997,40 @@ struct SMSPasteSheet: View {
     @State private var smsText = ""
     @State private var parsed: ParsedTransaction? = nil
     @State private var parseError = false
+
+    @State private var transactionType: TransactionType = .expense
+    @State private var amount = ""
+    @State private var merchant = ""
+    @State private var category: ExpenseCategory = .other
+    @State private var isCustomCategory = false
+    @State private var customCategoryLabel = ""
+    @State private var showAddCategory = false
+    @State private var newCategoryName = ""
+    @FocusState private var amountFocused: Bool
+
     let sym: String
     let onSave: (Expense) -> Void
+
+    enum TransactionType: String, CaseIterable {
+        case income = "Income"
+        case expense = "Expense"
+        case savings = "Savings"
+    }
+
+    private var accentColor: Color {
+        switch transactionType {
+        case .income:  return Color(red: 0.1, green: 0.65, blue: 0.35)
+        case .expense: return .red
+        case .savings: return Color(red: 0.3, green: 0.5, blue: 0.95)
+        }
+    }
+
+    private var canSave: Bool {
+        let desc = merchant.trimmingCharacters(in: .whitespaces)
+        guard !desc.isEmpty else { return false }
+        guard let amt = Double(amount), amt > 0 else { return false }
+        return true
+    }
 
     var body: some View {
         NavigationView {
@@ -1101,72 +1053,10 @@ struct SMSPasteSheet: View {
                                    startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
 
-                if let parsed = parsed {
-                    parsedResultView(parsed)
-                        .padding(16)
+                if parsed != nil {
+                    transactionForm
                 } else {
-                    VStack(spacing: 12) {
-                        TextEditor(text: $smsText)
-                            .frame(minHeight: 120)
-                            .padding(8)
-                            .background(Color(.secondarySystemBackground))
-                            .cornerRadius(12)
-                            .overlay(
-                                Group {
-                                    if smsText.isEmpty {
-                                        Text("Paste your bank SMS here...\n\nExample: Rs.500.00 debited from A/c XX1234 at SWIGGY. Avl Bal: Rs.25,000.00")
-                                            .font(.system(size: 13))
-                                            .foregroundColor(.secondary.opacity(0.6))
-                                            .padding(16)
-                                            .allowsHitTesting(false)
-                                    }
-                                }, alignment: .topLeading
-                            )
-
-                        if parseError {
-                            Text("Could not detect a bank transaction. Please paste a valid bank SMS.")
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .multilineTextAlignment(.center)
-                        }
-
-                        Button {
-                            if let result = BankSMSParser.parse(smsText) {
-                                parsed = result
-                                parseError = false
-                            } else {
-                                parseError = true
-                            }
-                        } label: {
-                            HStack {
-                                Image(systemName: "wand.and.stars")
-                                Text("Parse SMS")
-                                    .fontWeight(.semibold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(smsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                        ? Color.secondary.opacity(0.3) : Color.purple)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
-                        .disabled(smsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                        Button {
-                            if let clip = UIPasteboard.general.string, !clip.isEmpty {
-                                smsText = clip
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "doc.on.clipboard")
-                                    .font(.system(size: 13))
-                                Text("Paste from Clipboard")
-                                    .font(.system(size: 13, weight: .medium))
-                            }
-                            .foregroundColor(.purple)
-                        }
-                    }
-                    .padding(16)
+                    pasteInputView
                 }
 
                 Spacer()
@@ -1177,97 +1067,315 @@ struct SMSPasteSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .alert("Add Category", isPresented: $showAddCategory) {
+                TextField("Category name", text: $newCategoryName)
+                    .autocapitalization(.words)
+                Button("Add") {
+                    let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+                    if !name.isEmpty && !vm.settings.customExpenseCategories.contains(name) {
+                        vm.settings.customExpenseCategories.append(name)
+                        vm.saveSettings()
+                        isCustomCategory = true
+                        customCategoryLabel = name
+                    }
+                    newCategoryName = ""
+                }
+                Button("Cancel", role: .cancel) { newCategoryName = "" }
+            } message: {
+                Text("Enter a name for your new category.")
+            }
         }
     }
 
-    private func parsedResultView(_ p: ParsedTransaction) -> some View {
-        VStack(spacing: 14) {
-            HStack {
-                ZStack {
-                    Circle()
-                        .fill(p.isCredit ? Color(red: 0.1, green: 0.65, blue: 0.35).opacity(0.15) : Color.red.opacity(0.15))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: p.isCredit ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(p.isCredit ? Color(red: 0.1, green: 0.65, blue: 0.35) : .red)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(p.isCredit ? "Income Detected" : "Expense Detected")
-                        .font(.system(size: 16, weight: .bold))
-                    Text(p.bankName)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-                Text("\(p.isCredit ? "+" : "-")\(sym)\(String(format: "%.2f", p.amount))")
-                    .font(.system(size: 20, weight: .heavy))
-                    .foregroundColor(p.isCredit ? Color(red: 0.1, green: 0.65, blue: 0.35) : .red)
+    // MARK: - Paste Input
+
+    private var pasteInputView: some View {
+        VStack(spacing: 12) {
+            TextEditor(text: $smsText)
+                .frame(minHeight: 120)
+                .padding(8)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+                .overlay(
+                    Group {
+                        if smsText.isEmpty {
+                            Text("Paste your bank SMS here...\n\nExample: Rs.500.00 debited from A/c XX1234 at SWIGGY. Avl Bal: Rs.25,000.00")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary.opacity(0.6))
+                                .padding(16)
+                                .allowsHitTesting(false)
+                        }
+                    }, alignment: .topLeading
+                )
+
+            if parseError {
+                Text("Could not detect a bank transaction. Please paste a valid bank SMS.")
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
             }
 
-            VStack(spacing: 8) {
-                detailRow("Merchant", p.merchant)
-                detailRow("Category", p.category.rawValue.capitalized)
-                detailRow("Type", p.isCredit ? "Credit (Income)" : "Debit (Expense)")
-                if !p.accountLast4.isEmpty {
-                    detailRow("Account", "••••\(p.accountLast4)")
-                }
-                if let bal = p.balance {
-                    detailRow("Balance After", "\(sym)\(String(format: "%.2f", bal))")
-                }
-            }
-            .padding(12)
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(12)
-
-            HStack(spacing: 10) {
-                Button {
-                    parsed = nil
+            Button {
+                if let result = BankSMSParser.parse(smsText) {
+                    parsed = result
                     parseError = false
-                } label: {
-                    Text("Re-parse")
-                        .font(.system(size: 14, weight: .medium))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color(.systemGray5))
-                        .foregroundColor(.secondary)
-                        .cornerRadius(12)
+                    amount = String(format: "%.2f", result.amount)
+                    merchant = result.merchant.isEmpty ? "Bank Transaction" : result.merchant
+                    category = result.category
+                    transactionType = result.isCredit ? .income : .expense
+                    isCustomCategory = false
+                    customCategoryLabel = ""
+                } else {
+                    parseError = true
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "wand.and.stars")
+                    Text("Parse SMS")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(smsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? Color.secondary.opacity(0.3) : Color.purple)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+            }
+            .disabled(smsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+            Button {
+                if let clip = UIPasteboard.general.string, !clip.isEmpty {
+                    smsText = clip
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.system(size: 13))
+                    Text("Paste from Clipboard")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(.purple)
+            }
+        }
+        .padding(16)
+    }
+
+    // MARK: - Transaction Form (after parsing)
+
+    private var transactionForm: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                if let p = parsed {
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(Color.purple.opacity(0.15))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "building.columns.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.purple)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("SMS Parsed")
+                                .font(.system(size: 15, weight: .bold))
+                            Text(p.bankName)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Text("\(sym)\(String(format: "%.2f", p.amount))")
+                            .font(.system(size: 18, weight: .heavy))
+                            .foregroundColor(.purple)
+                    }
+                    .padding(14)
+                    .background(Color.purple.opacity(0.06))
+                    .cornerRadius(14)
+
+                    if !p.accountLast4.isEmpty || p.balance != nil {
+                        HStack(spacing: 16) {
+                            if !p.accountLast4.isEmpty {
+                                Label("••••\(p.accountLast4)", systemImage: "creditcard")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                            if let bal = p.balance {
+                                Label("Bal: \(sym)\(String(format: "%.2f", bal))", systemImage: "indianrupeesign.circle")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
                 }
 
-                Button {
-                    let expense = Expense(
-                        amount: p.amount,
-                        category: p.category,
-                        description: p.merchant,
-                        isIncome: p.isCredit,
-                        isFromSMS: true
-                    )
-                    onSave(expense)
-                    vm.dismissSMSHash(p.rawText)
-                    dismiss()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark.circle.fill")
-                        Text(p.isCredit ? "Add Income" : "Add Expense")
-                            .fontWeight(.bold)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Transaction Type")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 0) {
+                        ForEach(TransactionType.allCases, id: \.self) { type in
+                            Button {
+                                transactionType = type
+                            } label: {
+                                Text(type.rawValue)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(transactionType == type ? typeColor(type) : Color(.systemGray6))
+                                    .foregroundColor(transactionType == type ? .white : .primary)
+                            }
+                        }
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(p.isCredit ? Color(red: 0.1, green: 0.65, blue: 0.35) : Color.red)
-                    .foregroundColor(.white)
                     .cornerRadius(12)
                 }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Description")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    TextField("Description", text: $merchant)
+                        .padding(12)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(10)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Amount")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    HStack {
+                        Text(sym)
+                            .foregroundColor(.secondary)
+                        TextField("0.00", text: $amount)
+                            .keyboardType(.decimalPad)
+                            .focused($amountFocused)
+                        if !amount.isEmpty {
+                            Button {
+                                amount = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 16))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(12)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(10)
+                }
+
+                if transactionType == .expense {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Category")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+
+                        Picker("Category", selection: Binding(
+                            get: { isCustomCategory ? "custom:\(customCategoryLabel)" : category.rawValue },
+                            set: { newVal in
+                                if newVal.hasPrefix("custom:") {
+                                    isCustomCategory = true
+                                    customCategoryLabel = String(newVal.dropFirst(7))
+                                } else {
+                                    isCustomCategory = false
+                                    customCategoryLabel = ""
+                                    category = ExpenseCategory(rawValue: newVal) ?? .other
+                                }
+                            }
+                        )) {
+                            ForEach(ExpenseCategory.allCases, id: \.self) { cat in
+                                Label(cat.rawValue, systemImage: cat.icon).tag(cat.rawValue)
+                            }
+                            if !vm.settings.customExpenseCategories.isEmpty {
+                                Divider()
+                                ForEach(vm.settings.customExpenseCategories, id: \.self) { name in
+                                    Label(name, systemImage: "tag.fill")
+                                        .tag("custom:\(name)")
+                                }
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .padding(12)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(10)
+
+                        Button(action: { showAddCategory = true }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(.purple)
+                                Text("Add Category")
+                                    .font(.subheadline)
+                                    .foregroundColor(.purple)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        parsed = nil
+                        parseError = false
+                    } label: {
+                        Text("Re-parse")
+                            .font(.system(size: 14, weight: .medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color(.systemGray5))
+                            .foregroundColor(.secondary)
+                            .cornerRadius(12)
+                    }
+
+                    Button {
+                        guard canSave, let amt = Double(amount) else { return }
+                        let expense = Expense(
+                            amount: amt,
+                            category: transactionType == .expense ? (isCustomCategory ? .other : category) : .other,
+                            customCategoryLabel: transactionType == .expense && isCustomCategory ? customCategoryLabel : "",
+                            description: merchant.trimmingCharacters(in: .whitespaces),
+                            isDeposit: transactionType == .savings,
+                            isIncome: transactionType == .income,
+                            isFromSMS: true
+                        )
+                        onSave(expense)
+                        if let p = parsed {
+                            vm.dismissSMSHash(p.rawText)
+                        }
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Add \(transactionType.rawValue)")
+                                .fontWeight(.bold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(canSave ? accentColor : Color.secondary.opacity(0.3))
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                    .disabled(!canSave)
+                }
+            }
+            .padding(16)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    amountFocused = false
+                }
+                .fontWeight(.semibold)
             }
         }
     }
 
-    private func detailRow(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-            Spacer()
-            Text(value)
-                .font(.system(size: 12, weight: .semibold))
+    private func typeColor(_ type: TransactionType) -> Color {
+        switch type {
+        case .income:  return Color(red: 0.1, green: 0.65, blue: 0.35)
+        case .expense: return .red
+        case .savings: return Color(red: 0.3, green: 0.5, blue: 0.95)
         }
     }
 }

@@ -68,7 +68,7 @@ struct DailyPlannerApp: App {
                 viewModel.checkMonthlyCarryForward()
                 viewModel.refreshReceivedSharedLists()
                 viewModel.processPendingShortcutActions()
-                viewModel.checkClipboardForBankSMS()
+
                 Task {
                     await proManager.finishAllUnfinishedTransactions()
                     await proManager.verifyProStatus()
