@@ -819,7 +819,7 @@ class PlannerViewModel: ObservableObject {
     }
 
     func monthlyBalance(for date: Date) -> Double {
-        monthlyTotalIncome(for: date) - monthlyTotalExpenses(for: date)
+        monthlyTotalIncome(for: date) - monthlyTotalExpenses(for: date) - monthlyTotalSavings(for: date)
     }
 
     func monthlyTotalSavings(for date: Date) -> Double {

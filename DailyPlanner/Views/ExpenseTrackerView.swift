@@ -330,7 +330,7 @@ struct ExpenseTrackerView: View {
         let totalIncome   = vm.monthlyTotalIncome(for: summaryDate)
         let totalExpenses = vm.monthlyTotalExpenses(for: summaryDate)
         let totalSavings  = vm.monthlyTotalSavings(for: summaryDate)
-        // Balance = Income − Expenses (savings are tracked separately and NOT deducted from balance)
+        // Balance = Income − Expenses − Savings
         let balance       = vm.monthlyBalance(for: summaryDate)
         let categories    = vm.monthlyExpensesByCategory(for: summaryDate)
         let barRatio: Double = totalIncome > 0 ? min(totalExpenses / totalIncome, 1.0) : 0
@@ -453,7 +453,7 @@ struct ExpenseTrackerView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
 
-                // Balance (Income − Expenses only; savings are separate)
+                // Balance = Income − Expenses − Savings
                 HStack {
                     Text("Balance")
                         .font(.system(size: 16, weight: .bold))
