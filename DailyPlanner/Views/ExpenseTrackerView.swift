@@ -184,7 +184,8 @@ struct ExpenseTrackerView: View {
     // MARK: - Category Pie Chart
 
     private var categoryPieChartSection: some View {
-        let categories = vm.monthlyExpensesByDisplayCategory(for: summaryDate)
+        let cutoff = isCurrentMonth ? vm.selectedDate : nil
+        let categories = vm.monthlyExpensesByDisplayCategory(for: summaryDate, upTo: cutoff)
         let total = categories.reduce(0.0) { $0 + $1.1 }
 
         return Group {
@@ -302,7 +303,7 @@ struct ExpenseTrackerView: View {
             .padding(.horizontal, 16)
 
             FinanceAddButton(
-                label: "Add Saving  \(sym)\(String(format: "%.2f", vm.monthlyTotalSavings(for: vm.selectedDate)))",
+                label: "Add Saving  \(sym)\(String(format: "%.2f", vm.monthlyTotalSavings(for: vm.selectedDate, upTo: vm.selectedDate)))",
                 icon: "banknote.fill",
                 bg: Color(red: 0.3, green: 0.5, blue: 0.95).opacity(0.1),
                 fg: Color(red: 0.3, green: 0.5, blue: 0.95)) {
@@ -327,12 +328,12 @@ struct ExpenseTrackerView: View {
     // MARK: - Monthly Summary Card
 
     private var monthlySummaryCard: some View {
-        let totalIncome   = vm.monthlyTotalIncome(for: summaryDate)
-        let totalExpenses = vm.monthlyTotalExpenses(for: summaryDate)
-        let totalSavings  = vm.monthlyTotalSavings(for: summaryDate)
-        // Balance = Income − Expenses − Savings
-        let balance       = vm.monthlyBalance(for: summaryDate)
-        let categories    = vm.monthlyExpensesByDisplayCategory(for: summaryDate)
+        let cutoff        = isCurrentMonth ? vm.selectedDate : nil
+        let totalIncome   = vm.monthlyTotalIncome(for: summaryDate, upTo: cutoff)
+        let totalExpenses = vm.monthlyTotalExpenses(for: summaryDate, upTo: cutoff)
+        let totalSavings  = vm.monthlyTotalSavings(for: summaryDate, upTo: cutoff)
+        let balance       = vm.monthlyBalance(for: summaryDate, upTo: cutoff)
+        let categories    = vm.monthlyExpensesByDisplayCategory(for: summaryDate, upTo: cutoff)
         let barRatio: Double = totalIncome > 0 ? min(totalExpenses / totalIncome, 1.0) : 0
 
         return VStack(alignment: .leading, spacing: 0) {

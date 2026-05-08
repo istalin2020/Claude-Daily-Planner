@@ -798,19 +798,30 @@ class PlannerViewModel: ObservableObject {
         }
     }
 
-    func monthlyTotalIncome(for date: Date) -> Double {
-        monthlyEntries(for: date)
-            .flatMap { $0.expenses }
+    func monthlyEntries(for date: Date, upTo cutoff: Date) -> [DailyEntry] {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: date)
+        let cutoffDay = cal.startOfDay(for: cutoff)
+        return entries.values.filter {
+            let ec = cal.dateComponents([.year, .month], from: $0.date)
+            return ec.year == comps.year && ec.month == comps.month
+                && cal.startOfDay(for: $0.date) <= cutoffDay
+        }
+    }
+
+    func monthlyTotalIncome(for date: Date, upTo cutoff: Date? = nil) -> Double {
+        let e = cutoff.map { monthlyEntries(for: date, upTo: $0) } ?? monthlyEntries(for: date)
+        return e.flatMap { $0.expenses }
             .filter { $0.isIncome }
             .reduce(0) { $0 + $1.amount }
     }
 
-    func monthlyExpensesByCategory(for date: Date) -> [(ExpenseCategory, Double)] {
-        let all = monthlyEntries(for: date)
-            .flatMap { $0.expenses }
+    func monthlyExpensesByCategory(for date: Date, upTo cutoff: Date? = nil) -> [(ExpenseCategory, Double)] {
+        let e = cutoff.map { monthlyEntries(for: date, upTo: $0) } ?? monthlyEntries(for: date)
+        let all = e.flatMap { $0.expenses }
             .filter { !$0.isDeposit && !$0.isIncome }
         var totals: [ExpenseCategory: Double] = [:]
-        for e in all { totals[e.category, default: 0] += e.amount }
+        for exp in all { totals[exp.category, default: 0] += exp.amount }
         return totals.sorted { $0.value > $1.value }
     }
 
@@ -828,29 +839,29 @@ class PlannerViewModel: ObservableObject {
         }
     }
 
-    func monthlyExpensesByDisplayCategory(for date: Date) -> [(DisplayCategory, Double)] {
-        let all = monthlyEntries(for: date)
-            .flatMap { $0.expenses }
+    func monthlyExpensesByDisplayCategory(for date: Date, upTo cutoff: Date? = nil) -> [(DisplayCategory, Double)] {
+        let e = cutoff.map { monthlyEntries(for: date, upTo: $0) } ?? monthlyEntries(for: date)
+        let all = e.flatMap { $0.expenses }
             .filter { !$0.isDeposit && !$0.isIncome }
         var totals: [String: (DisplayCategory, Double)] = [:]
-        for e in all {
-            let dc = DisplayCategory.from(e)
-            totals[dc.name, default: (dc, 0)].1 += e.amount
+        for exp in all {
+            let dc = DisplayCategory.from(exp)
+            totals[dc.name, default: (dc, 0)].1 += exp.amount
         }
         return totals.values.sorted { $0.1 > $1.1 }
     }
 
-    func monthlyTotalExpenses(for date: Date) -> Double {
-        monthlyExpensesByCategory(for: date).reduce(0) { $0 + $1.1 }
+    func monthlyTotalExpenses(for date: Date, upTo cutoff: Date? = nil) -> Double {
+        monthlyExpensesByCategory(for: date, upTo: cutoff).reduce(0) { $0 + $1.1 }
     }
 
-    func monthlyBalance(for date: Date) -> Double {
-        monthlyTotalIncome(for: date) - monthlyTotalExpenses(for: date) - monthlyTotalSavings(for: date)
+    func monthlyBalance(for date: Date, upTo cutoff: Date? = nil) -> Double {
+        monthlyTotalIncome(for: date, upTo: cutoff) - monthlyTotalExpenses(for: date, upTo: cutoff) - monthlyTotalSavings(for: date, upTo: cutoff)
     }
 
-    func monthlyTotalSavings(for date: Date) -> Double {
-        monthlyEntries(for: date)
-            .flatMap { $0.expenses }
+    func monthlyTotalSavings(for date: Date, upTo cutoff: Date? = nil) -> Double {
+        let e = cutoff.map { monthlyEntries(for: date, upTo: $0) } ?? monthlyEntries(for: date)
+        return e.flatMap { $0.expenses }
             .filter { $0.isDeposit }
             .reduce(0) { $0 + $1.amount }
     }
