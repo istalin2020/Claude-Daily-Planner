@@ -386,6 +386,7 @@ struct Expense: Identifiable, Codable {
     var description: String
     var isDeposit: Bool = false  // savings
     var isIncome: Bool = false   // income entry
+    var isFromSMS: Bool = false  // auto-imported from bank SMS
 
     /// The human-readable category name to display (custom label takes priority).
     var displayCategory: String {
@@ -398,7 +399,8 @@ struct Expense: Identifiable, Codable {
          customCategoryLabel: String = "",
          description: String,
          isDeposit: Bool = false,
-         isIncome: Bool = false) {
+         isIncome: Bool = false,
+         isFromSMS: Bool = false) {
         self.id = id
         self.amount = amount
         self.category = category
@@ -406,6 +408,7 @@ struct Expense: Identifiable, Codable {
         self.description = description
         self.isDeposit = isDeposit
         self.isIncome = isIncome
+        self.isFromSMS = isFromSMS
     }
 
     init(from decoder: Decoder) throws {
@@ -417,6 +420,7 @@ struct Expense: Identifiable, Codable {
         description         = try c.decode(String.self,                    forKey: .description)
         isDeposit           = try c.decodeIfPresent(Bool.self,            forKey: .isDeposit)           ?? false
         isIncome            = try c.decodeIfPresent(Bool.self,            forKey: .isIncome)            ?? false
+        isFromSMS           = try c.decodeIfPresent(Bool.self,            forKey: .isFromSMS)           ?? false
     }
 }
 
@@ -1026,6 +1030,10 @@ struct AppSettings: Codable {
     /// Lists shared with this user by others; displayed below own tasks.
     var receivedSharedLists  : [ReceivedSharedList]   = []
 
+    // MARK: - Smart Bank SMS
+    var smartBankSMSEnabled: Bool = false
+    var dismissedSMSHashes: Set<String> = []
+
     // MARK: - Carry Forward
     /// When true, automatically carries forward the previous month's balance
     /// and savings at the start of each new month (no popup prompt).
@@ -1053,6 +1061,8 @@ struct AppSettings: Codable {
          customExpenseCategories: [String] = [],
          sharingSettings: SharingSettings = SharingSettings(),
          receivedSharedLists: [ReceivedSharedList] = [],
+         smartBankSMSEnabled: Bool = false,
+         dismissedSMSHashes: Set<String> = [],
          autoCarryForward: Bool = false,
          lastCarryForwardMonthKey: String = "") {
         self.isDarkMode = isDarkMode
@@ -1074,6 +1084,8 @@ struct AppSettings: Codable {
         self.customExpenseCategories = customExpenseCategories
         self.sharingSettings = sharingSettings
         self.receivedSharedLists = receivedSharedLists
+        self.smartBankSMSEnabled = smartBankSMSEnabled
+        self.dismissedSMSHashes = dismissedSMSHashes
         self.autoCarryForward = autoCarryForward
         self.lastCarryForwardMonthKey = lastCarryForwardMonthKey
     }
@@ -1099,6 +1111,8 @@ struct AppSettings: Codable {
         customExpenseCategories   = try c.decodeIfPresent([String].self,              forKey: .customExpenseCategories)    ?? []
         sharingSettings           = try c.decodeIfPresent(SharingSettings.self,       forKey: .sharingSettings)            ?? SharingSettings()
         receivedSharedLists       = try c.decodeIfPresent([ReceivedSharedList].self,  forKey: .receivedSharedLists)        ?? []
+        smartBankSMSEnabled       = try c.decodeIfPresent(Bool.self,                 forKey: .smartBankSMSEnabled)        ?? false
+        dismissedSMSHashes        = try c.decodeIfPresent(Set<String>.self,          forKey: .dismissedSMSHashes)         ?? []
         autoCarryForward          = try c.decodeIfPresent(Bool.self,                 forKey: .autoCarryForward)           ?? false
         lastCarryForwardMonthKey  = try c.decodeIfPresent(String.self,               forKey: .lastCarryForwardMonthKey)   ?? ""
     }

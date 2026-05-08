@@ -47,6 +47,7 @@
 		AA620000000000000000001A /* ProUpgradeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA630000000000000000001A /* ProUpgradeView.swift */; };
 		AA680000000000000000001A /* SharingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA690000000000000000001A /* SharingView.swift */; };
 		AA6C0000000000000000001A /* CloudKitSharingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6A0000000000000000001A /* CloudKitSharingService.swift */; };
+		AA700000000000000000001A /* BankSMSParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001A /* BankSMSParser.swift */; };
 		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
 		BB810000000000000000001A /* DailyPlannerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB900000000000000000001A /* DailyPlannerWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -95,6 +96,7 @@
 		AA630000000000000000001A /* ProUpgradeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUpgradeView.swift; sourceTree = "<group>"; };
 		AA690000000000000000001A /* SharingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingView.swift; sourceTree = "<group>"; };
 		AA6A0000000000000000001A /* CloudKitSharingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitSharingService.swift; sourceTree = "<group>"; };
+		AA710000000000000000001A /* BankSMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankSMSParser.swift; sourceTree = "<group>"; };
 		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
 		BB110000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB120000000000000000001A /* DailyPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlannerWidget.entitlements; sourceTree = "<group>"; };
@@ -183,6 +185,7 @@
 				AA460000000000000000001A /* HealthKitManager.swift */,
 				AA610000000000000000001A /* ProManager.swift */,
 				AA6A0000000000000000001A /* CloudKitSharingService.swift */,
+				AA710000000000000000001A /* BankSMSParser.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -434,6 +437,7 @@
 				AA620000000000000000001A /* ProUpgradeView.swift in Sources */,
 				AA680000000000000000001A /* SharingView.swift in Sources */,
 				AA6C0000000000000000001A /* CloudKitSharingService.swift in Sources */,
+				AA700000000000000000001A /* BankSMSParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -705,6 +705,46 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    // MARK: - Bank SMS Import
+
+    @Published var pendingSMSTransaction: ParsedTransaction? = nil
+
+    func checkClipboardForBankSMS() {
+        guard settings.smartBankSMSEnabled else { return }
+        guard let text = UIPasteboard.general.string, !text.isEmpty else { return }
+        guard BankSMSParser.looksLikeBankSMS(text) else { return }
+
+        let hash = String(text.hashValue)
+        guard !settings.dismissedSMSHashes.contains(hash) else { return }
+
+        if let parsed = BankSMSParser.parse(text) {
+            pendingSMSTransaction = parsed
+        }
+    }
+
+    func addExpenseFromSMS(_ parsed: ParsedTransaction) {
+        let expense = Expense(
+            amount: parsed.amount,
+            category: parsed.category,
+            description: parsed.merchant.isEmpty ? "Bank Transaction" : parsed.merchant,
+            isIncome: parsed.isCredit,
+            isFromSMS: true
+        )
+        addExpense(expense)
+        dismissSMSHash(parsed.rawText)
+        pendingSMSTransaction = nil
+    }
+
+    func dismissSMSHash(_ text: String) {
+        let hash = String(text.hashValue)
+        settings.dismissedSMSHashes.insert(hash)
+        if settings.dismissedSMSHashes.count > 200 {
+            let keep = Array(settings.dismissedSMSHashes.suffix(100))
+            settings.dismissedSMSHashes = Set(keep)
+        }
+        saveSettings()
+    }
+
     // MARK: - HealthKit sync
 
     /// Saves HealthKit data into a specific date's entry (not selectedDate).
