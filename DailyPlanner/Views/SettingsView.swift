@@ -93,6 +93,7 @@ struct SettingsView: View {
                     } label: {
                         Label("Currency", systemImage: "dollarsign.circle.fill")
                     }
+                    .pickerStyle(.navigationLink)
                 }
 
                 // ── CARRY FORWARD ─────────────────────────────────────────
