@@ -284,11 +284,13 @@ struct BankSMSParser {
     static func categorizeWithConfidence(merchant: String, text: String) -> (ExpenseCategory, ParsedTransaction.ConfidenceLevel) {
         let lower = (merchant + " " + text).lowercased()
 
+        let groceryKeywords = ["grocer", "grocery", "bigbasket", "blinkit", "zepto",
+                               "instamart", "dunzo", "lulu", "carrefour", "supermarket",
+                               "hypermarket", "dmart", "reliance fresh", "more supermarket",
+                               "spar", "nesto", "al fair"]
         let foodKeywords = ["swiggy", "zomato", "food", "restaurant", "cafe", "coffee",
                             "starbucks", "dominos", "pizza", "mcdonald", "kfc", "burger",
-                            "eat", "dine", "kitchen", "bakery", "dairy", "grocer", "grocery",
-                            "bigbasket", "blinkit", "zepto", "instamart", "dunzo",
-                            "lulu", "carrefour", "supermarket", "hypermarket"]
+                            "eat", "dine", "kitchen", "bakery"]
         let transportKeywords = ["uber", "ola", "rapido", "metro", "railway", "irctc",
                                  "petrol", "fuel", "diesel", "parking", "toll", "redbus",
                                  "makemytrip", "goibibo", "cleartrip", "indigo", "spicejet",
@@ -313,6 +315,7 @@ struct BankSMSParser {
                                "lic", "bill", "recharge", "dth", "tata sky",
                                "school fee", "tuition", "education", "college", "university"]
 
+        if groceryKeywords.contains(where: { lower.contains($0) }) { return (.grocery, .high) }
         if foodKeywords.contains(where: { lower.contains($0) }) { return (.food, .high) }
         if transportKeywords.contains(where: { lower.contains($0) }) { return (.transport, .high) }
         if shoppingKeywords.contains(where: { lower.contains($0) }) { return (.shopping, .high) }

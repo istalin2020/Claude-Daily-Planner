@@ -4,6 +4,7 @@ import SwiftUI
 // MARK: - Expense Category
 enum ExpenseCategory: String, Codable, CaseIterable {
     case food = "Food"
+    case grocery = "Grocery"
     case transport = "Transport"
     case health = "Health"
     case entertainment = "Entertainment"
@@ -14,6 +15,7 @@ enum ExpenseCategory: String, Codable, CaseIterable {
     var icon: String {
         switch self {
         case .food: return "fork.knife"
+        case .grocery: return "cart.fill"
         case .transport: return "car.fill"
         case .health: return "heart.fill"
         case .entertainment: return "tv.fill"
@@ -26,6 +28,7 @@ enum ExpenseCategory: String, Codable, CaseIterable {
     var color: Color {
         switch self {
         case .food: return .orange
+        case .grocery: return Color(red: 0.2, green: 0.7, blue: 0.3)
         case .transport: return .blue
         case .health: return .red
         case .entertainment: return .purple
