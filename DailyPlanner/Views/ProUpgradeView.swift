@@ -9,6 +9,8 @@ struct ProUpgradeView: View {
     @State private var selectedPlan: PlanType = .yearly
     @State private var isPurchasing = false
     @State private var isRestoring  = false
+    @State private var showSuccessAlert = false
+    @State private var purchasedInfo: SubscriptionInfo? = nil
 
     enum PlanType { case monthly, yearly }
 
@@ -75,6 +77,23 @@ struct ProUpgradeView: View {
                     }
                 }
             )
+            .alert("Welcome to PRO!", isPresented: $showSuccessAlert) {
+                Button("Let's Go!") {
+                    dismiss()
+                }
+            } message: {
+                if let info = purchasedInfo {
+                    let renewalText: String = {
+                        if let expiry = info.expirationDate {
+                            return "Renews on: \(ProManager.formattedDate(expiry))"
+                        }
+                        return ""
+                    }()
+                    Text("Your \(info.planName) subscription is now active.\n\nPlan: \(info.planName)\nPrice: \(info.price)\nStarted: \(ProManager.formattedDate(info.purchaseDate))\n\(renewalText)\n\nAll 16 premium features are now unlocked. Enjoy!")
+                } else {
+                    Text("Your PRO subscription is now active. All premium features are unlocked!")
+                }
+            }
         }
     }
 
@@ -90,7 +109,6 @@ struct ProUpgradeView: View {
             .ignoresSafeArea(edges: .top)
 
             VStack(spacing: 14) {
-                // Crown badge
                 ZStack {
                     Circle()
                         .fill(
@@ -112,7 +130,7 @@ struct ProUpgradeView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
 
-                Text("Unlock all 15 premium features and\ntake full control of your day.")
+                Text("Unlock all 16 premium features and\ntake full control of your day.")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.80))
                     .multilineTextAlignment(.center)
@@ -189,6 +207,7 @@ struct ProUpgradeView: View {
             Color(red: 0.1, green: 0.65, blue: 0.35),
             Color(red: 0.9, green: 0.3, blue: 0.5),
             Color(red: 0.1, green: 0.6, blue: 0.65),
+            Color(red: 0.85, green: 0.25, blue: 0.45),
         ]
         return colors[index % colors.count]
     }
@@ -241,7 +260,6 @@ struct ProUpgradeView: View {
         let isSelected = selectedPlan == type
         return Button(action: { selectedPlan = type }) {
             VStack(spacing: 10) {
-                // Badge
                 if let badge = topBadge {
                     Text(badge)
                         .font(.system(size: 9, weight: .bold))
@@ -372,7 +390,22 @@ struct ProUpgradeView: View {
                 .foregroundColor(Color(.systemGray3))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
-                .padding(.bottom, 30)
+
+            HStack(spacing: 16) {
+                Link("Privacy Policy", destination: URL(string: "https://istalin2020.github.io/Claude-Daily-Planner/privacy-policy.html")!)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+
+                Text("·")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(.systemGray3))
+
+                Link("Terms of Use", destination: URL(string: "https://istalin2020.github.io/Claude-Daily-Planner/terms-of-use.html")!)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+            }
+            .padding(.top, 4)
+            .padding(.bottom, 30)
         }
     }
 
@@ -390,9 +423,12 @@ struct ProUpgradeView: View {
                 pro.purchaseError = "Unable to load subscriptions from the App Store. Please check your internet connection and try again."
                 return
             }
-            let success = await pro.purchase(product)
+            let info = await pro.purchase(product)
             isPurchasing = false
-            if success { dismiss() }
+            if let info {
+                purchasedInfo = info
+                showSuccessAlert = true
+            }
         }
     }
 
@@ -416,7 +452,6 @@ struct CrownButton: View {
         Button(action: { showUpgrade = true }) {
             ZStack {
                 if pro.isPro {
-                    // Gold filled crown with PRO label
                     VStack(spacing: 1) {
                         Image(systemName: "crown.fill")
                             .font(.system(size: 16, weight: .semibold))
@@ -426,7 +461,6 @@ struct CrownButton: View {
                             .foregroundColor(Color(red: 1.0, green: 0.80, blue: 0.0))
                     }
                 } else {
-                    // Outline crown (not yet pro)
                     VStack(spacing: 1) {
                         Image(systemName: "crown")
                             .font(.system(size: 16, weight: .semibold))

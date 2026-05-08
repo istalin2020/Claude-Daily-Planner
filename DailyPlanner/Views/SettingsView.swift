@@ -108,6 +108,33 @@ struct SettingsView: View {
                     Text("Automatically carries the previous month's balance and savings into the new month as income and savings entries.")
                 }
 
+                // ── SMART BANK SMS ───────────────────────────────────────
+                Section {
+                    if pro.isPro {
+                        Toggle(isOn: Binding(
+                            get: { vm.settings.smartBankSMSEnabled },
+                            set: { vm.settings.smartBankSMSEnabled = $0; vm.saveSettings() }
+                        )) {
+                            Label("Smart Bank SMS", systemImage: "message.badge.fill")
+                        }
+                        .tint(.purple)
+                    } else {
+                        Button {
+                            showProUpgrade = true
+                        } label: {
+                            HStack {
+                                Label("Smart Bank SMS", systemImage: "message.badge.fill")
+                                Spacer()
+                                ProInlineBadge()
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Bank SMS Tracking")
+                } footer: {
+                    Text("Copy a bank SMS message, then open the app. We'll auto-detect the transaction and offer to add it as income or expense. You can also paste SMS manually from the Expenses section.")
+                }
+
                 // ── 5. ENABLE DAILY REMINDERS + HORIZONTAL TIME BAR ───────
                 Section {
                     Toggle(isOn: $vm.settings.notificationsEnabled) {

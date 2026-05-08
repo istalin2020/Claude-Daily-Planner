@@ -1,6 +1,15 @@
 import StoreKit
 import SwiftUI
 
+// MARK: - Subscription Info
+struct SubscriptionInfo {
+    let planName: String
+    let price: String
+    let purchaseDate: Date
+    let expirationDate: Date?
+    let productID: String
+}
+
 // MARK: - Pro Manager
 @MainActor
 class ProManager: ObservableObject {
@@ -11,6 +20,7 @@ class ProManager: ObservableObject {
     @Published var isLoading = false
     @Published var purchaseError: String? = nil
     @Published var productsLoaded = false
+    @Published var activeSubscription: SubscriptionInfo? = nil
 
     private let monthlyID = "com.istalin.dailyplanner.pro.monthly"
     private let yearlyID  = "com.istalin.dailyplanner.pro.yearly"
@@ -48,8 +58,7 @@ class ProManager: ObservableObject {
     }
 
     // MARK: - Purchase
-    @discardableResult
-    func purchase(_ product: Product) async -> Bool {
+    func purchase(_ product: Product) async -> SubscriptionInfo? {
         purchaseError = nil
         do {
             let result = try await product.purchase()
@@ -58,18 +67,29 @@ class ProManager: ObservableObject {
                 let transaction = try ProManager.checkVerified(verification)
                 await transaction.finish()
                 setPro(true)
-                return true
+
+                let planName = transaction.productID == yearlyID ? "Pro Yearly" : "Pro Monthly"
+                let info = SubscriptionInfo(
+                    planName: planName,
+                    price: product.displayPrice,
+                    purchaseDate: transaction.purchaseDate,
+                    expirationDate: transaction.expirationDate,
+                    productID: transaction.productID
+                )
+                activeSubscription = info
+                return info
+
             case .userCancelled:
-                return false
+                return nil
             case .pending:
                 purchaseError = "Purchase is pending approval (e.g. Ask to Buy)."
-                return false
+                return nil
             @unknown default:
-                return false
+                return nil
             }
         } catch {
             purchaseError = error.localizedDescription
-            return false
+            return nil
         }
     }
 
@@ -91,13 +111,24 @@ class ProManager: ObservableObject {
     func verifyProStatus() async {
         for id in [monthlyID, yearlyID] {
             if let result = await Transaction.currentEntitlement(for: id) {
-                if case .verified = result {
+                if case .verified(let transaction) = result {
                     setPro(true)
+
+                    let product = products.first { $0.id == id }
+                    let planName = id == yearlyID ? "Pro Yearly" : "Pro Monthly"
+                    activeSubscription = SubscriptionInfo(
+                        planName: planName,
+                        price: product?.displayPrice ?? "",
+                        purchaseDate: transaction.purchaseDate,
+                        expirationDate: transaction.expirationDate,
+                        productID: transaction.productID
+                    )
                     return
                 }
             }
         }
         setPro(false)
+        activeSubscription = nil
     }
 
     // MARK: - Transaction Listener
@@ -110,7 +141,17 @@ class ProManager: ObservableObject {
                     if transaction.productID == self.monthlyID ||
                        transaction.productID == self.yearlyID {
                         await transaction.finish()
-                        await MainActor.run { self.setPro(true) }
+                        await MainActor.run {
+                            self.setPro(true)
+                            let planName = transaction.productID == self.yearlyID ? "Pro Yearly" : "Pro Monthly"
+                            self.activeSubscription = SubscriptionInfo(
+                                planName: planName,
+                                price: "",
+                                purchaseDate: transaction.purchaseDate,
+                                expirationDate: transaction.expirationDate,
+                                productID: transaction.productID
+                            )
+                        }
                     }
                 } catch { /* ignore unverified */ }
             }
@@ -129,6 +170,15 @@ class ProManager: ObservableObject {
         UserDefaults.standard.set(value, forKey: proKey)
     }
 
+    // MARK: - Finish All Unfinished Transactions
+    func finishAllUnfinishedTransactions() async {
+        for await result in Transaction.unfinished {
+            if case .verified(let transaction) = result {
+                await transaction.finish()
+            }
+        }
+    }
+
     // MARK: - Convenience
     var monthlyProduct: Product? { products.first { $0.id == monthlyID } }
     var yearlyProduct:  Product? { products.first { $0.id == yearlyID } }
@@ -143,12 +193,18 @@ class ProManager: ObservableObject {
         }
         return "₹189"
     }
+
+    static func formattedDate(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateStyle = .long
+        f.timeStyle = .none
+        return f.string(from: date)
+    }
 }
 
 enum ProError: Error { case verificationFailed }
 
 // MARK: - Pro Feature Gate View
-/// Wraps any content: shows it normally when PRO, else shows a locked overlay.
 struct ProGate<Content: View>: View {
     @EnvironmentObject private var pro: ProManager
     let featureName: String
@@ -160,10 +216,8 @@ struct ProGate<Content: View>: View {
         if pro.isPro {
             content()
         } else {
-            // Do NOT render content() when not PRO — avoids hang from building expensive views.
             ScrollView {
                 VStack(spacing: 0) {
-                    // Gradient header matching section style
                     LinearGradient(
                         colors: [Color(red: 1.0, green: 0.65, blue: 0.0).opacity(0.85),
                                  Color(red: 1.0, green: 0.40, blue: 0.0)],
@@ -244,7 +298,7 @@ struct ProGate<Content: View>: View {
     }
 }
 
-// MARK: - Inline Pro Badge (for locked controls within a form/sheet)
+// MARK: - Inline Pro Badge
 struct ProInlineBadge: View {
     var body: some View {
         HStack(spacing: 4) {

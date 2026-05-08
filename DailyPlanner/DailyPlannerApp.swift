@@ -66,11 +66,13 @@ struct DailyPlannerApp: App {
                 viewModel.checkRolloverIfNeeded()
                 viewModel.syncHealthKitForToday()
                 viewModel.checkMonthlyCarryForward()
-                // Refresh received shared lists from CloudKit every time the app
-                // comes to the foreground so recipients always see the latest tasks.
                 viewModel.refreshReceivedSharedLists()
-                // Process any tasks/water-glass actions queued by Siri Shortcuts.
                 viewModel.processPendingShortcutActions()
+                viewModel.checkClipboardForBankSMS()
+                Task {
+                    await proManager.finishAllUnfinishedTransactions()
+                    await proManager.verifyProStatus()
+                }
             case .background, .inactive:
                 viewModel.saveDataNow()
                 viewModel.saveSettings()

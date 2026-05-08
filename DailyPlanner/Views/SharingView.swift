@@ -170,8 +170,6 @@ struct SharingView: View {
 
     // MARK: - Build & Share
 
-    private static let appStoreURL = URL(string: "https://apps.apple.com/us/app/daily-planner-my-day/id6759818994")!
-
     private func buildAndShare() {
         let ordered = Self.categories.filter { selectedCategories.contains($0) }
         var items: [Any] = []
@@ -180,7 +178,7 @@ struct SharingView: View {
             let renderer = ImageRenderer(content: card)
             renderer.scale = UIScreen.main.scale
             if let image = renderer.uiImage {
-                items = [image, Self.appStoreURL]
+                items = [image]
             } else {
                 items = [buildShareText(ordered: ordered)]
             }
@@ -219,7 +217,6 @@ struct SharingView: View {
         lines.append("")
         lines.append(String(repeating: "─", count: 36))
         lines.append("Shared from Daily Planner")
-        lines.append("Download: https://apps.apple.com/us/app/daily-planner-my-day/id6759818994")
         return lines.joined(separator: "\n")
     }
 
@@ -443,40 +440,14 @@ private struct ShareCardView: View {
             .padding(20)
 
             Divider().padding(.horizontal, 20)
-            HStack(spacing: 10) {
-                if let icon = UIImage(named: "AppIcon") {
-                    Image(uiImage: icon)
-                        .resizable()
-                        .frame(width: 32, height: 32)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(
-                            LinearGradient(
-                                colors: [purpleAccent, Color(red: 0.6, green: 0.35, blue: 0.95)],
-                                startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Text("📋")
-                                .font(.system(size: 16))
-                        )
-                }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Daily Planner - My Day")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Text("Download on the App Store")
-                        .font(.system(size: 9))
-                        .foregroundColor(.gray)
-                }
+            HStack {
                 Spacer()
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 22))
-                    .foregroundColor(purpleAccent)
+                Text("Shared from Daily Planner")
+                    .font(.system(size: 11))
+                    .foregroundColor(.gray.opacity(0.6))
+                Spacer()
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
         }
         .frame(width: 360)
         .background(Color.white)
