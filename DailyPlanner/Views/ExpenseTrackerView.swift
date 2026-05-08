@@ -184,7 +184,7 @@ struct ExpenseTrackerView: View {
     // MARK: - Category Pie Chart
 
     private var categoryPieChartSection: some View {
-        let categories = vm.monthlyExpensesByCategory(for: summaryDate)
+        let categories = vm.monthlyExpensesByDisplayCategory(for: summaryDate)
         let total = categories.reduce(0.0) { $0 + $1.1 }
 
         return Group {
@@ -194,28 +194,28 @@ struct ExpenseTrackerView: View {
                         .font(.system(size: 14, weight: .bold))
                         .padding(.leading, 4)
 
-                    Chart(categories, id: \.0) { cat, amount in
+                    Chart(categories, id: \.0) { dc, amount in
                         SectorMark(
-                            angle: .value(cat.rawValue, amount),
+                            angle: .value(dc.name, amount),
                             innerRadius: .ratio(0.55),
                             angularInset: 1.5
                         )
-                        .foregroundStyle(cat.color)
+                        .foregroundStyle(dc.color)
                         .cornerRadius(4)
                     }
                     .frame(height: 200)
 
                     VStack(spacing: 6) {
-                        ForEach(categories.sorted(by: { $0.1 > $1.1 }), id: \.0) { cat, amount in
+                        ForEach(categories, id: \.0) { dc, amount in
                             HStack(spacing: 8) {
                                 Circle()
-                                    .fill(cat.color)
+                                    .fill(dc.color)
                                     .frame(width: 10, height: 10)
-                                Image(systemName: cat.icon)
+                                Image(systemName: dc.icon)
                                     .font(.system(size: 11))
-                                    .foregroundColor(cat.color)
+                                    .foregroundColor(dc.color)
                                     .frame(width: 16)
-                                Text(cat.rawValue.capitalized)
+                                Text(dc.name)
                                     .font(.system(size: 12))
                                 Spacer()
                                 Text("\(sym)\(String(format: "%.2f", amount))")
@@ -332,7 +332,7 @@ struct ExpenseTrackerView: View {
         let totalSavings  = vm.monthlyTotalSavings(for: summaryDate)
         // Balance = Income − Expenses − Savings
         let balance       = vm.monthlyBalance(for: summaryDate)
-        let categories    = vm.monthlyExpensesByCategory(for: summaryDate)
+        let categories    = vm.monthlyExpensesByDisplayCategory(for: summaryDate)
         let barRatio: Double = totalIncome > 0 ? min(totalExpenses / totalIncome, 1.0) : 0
 
         return VStack(alignment: .leading, spacing: 0) {
@@ -401,13 +401,13 @@ struct ExpenseTrackerView: View {
                 }
 
                 // Category-wise expense rows
-                ForEach(categories, id: \.0) { cat, amount in
+                ForEach(categories, id: \.0) { dc, amount in
                     HStack(spacing: 10) {
-                        Image(systemName: cat.icon)
+                        Image(systemName: dc.icon)
                             .font(.system(size: 12))
-                            .foregroundColor(cat.color)
+                            .foregroundColor(dc.color)
                             .frame(width: 20)
-                        Text(cat.rawValue)
+                        Text(dc.name)
                             .font(.system(size: 13))
                             .foregroundColor(.white.opacity(0.8))
                         Spacer()

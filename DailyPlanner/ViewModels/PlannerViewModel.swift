@@ -814,6 +814,32 @@ class PlannerViewModel: ObservableObject {
         return totals.sorted { $0.value > $1.value }
     }
 
+    struct DisplayCategory: Identifiable, Hashable {
+        let name: String
+        let icon: String
+        let color: Color
+        var id: String { name }
+
+        static func from(_ expense: Expense) -> DisplayCategory {
+            if !expense.customCategoryLabel.isEmpty {
+                return DisplayCategory(name: expense.customCategoryLabel, icon: "tag.fill", color: .purple)
+            }
+            return DisplayCategory(name: expense.category.rawValue, icon: expense.category.icon, color: expense.category.color)
+        }
+    }
+
+    func monthlyExpensesByDisplayCategory(for date: Date) -> [(DisplayCategory, Double)] {
+        let all = monthlyEntries(for: date)
+            .flatMap { $0.expenses }
+            .filter { !$0.isDeposit && !$0.isIncome }
+        var totals: [String: (DisplayCategory, Double)] = [:]
+        for e in all {
+            let dc = DisplayCategory.from(e)
+            totals[dc.name, default: (dc, 0)].1 += e.amount
+        }
+        return totals.values.sorted { $0.1 > $1.1 }
+    }
+
     func monthlyTotalExpenses(for date: Date) -> Double {
         monthlyExpensesByCategory(for: date).reduce(0) { $0 + $1.1 }
     }
