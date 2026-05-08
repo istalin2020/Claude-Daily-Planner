@@ -9,18 +9,45 @@ struct ParsedTransaction {
     let accountLast4: String
     let balance: Double?
     let rawText: String
+    let currencyDetected: String
+    let confidenceType: ConfidenceLevel
+    let confidenceCategory: ConfidenceLevel
+
+    enum ConfidenceLevel {
+        case high
+        case low
+    }
 }
 
 struct BankSMSParser {
 
+    private static let currencyPatterns: [(codes: [String], regex: String)] = [
+        (["INR", "Rs", "₹"], #"(?:Rs\.?|INR|₹)"#),
+        (["OMR"], #"(?:OMR)"#),
+        (["AED"], #"(?:AED)"#),
+        (["SAR"], #"(?:SAR)"#),
+        (["USD", "$"], #"(?:USD|\$)"#),
+        (["EUR", "€"], #"(?:EUR|€)"#),
+        (["GBP", "£"], #"(?:GBP|£)"#),
+        (["KWD"], #"(?:KWD)"#),
+        (["BHD"], #"(?:BHD)"#),
+        (["QAR"], #"(?:QAR)"#),
+        (["SGD"], #"(?:SGD)"#),
+        (["MYR", "RM"], #"(?:MYR|RM)"#),
+        (["PKR"], #"(?:PKR)"#),
+        (["BDT"], #"(?:BDT)"#),
+        (["LKR"], #"(?:LKR)"#),
+        (["NPR"], #"(?:NPR)"#),
+    ]
+
     static func parse(_ text: String) -> ParsedTransaction? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard looksLikeBankSMS(trimmed) else { return nil }
+        guard !trimmed.isEmpty else { return nil }
 
-        guard let amount = extractAmount(from: trimmed) else { return nil }
-        let isCredit = detectCredit(in: trimmed)
+        guard let (amount, currency) = extractAmount(from: trimmed) else { return nil }
+        let (isCredit, typeConfidence) = detectCreditWithConfidence(in: trimmed)
         let merchant = extractMerchant(from: trimmed)
-        let category = categorize(merchant: merchant)
+        let (category, catConfidence) = categorizeWithConfidence(merchant: merchant, text: trimmed)
         let bankName = detectBank(in: trimmed)
         let accountLast4 = extractAccount(from: trimmed)
         let balance = extractBalance(from: trimmed)
@@ -33,63 +60,81 @@ struct BankSMSParser {
             bankName: bankName,
             accountLast4: accountLast4,
             balance: balance,
-            rawText: trimmed
+            rawText: trimmed,
+            currencyDetected: currency,
+            confidenceType: typeConfidence,
+            confidenceCategory: catConfidence
         )
     }
 
     static func looksLikeBankSMS(_ text: String) -> Bool {
         let lower = text.lowercased()
-        let hasAmount = lower.contains("rs") || lower.contains("inr") || lower.contains("₹")
+        let allCurrencyCodes = ["rs", "inr", "₹", "omr", "aed", "sar", "usd", "$",
+                                "eur", "€", "gbp", "£", "kwd", "bhd", "qar",
+                                "sgd", "myr", "rm", "pkr", "bdt", "lkr", "npr"]
+        let hasAmount = allCurrencyCodes.contains(where: { lower.contains($0) })
         let hasAction = lower.contains("debit") || lower.contains("credit") ||
                         lower.contains("spent") || lower.contains("received") ||
                         lower.contains("withdrawn") || lower.contains("transferred") ||
                         lower.contains("sent") || lower.contains("paid") ||
-                        lower.contains("refund") || lower.contains("deposit")
+                        lower.contains("refund") || lower.contains("deposit") ||
+                        lower.contains("purchase") || lower.contains("transaction")
         let hasAccount = lower.contains("a/c") || lower.contains("acct") ||
                          lower.contains("account") || lower.contains("card") ||
-                         lower.contains("xx") || lower.contains("**")
+                         lower.contains("xx") || lower.contains("**") ||
+                         lower.contains("balance") || lower.contains("bal")
         return hasAmount && (hasAction || hasAccount)
     }
 
     // MARK: - Amount
 
-    private static func extractAmount(from text: String) -> Double? {
-        let patterns = [
-            #"(?:Rs\.?|INR|₹)\s*([0-9,]+(?:\.[0-9]{1,2})?)"#,
-            #"([0-9,]+(?:\.[0-9]{1,2})?)\s*(?:Rs\.?|INR|₹)"#,
-            #"(?:amount|amt)\s*(?:of\s*)?(?:Rs\.?|INR|₹)?\s*([0-9,]+(?:\.[0-9]{1,2})?)"#,
-        ]
-        for pattern in patterns {
-            if let match = text.range(of: pattern, options: .regularExpression, range: text.startIndex..<text.endIndex) {
-                let matched = String(text[match])
-                let digits = matched.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-                if let val = Double(digits), val > 0 {
-                    return val
+    private static func extractAmount(from text: String) -> (Double, String)? {
+        for entry in currencyPatterns {
+            let patterns = [
+                "\(entry.regex)\\s*([0-9,]+(?:\\.[0-9]{1,3})?)",
+                "([0-9,]+(?:\\.[0-9]{1,3})?)\\s*\(entry.regex)",
+            ]
+            for pattern in patterns {
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                    let range = NSRange(text.startIndex..<text.endIndex, in: text)
+                    if let match = regex.firstMatch(in: text, range: range) {
+                        for g in 1..<match.numberOfRanges {
+                            if let r = Range(match.range(at: g), in: text) {
+                                let str = String(text[r])
+                                let digits = str.replacingOccurrences(of: ",", with: "")
+                                if let val = Double(digits), val > 0 {
+                                    return (val, entry.codes[0])
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        if let regex = try? NSRegularExpression(pattern: #"(?:Rs\.?|INR|₹)\s*([0-9,]+(?:\.[0-9]{1,2})?)"#, options: .caseInsensitive) {
+        let genericPattern = #"([0-9,]+\.[0-9]{1,3})\s+is\s+(?:debited|credited)"#
+        if let regex = try? NSRegularExpression(pattern: genericPattern, options: .caseInsensitive) {
             let range = NSRange(text.startIndex..<text.endIndex, in: text)
             if let match = regex.firstMatch(in: text, range: range),
-               let numRange = Range(match.range(at: 1), in: text) {
-                let numStr = String(text[numRange]).replacingOccurrences(of: ",", with: "")
-                if let val = Double(numStr), val > 0 {
-                    return val
+               let r = Range(match.range(at: 1), in: text) {
+                let digits = String(text[r]).replacingOccurrences(of: ",", with: "")
+                if let val = Double(digits), val > 0 {
+                    return (val, "")
                 }
             }
         }
+
         return nil
     }
 
     // MARK: - Credit / Debit
 
-    private static func detectCredit(in text: String) -> Bool {
+    private static func detectCreditWithConfidence(in text: String) -> (Bool, ParsedTransaction.ConfidenceLevel) {
         let lower = text.lowercased()
         let creditWords = ["credited", "credit", "received", "deposited", "refund",
-                           "cash back", "cashback", "reversed", "added"]
+                           "cash back", "cashback", "reversed", "added", "incoming"]
         let debitWords = ["debited", "debit", "spent", "withdrawn", "sent",
-                          "paid", "purchase", "transferred", "payment"]
+                          "paid", "purchase", "transferred", "payment", "outgoing"]
 
         var creditPos = Int.max
         var debitPos = Int.max
@@ -106,7 +151,12 @@ struct BankSMSParser {
                 debitPos = min(debitPos, pos)
             }
         }
-        return creditPos < debitPos
+
+        if creditPos == Int.max && debitPos == Int.max {
+            return (false, .low)
+        }
+
+        return (creditPos < debitPos, .high)
     }
 
     // MARK: - Merchant
@@ -128,7 +178,8 @@ struct BankSMSParser {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                     .trimmingCharacters(in: CharacterSet(charactersIn: ".-,;:"))
 
-                let stopWords = ["avl", "bal", "available", "balance", "ref", "upi", "neft", "imps", "a/c"]
+                let stopWords = ["avl", "bal", "available", "balance", "ref", "upi",
+                                 "neft", "imps", "a/c", "new available", "on "]
                 for stop in stopWords {
                     if let idx = merchant.lowercased().range(of: stop) {
                         merchant = String(merchant[merchant.startIndex..<idx.lowerBound])
@@ -140,7 +191,7 @@ struct BankSMSParser {
                 }
             }
         }
-        return "Bank Transaction"
+        return ""
     }
 
     // MARK: - Bank
@@ -165,6 +216,23 @@ struct BankSMSParser {
             (["rbl"], "RBL"),
             (["iob", "indian overseas"], "IOB"),
             (["boi", "bank of india"], "Bank of India"),
+            (["bank muscat", "bankmuscat"], "Bank Muscat"),
+            (["national bank of oman", "nbo"], "NBO"),
+            (["oman arab bank", "oab"], "OAB"),
+            (["bank dhofar", "bankdhofar"], "Bank Dhofar"),
+            (["hsbc"], "HSBC"),
+            (["standard chartered", "stanchart"], "Standard Chartered"),
+            (["citibank", "citi"], "Citibank"),
+            (["emirates nbd", "enbd"], "Emirates NBD"),
+            (["mashreq"], "Mashreq"),
+            (["adcb"], "ADCB"),
+            (["fab", "first abu dhabi"], "FAB"),
+            (["al rajhi", "alrajhi"], "Al Rajhi"),
+            (["snb", "saudi national"], "SNB"),
+            (["dbs"], "DBS"),
+            (["ocbc"], "OCBC"),
+            (["uob"], "UOB"),
+            (["maybank"], "Maybank"),
         ]
         for bank in banks {
             for keyword in bank.keywords {
@@ -178,8 +246,9 @@ struct BankSMSParser {
 
     private static func extractAccount(from text: String) -> String {
         let patterns = [
-            #"(?:XX|xx|\*\*|a/c\s*|acct\s*|account\s*)(\d{4})"#,
-            #"(\d{4})(?=\s|\.|\)|$)"#,
+            #"(?:a/c|acct|account)\s*[:#]?\s*\d*[Xx*]+(\d{4})"#,
+            #"(?:XX|xx|\*\*)\d*(\d{4})"#,
+            #"(?:a/c|acct|account)\s*(\d{4})"#,
         ]
         for pattern in patterns {
             if let regex = try? NSRegularExpression(pattern: pattern),
@@ -195,10 +264,13 @@ struct BankSMSParser {
 
     private static func extractBalance(from text: String) -> Double? {
         let lower = text.lowercased()
-        guard let balIdx = lower.range(of: "bal") ?? lower.range(of: "balance") else { return nil }
+        guard let balIdx = lower.range(of: "balance") ?? lower.range(of: "bal") else { return nil }
         let afterBal = String(text[balIdx.upperBound...])
 
-        if let regex = try? NSRegularExpression(pattern: #"(?:Rs\.?|INR|₹|:|-)\s*([0-9,]+(?:\.[0-9]{1,2})?)"#, options: .caseInsensitive),
+        let allCurrencyRegex = currencyPatterns.map { $0.regex }.joined(separator: "|")
+        let pattern = "(?:\(allCurrencyRegex)|:|-|is)\\s*([0-9,]+(?:\\.[0-9]{1,3})?)"
+
+        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
            let match = regex.firstMatch(in: afterBal, range: NSRange(afterBal.startIndex..<afterBal.endIndex, in: afterBal)),
            let range = Range(match.range(at: 1), in: afterBal) {
             let numStr = String(afterBal[range]).replacingOccurrences(of: ",", with: "")
@@ -209,39 +281,49 @@ struct BankSMSParser {
 
     // MARK: - Category
 
-    static func categorize(merchant: String) -> ExpenseCategory {
-        let lower = merchant.lowercased()
+    static func categorizeWithConfidence(merchant: String, text: String) -> (ExpenseCategory, ParsedTransaction.ConfidenceLevel) {
+        let lower = (merchant + " " + text).lowercased()
 
         let foodKeywords = ["swiggy", "zomato", "food", "restaurant", "cafe", "coffee",
                             "starbucks", "dominos", "pizza", "mcdonald", "kfc", "burger",
-                            "eat", "dine", "kitchen", "bakery", "dairy", "grocer", "bigbasket",
-                            "blinkit", "zepto", "instamart", "dunzo"]
+                            "eat", "dine", "kitchen", "bakery", "dairy", "grocer", "grocery",
+                            "bigbasket", "blinkit", "zepto", "instamart", "dunzo",
+                            "lulu", "carrefour", "supermarket", "hypermarket"]
         let transportKeywords = ["uber", "ola", "rapido", "metro", "railway", "irctc",
                                  "petrol", "fuel", "diesel", "parking", "toll", "redbus",
                                  "makemytrip", "goibibo", "cleartrip", "indigo", "spicejet",
-                                 "air india", "vistara"]
+                                 "air india", "vistara", "taxi", "cab", "marhaba",
+                                 "oman air", "salam air", "emirates", "qatar airways",
+                                 "fly dubai", "etihad"]
         let shoppingKeywords = ["amazon", "flipkart", "myntra", "ajio", "meesho", "nykaa",
                                 "tatacliq", "snapdeal", "shoppers", "mall", "store",
-                                "reliance", "croma", "vijay sales"]
+                                "reliance", "croma", "vijay sales", "dress", "clothing",
+                                "cosmetic", "beauty", "fashion", "garment", "apparel",
+                                "noon", "namshi", "shein"]
         let healthKeywords = ["pharmacy", "medical", "hospital", "doctor", "clinic",
                               "apollo", "medplus", "netmeds", "pharmeasy", "1mg",
-                              "lab", "diagnostic", "health"]
+                              "lab", "diagnostic", "health", "medicine"]
         let entertainmentKeywords = ["netflix", "hotstar", "prime video", "spotify",
                                      "youtube", "disney", "jio cinema", "zee5", "sony liv",
                                      "movie", "cinema", "pvr", "inox", "bookmyshow",
-                                     "game", "play station", "xbox"]
-        let utilityKeywords = ["electricity", "water", "gas", "broadband", "wifi",
-                               "airtel", "jio", "vodafone", "vi ", "bsnl",
+                                     "game", "play station", "xbox", "shahid", "osn"]
+        let utilityKeywords = ["electricity", "water bill", "gas bill", "broadband", "wifi",
+                               "airtel", "jio", "vodafone", "vi ", "bsnl", "ooredoo", "omantel",
                                "rent", "maintenance", "emi", "loan", "insurance",
-                               "lic", "bill", "recharge", "dth", "tata sky"]
+                               "lic", "bill", "recharge", "dth", "tata sky",
+                               "school fee", "tuition", "education", "college", "university"]
 
-        if foodKeywords.contains(where: { lower.contains($0) }) { return .food }
-        if transportKeywords.contains(where: { lower.contains($0) }) { return .transport }
-        if shoppingKeywords.contains(where: { lower.contains($0) }) { return .shopping }
-        if healthKeywords.contains(where: { lower.contains($0) }) { return .health }
-        if entertainmentKeywords.contains(where: { lower.contains($0) }) { return .entertainment }
-        if utilityKeywords.contains(where: { lower.contains($0) }) { return .utilities }
+        if foodKeywords.contains(where: { lower.contains($0) }) { return (.food, .high) }
+        if transportKeywords.contains(where: { lower.contains($0) }) { return (.transport, .high) }
+        if shoppingKeywords.contains(where: { lower.contains($0) }) { return (.shopping, .high) }
+        if healthKeywords.contains(where: { lower.contains($0) }) { return (.health, .high) }
+        if entertainmentKeywords.contains(where: { lower.contains($0) }) { return (.entertainment, .high) }
+        if utilityKeywords.contains(where: { lower.contains($0) }) { return (.utilities, .high) }
 
-        return .other
+        return (.other, .low)
+    }
+
+    static func categorize(merchant: String) -> ExpenseCategory {
+        categorizeWithConfidence(merchant: merchant, text: "").0
     }
 }
