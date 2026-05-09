@@ -7,7 +7,6 @@ struct SpendingTrendsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedRange: TrendRange = .threeMonths
-    @State private var selectedCategory: ExpenseCategory? = nil
 
     enum TrendRange: String, CaseIterable {
         case oneMonth   = "1M"
@@ -21,18 +20,15 @@ struct SpendingTrendsView: View {
         }
     }
 
-    // Monthly spending data point
     struct MonthlySpend: Identifiable {
         let id = UUID()
         let month: Date
         let amount: Double
-        let category: ExpenseCategory?  // nil = total
     }
 
-    // Category breakdown for a period
-    struct CategorySpend: Identifiable {
-        let id = UUID()
-        let category: ExpenseCategory
+    struct DisplayCategorySpend: Identifiable {
+        let id: String
+        let dc: PlannerViewModel.DisplayCategory
         let amount: Double
     }
 
@@ -43,12 +39,6 @@ struct SpendingTrendsView: View {
         }.reversed()
     }
 
-    private func startOfMonth(_ date: Date) -> Date {
-        let cal = Calendar.current
-        let comps = cal.dateComponents([.year, .month], from: date)
-        return cal.date(from: comps) ?? date
-    }
-
     private func monthlyTotal(for month: Date) -> Double {
         let cal = Calendar.current
         return vm.entries.values
@@ -56,30 +46,37 @@ struct SpendingTrendsView: View {
             .reduce(0) { $0 + $1.totalExpenses }
     }
 
-    private func monthlySpend(for month: Date, category: ExpenseCategory) -> Double {
+    private func monthlySpend(for month: Date, dcName: String) -> Double {
         let cal = Calendar.current
         return vm.entries.values
             .filter { cal.isDate($0.date, equalTo: month, toGranularity: .month) }
             .flatMap { $0.expenses }
-            .filter { $0.category == category && !$0.isDeposit && !$0.isIncome }
+            .filter { !$0.isDeposit && !$0.isIncome && PlannerViewModel.DisplayCategory.from($0).name == dcName }
             .reduce(0) { $0 + $1.amount }
     }
 
     private var monthlyTotals: [MonthlySpend] {
-        months.map { MonthlySpend(month: $0, amount: monthlyTotal(for: $0), category: nil) }
+        months.map { MonthlySpend(month: $0, amount: monthlyTotal(for: $0)) }
     }
 
-    private var categoryBreakdown: [CategorySpend] {
+    private var categoryBreakdown: [DisplayCategorySpend] {
         let startDate = months.first ?? Date()
-        return ExpenseCategory.allCases.compactMap { cat in
-            let cal = Calendar.current
-            let total = vm.entries.values
-                .filter { cal.compare($0.date, to: startDate, toGranularity: .month) != .orderedAscending }
-                .flatMap { $0.expenses }
-                .filter { $0.category == cat && !$0.isDeposit && !$0.isIncome }
-                .reduce(0) { $0 + $1.amount }
-            return total > 0 ? CategorySpend(category: cat, amount: total) : nil
-        }.sorted { $0.amount > $1.amount }
+        let cal = Calendar.current
+        let allExpenses = vm.entries.values
+            .filter { cal.compare($0.date, to: startDate, toGranularity: .month) != .orderedAscending }
+            .flatMap { $0.expenses }
+            .filter { !$0.isDeposit && !$0.isIncome }
+
+        var totals: [String: (PlannerViewModel.DisplayCategory, Double)] = [:]
+        for exp in allExpenses {
+            let dc = PlannerViewModel.DisplayCategory.from(exp)
+            totals[dc.name, default: (dc, 0)].1 += exp.amount
+        }
+
+        return totals.values
+            .filter { $0.1 > 0 }
+            .sorted { $0.1 > $1.1 }
+            .map { DisplayCategorySpend(id: $0.0.name, dc: $0.0, amount: $0.1) }
     }
 
     private var totalSpend: Double { monthlyTotals.reduce(0) { $0 + $1.amount } }
@@ -228,23 +225,23 @@ struct SpendingTrendsView: View {
         }
     }
 
-    private func categoryRow(_ item: CategorySpend) -> some View {
+    private func categoryRow(_ item: DisplayCategorySpend) -> some View {
         let pct = totalSpend > 0 ? item.amount / totalSpend : 0
         return HStack(spacing: 12) {
             ZStack {
-                Circle().fill(item.category.color.opacity(0.15)).frame(width: 36, height: 36)
-                Image(systemName: item.category.icon).foregroundColor(item.category.color).font(.system(size: 16))
+                Circle().fill(item.dc.color.opacity(0.15)).frame(width: 36, height: 36)
+                Image(systemName: item.dc.icon).foregroundColor(item.dc.color).font(.system(size: 16))
             }
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(item.category.rawValue).font(.subheadline).fontWeight(.medium)
+                    Text(item.dc.name).font(.subheadline).fontWeight(.medium)
                     Spacer()
                     Text(sym + String(format: "%.2f", item.amount)).font(.subheadline).fontWeight(.semibold)
                 }
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 3).fill(Color(.systemGray5)).frame(height: 6)
-                        RoundedRectangle(cornerRadius: 3).fill(item.category.color)
+                        RoundedRectangle(cornerRadius: 3).fill(item.dc.color)
                             .frame(width: geo.size.width * pct, height: 6)
                     }
                 }
@@ -265,13 +262,13 @@ struct SpendingTrendsView: View {
             Chart {
                 ForEach(top3) { catSpend in
                     ForEach(months, id: \.self) { month in
-                        let amount = monthlySpend(for: month, category: catSpend.category)
+                        let amount = monthlySpend(for: month, dcName: catSpend.dc.name)
                         LineMark(
                             x: .value("Month", monthLabel(month, short: true)),
                             y: .value("Amount", amount)
                         )
-                        .foregroundStyle(catSpend.category.color)
-                        .symbol(by: .value("Category", catSpend.category.rawValue))
+                        .foregroundStyle(catSpend.dc.color)
+                        .symbol(by: .value("Category", catSpend.dc.name))
                     }
                 }
             }

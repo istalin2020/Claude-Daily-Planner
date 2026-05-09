@@ -82,7 +82,16 @@ struct DateScrollerView: View {
                     proxy.scrollTo(vm.selectedDate, anchor: .center)
                 }
                 .onChange(of: vm.selectedDate) { _, newDate in
-                    withAnimation { proxy.scrollTo(newDate, anchor: .center) }
+                    let targetMonth = cal.dateComponents([.year, .month], from: newDate)
+                    let currentMonth = cal.dateComponents([.year, .month], from: currentMonthDate)
+                    if targetMonth.year != currentMonth.year || targetMonth.month != currentMonth.month {
+                        let now = cal.startOfDay(for: Date())
+                        let diff = cal.dateComponents([.month], from: now, to: newDate)
+                        monthOffset = diff.month ?? 0
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        withAnimation { proxy.scrollTo(newDate, anchor: .center) }
+                    }
                 }
                 .onChange(of: monthOffset) { _, _ in
                     let today = cal.startOfDay(for: Date())
