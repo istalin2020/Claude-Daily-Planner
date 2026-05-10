@@ -379,7 +379,7 @@ struct Appointment: Identifiable, Codable {
 }
 
 // MARK: - Expense
-struct Expense: Identifiable, Codable {
+struct Expense: Identifiable, Codable, Equatable {
     var id = UUID()
     var amount: Double
     var category: ExpenseCategory = .other

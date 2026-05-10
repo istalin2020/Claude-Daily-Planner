@@ -699,6 +699,14 @@ class PlannerViewModel: ObservableObject {
         currentEntry = e
     }
 
+    func updateExpense(_ updated: Expense) {
+        var e = currentEntry
+        if let idx = e.expenses.firstIndex(where: { $0.id == updated.id }) {
+            e.expenses[idx] = updated
+            currentEntry = e
+        }
+    }
+
     func updateSavings(_ amount: Double) {
         var e = currentEntry
         e.savings = amount

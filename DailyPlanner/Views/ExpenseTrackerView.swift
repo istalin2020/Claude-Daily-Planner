@@ -13,6 +13,7 @@ struct ExpenseTrackerView: View {
     @State private var showProUpgrade = false
     @State private var showSpendingTrends = false
     @State private var deleteConfirmItem: Expense? = nil
+    @State private var editingExpense: Expense? = nil
     @State private var showSMSImport = false
     @State private var detectedSMS: ParsedTransaction? = nil
     @State private var hasCheckedClipboard = false
@@ -145,6 +146,12 @@ struct ExpenseTrackerView: View {
         .sheet(isPresented: $showSMSImport) {
             SMSImportWizard(parsed: detectedSMS, sym: sym) { expense in
                 vm.addExpense(expense)
+            }
+            .environmentObject(vm)
+        }
+        .sheet(item: $editingExpense) { expense in
+            EditTransactionSheet(expense: expense, currencySymbol: sym) { updated in
+                vm.updateExpense(updated)
             }
             .environmentObject(vm)
         }
@@ -498,49 +505,31 @@ struct ExpenseTrackerView: View {
                     if !incomes.isEmpty {
                         SectionGroupLabel(title: "Income", color: Color(red: 0.1, green: 0.65, blue: 0.35))
                         ForEach(incomes) { item in
-                            TransactionRow(expense: item, sym: sym) {
+                            TransactionRow(expense: item, sym: sym,
+                                           onEdit: { editingExpense = item }) {
                                 deleteConfirmItem = item
                             }
                             .padding(.horizontal, 16)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    vm.deleteExpense(byID: item.id)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
                         }
                     }
                     if !expenses.isEmpty {
                         SectionGroupLabel(title: "Expenses", color: .red)
                         ForEach(expenses) { item in
-                            TransactionRow(expense: item, sym: sym) {
+                            TransactionRow(expense: item, sym: sym,
+                                           onEdit: { editingExpense = item }) {
                                 deleteConfirmItem = item
                             }
                             .padding(.horizontal, 16)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    vm.deleteExpense(byID: item.id)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
                         }
                     }
                     if !savings.isEmpty {
                         SectionGroupLabel(title: "Savings", color: Color(red: 0.3, green: 0.5, blue: 0.95))
                         ForEach(savings) { item in
-                            TransactionRow(expense: item, sym: sym) {
+                            TransactionRow(expense: item, sym: sym,
+                                           onEdit: { editingExpense = item }) {
                                 deleteConfirmItem = item
                             }
                             .padding(.horizontal, 16)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    vm.deleteExpense(byID: item.id)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
                         }
                     }
                 }
@@ -663,6 +652,7 @@ struct DashedDivider: View {
 struct TransactionRow: View {
     let expense: Expense
     let sym: String
+    var onEdit: (() -> Void)? = nil
     let onDelete: () -> Void
 
     private var rowColor: Color {
@@ -716,6 +706,16 @@ struct TransactionRow: View {
             Text("\(sign)\(sym)\(String(format: "%.2f", expense.amount))")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(rowColor)
+            if onEdit != nil {
+                Button { onEdit?() } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary.opacity(0.6))
+                        .padding(8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
             Button(action: onDelete) {
                 Image(systemName: "trash")
                     .font(.system(size: 14))
@@ -920,6 +920,233 @@ struct AddTransactionSheet: View {
                             amountFocused = false
                         }
                         .fontWeight(.semibold)
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .alert("Add Category", isPresented: $showAddCategory) {
+                TextField("Category name", text: $newCategoryName)
+                    .autocapitalization(.words)
+                Button("Add") {
+                    let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+                    if !name.isEmpty && !vm.settings.customExpenseCategories.contains(name) {
+                        vm.settings.customExpenseCategories.append(name)
+                        vm.saveSettings()
+                        isCustomCategory = true
+                        customCategoryLabel = name
+                    }
+                    newCategoryName = ""
+                }
+                Button("Cancel", role: .cancel) { newCategoryName = "" }
+            } message: {
+                Text("Enter a name for your new category.")
+            }
+        }
+    }
+}
+
+// MARK: - Budget Alert
+
+// MARK: - Edit Transaction Sheet
+
+struct EditTransactionSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var vm: PlannerViewModel
+    @State private var amount: String
+    @State private var description: String
+    @State private var category: ExpenseCategory
+    @State private var customCategoryLabel: String
+    @State private var isCustomCategory: Bool
+    @State private var showAddCategory = false
+    @State private var newCategoryName = ""
+    @FocusState private var amountFocused: Bool
+
+    let original: Expense
+    let currencySymbol: String
+    let onSave: (Expense) -> Void
+
+    init(expense: Expense, currencySymbol: String, onSave: @escaping (Expense) -> Void) {
+        self.original = expense
+        self.currencySymbol = currencySymbol
+        self.onSave = onSave
+        _amount = State(initialValue: String(format: "%.2f", expense.amount))
+        _description = State(initialValue: expense.description)
+        _category = State(initialValue: expense.category)
+        _customCategoryLabel = State(initialValue: expense.customCategoryLabel)
+        _isCustomCategory = State(initialValue: !expense.customCategoryLabel.isEmpty)
+    }
+
+    private var mode: ExpenseTrackerView.AddMode {
+        if original.isIncome  { return .income }
+        if original.isDeposit { return .savings }
+        return .expense
+    }
+
+    private var accentColor: Color {
+        switch mode {
+        case .income:  return Color(red: 0.1, green: 0.65, blue: 0.35)
+        case .expense: return .red
+        case .savings: return Color(red: 0.3, green: 0.5, blue: 0.95)
+        }
+    }
+
+    private var iconName: String {
+        switch mode {
+        case .income:  return "arrow.down.circle.fill"
+        case .expense: return "minus.circle.fill"
+        case .savings: return "banknote.fill"
+        }
+    }
+
+    private var title: String {
+        switch mode {
+        case .income:  return "Edit Income"
+        case .expense: return "Edit Expense"
+        case .savings: return "Edit Saving"
+        }
+    }
+
+    private var canSave: Bool {
+        !description.trimmingCharacters(in: .whitespaces).isEmpty &&
+        Double(amount) != nil &&
+        (Double(amount) ?? 0) > 0
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                VStack(spacing: 8) {
+                    Image(systemName: iconName)
+                        .font(.system(size: 40))
+                        .foregroundColor(.white)
+                    Text(title)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 28)
+                .background(
+                    LinearGradient(colors: [accentColor, accentColor.opacity(0.7)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+
+                Form {
+                    Section("Details") {
+                        HStack(spacing: 8) {
+                            Image(systemName: iconName)
+                                .foregroundColor(accentColor)
+                                .frame(width: 24)
+                            TextField("Description", text: $description)
+                                .autocapitalization(.sentences)
+                        }
+
+                        HStack {
+                            Image(systemName: "dollarsign.circle")
+                                .foregroundColor(.secondary)
+                                .frame(width: 24)
+                            Text(currencySymbol)
+                                .foregroundColor(.secondary)
+                            TextField("0.00", text: $amount)
+                                .keyboardType(.decimalPad)
+                                .focused($amountFocused)
+                            if !amount.isEmpty {
+                                Button {
+                                    amount = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary)
+                                        .font(.system(size: 16))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+
+                        if mode == .expense {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Category")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+
+                                Picker("Category", selection: Binding(
+                                    get: { isCustomCategory ? "custom:\(customCategoryLabel)" : category.rawValue },
+                                    set: { newVal in
+                                        if newVal.hasPrefix("custom:") {
+                                            isCustomCategory = true
+                                            customCategoryLabel = String(newVal.dropFirst(7))
+                                        } else {
+                                            isCustomCategory = false
+                                            customCategoryLabel = ""
+                                            category = ExpenseCategory(rawValue: newVal) ?? .other
+                                        }
+                                    }
+                                )) {
+                                    ForEach(ExpenseCategory.allCases, id: \.self) { cat in
+                                        Label(cat.rawValue, systemImage: cat.icon).tag(cat.rawValue)
+                                    }
+                                    if !vm.settings.customExpenseCategories.isEmpty {
+                                        Divider()
+                                        ForEach(vm.settings.customExpenseCategories, id: \.self) { name in
+                                            Label(name, systemImage: "tag.fill")
+                                                .tag("custom:\(name)")
+                                        }
+                                    }
+                                }
+                                .pickerStyle(.menu)
+
+                                Button(action: { showAddCategory = true }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .foregroundColor(accentColor)
+                                        Text("Add Category")
+                                            .font(.subheadline)
+                                            .foregroundColor(accentColor)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 4)
+                            }
+                        }
+                    }
+
+                    Section {
+                        Button {
+                            guard canSave, let amt = Double(amount) else { return }
+                            var updated = original
+                            updated.amount = amt
+                            updated.description = description.trimmingCharacters(in: .whitespaces)
+                            if mode == .expense {
+                                updated.category = isCustomCategory ? .other : category
+                                updated.customCategoryLabel = isCustomCategory ? customCategoryLabel : ""
+                            }
+                            onSave(updated)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Save Changes")
+                                    .fontWeight(.semibold)
+                                Spacer()
+                            }
+                            .foregroundColor(.white)
+                            .padding(.vertical, 4)
+                        }
+                        .listRowBackground(canSave ? accentColor : Color.secondary.opacity(0.3))
+                        .disabled(!canSave)
+                    }
+                }
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Clear") { amount = "" }
+                            .foregroundColor(.secondary)
+                        Button("Done") { amountFocused = false }
+                            .fontWeight(.semibold)
                     }
                 }
             }
@@ -1496,28 +1723,47 @@ struct SMSImportWizard: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.secondary)
                     ForEach(vm.settings.customExpenseCategories, id: \.self) { name in
-                        Button {
-                            isCustomCategory = true
-                            customCategoryLabel = name
-                            category = .other
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "tag.fill")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(isCustomCategory && customCategoryLabel == name ? .white : .purple)
-                                Text(name)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(isCustomCategory && customCategoryLabel == name ? .white : .primary)
-                                Spacer()
+                        HStack(spacing: 0) {
+                            Button {
+                                isCustomCategory = true
+                                customCategoryLabel = name
+                                category = .other
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "tag.fill")
+                                        .font(.system(size: 13))
+                                        .foregroundColor(isCustomCategory && customCategoryLabel == name ? .white : .purple)
+                                    Text(name)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(isCustomCategory && customCategoryLabel == name ? .white : .primary)
+                                    Spacer()
+                                }
                             }
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(isCustomCategory && customCategoryLabel == name
-                                          ? Color.purple : Color.purple.opacity(0.08))
-                            )
+                            .buttonStyle(PlainButtonStyle())
+
+                            Button {
+                                vm.settings.customExpenseCategories.removeAll { $0 == name }
+                                vm.saveSettings()
+                                if customCategoryLabel == name {
+                                    isCustomCategory = false
+                                    customCategoryLabel = ""
+                                }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.red.opacity(0.6))
+                                    .padding(8)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
+                        .padding(.leading, 12)
+                        .padding(.vertical, 4)
+                        .padding(.trailing, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(isCustomCategory && customCategoryLabel == name
+                                      ? Color.purple : Color.purple.opacity(0.08))
+                        )
                     }
                 }
             }
