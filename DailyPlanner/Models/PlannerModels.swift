@@ -1034,7 +1034,7 @@ struct AppSettings: Codable {
     var receivedSharedLists  : [ReceivedSharedList]   = []
 
     // MARK: - Smart Bank SMS
-    var smartBankSMSEnabled: Bool = false
+    var smartBankSMSEnabled: Bool = true
     var dismissedSMSHashes: Set<String> = []
 
     // MARK: - Carry Forward
@@ -1064,7 +1064,7 @@ struct AppSettings: Codable {
          customExpenseCategories: [String] = [],
          sharingSettings: SharingSettings = SharingSettings(),
          receivedSharedLists: [ReceivedSharedList] = [],
-         smartBankSMSEnabled: Bool = false,
+         smartBankSMSEnabled: Bool = true,
          dismissedSMSHashes: Set<String> = [],
          autoCarryForward: Bool = false,
          lastCarryForwardMonthKey: String = "") {
@@ -1114,7 +1114,7 @@ struct AppSettings: Codable {
         customExpenseCategories   = try c.decodeIfPresent([String].self,              forKey: .customExpenseCategories)    ?? []
         sharingSettings           = try c.decodeIfPresent(SharingSettings.self,       forKey: .sharingSettings)            ?? SharingSettings()
         receivedSharedLists       = try c.decodeIfPresent([ReceivedSharedList].self,  forKey: .receivedSharedLists)        ?? []
-        smartBankSMSEnabled       = try c.decodeIfPresent(Bool.self,                 forKey: .smartBankSMSEnabled)        ?? false
+        smartBankSMSEnabled       = try c.decodeIfPresent(Bool.self,                 forKey: .smartBankSMSEnabled)        ?? true
         dismissedSMSHashes        = try c.decodeIfPresent(Set<String>.self,          forKey: .dismissedSMSHashes)         ?? []
         autoCarryForward          = try c.decodeIfPresent(Bool.self,                 forKey: .autoCarryForward)           ?? false
         lastCarryForwardMonthKey  = try c.decodeIfPresent(String.self,               forKey: .lastCarryForwardMonthKey)   ?? ""

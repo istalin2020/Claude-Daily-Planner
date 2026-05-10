@@ -149,15 +149,13 @@ struct ExpenseTrackerView: View {
             .environmentObject(vm)
         }
         .onAppear {
-            guard !hasCheckedClipboard,
-                  pro.isPro,
-                  vm.settings.smartBankSMSEnabled else { return }
+            guard vm.settings.smartBankSMSEnabled else { return }
             hasCheckedClipboard = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 guard let text = UIPasteboard.general.string, !text.isEmpty else { return }
                 let hash = String(text.hashValue)
                 guard !vm.settings.dismissedSMSHashes.contains(hash) else { return }
-                if let result = BankSMSParser.parse(text) {
+                if BankSMSParser.looksLikeBankSMS(text), let result = BankSMSParser.parse(text) {
                     detectedSMS = result
                     showSMSImport = true
                 }
@@ -311,7 +309,7 @@ struct ExpenseTrackerView: View {
             }
             .padding(.horizontal, 16)
 
-            if pro.isPro && vm.settings.smartBankSMSEnabled {
+            if vm.settings.smartBankSMSEnabled {
                 FinanceAddButton(
                     label: "Paste Bank SMS",
                     icon: "doc.on.clipboard.fill",
