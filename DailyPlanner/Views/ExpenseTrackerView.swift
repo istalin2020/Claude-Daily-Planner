@@ -1252,6 +1252,9 @@ struct SMSImportWizard: View {
     @State private var customCategoryLabel = ""
     @State private var showAddCategory = false
     @State private var newCategoryName = ""
+    @State private var showRenameCategory = false
+    @State private var renamingCategory = ""
+    @State private var renameCategoryNewName = ""
     @FocusState private var amountFocused: Bool
 
     let parsed0: ParsedTransaction?
@@ -1341,6 +1344,32 @@ struct SMSImportWizard: View {
                 Button("Cancel", role: .cancel) { newCategoryName = "" }
             } message: {
                 Text("Enter a name for your new category.")
+            }
+            .alert("Rename Category", isPresented: $showRenameCategory) {
+                TextField("New name", text: $renameCategoryNewName)
+                    .autocapitalization(.words)
+                Button("Rename") {
+                    let newName = renameCategoryNewName.trimmingCharacters(in: .whitespaces)
+                    let oldName = renamingCategory
+                    if !newName.isEmpty && newName != oldName &&
+                       !vm.settings.customExpenseCategories.contains(newName) {
+                        if let idx = vm.settings.customExpenseCategories.firstIndex(of: oldName) {
+                            vm.settings.customExpenseCategories[idx] = newName
+                            vm.saveSettings()
+                        }
+                        if customCategoryLabel == oldName {
+                            customCategoryLabel = newName
+                        }
+                    }
+                    renamingCategory = ""
+                    renameCategoryNewName = ""
+                }
+                Button("Cancel", role: .cancel) {
+                    renamingCategory = ""
+                    renameCategoryNewName = ""
+                }
+            } message: {
+                Text("Enter a new name for \"\(renamingCategory)\".")
             }
             .onAppear {
                 if let p = parsed0 {
@@ -1723,6 +1752,7 @@ struct SMSImportWizard: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.secondary)
                     ForEach(vm.settings.customExpenseCategories, id: \.self) { name in
+                        let isSelected = isCustomCategory && customCategoryLabel == name
                         HStack(spacing: 0) {
                             Button {
                                 isCustomCategory = true
@@ -1732,12 +1762,24 @@ struct SMSImportWizard: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "tag.fill")
                                         .font(.system(size: 13))
-                                        .foregroundColor(isCustomCategory && customCategoryLabel == name ? .white : .purple)
+                                        .foregroundColor(isSelected ? .white : .purple)
                                     Text(name)
                                         .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(isCustomCategory && customCategoryLabel == name ? .white : .primary)
+                                        .foregroundColor(isSelected ? .white : .primary)
                                     Spacer()
                                 }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            Button {
+                                renamingCategory = name
+                                renameCategoryNewName = name
+                                showRenameCategory = true
+                            } label: {
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(isSelected ? .white.opacity(0.7) : .secondary)
+                                    .padding(8)
                             }
                             .buttonStyle(PlainButtonStyle())
 
@@ -1751,7 +1793,7 @@ struct SMSImportWizard: View {
                             } label: {
                                 Image(systemName: "trash")
                                     .font(.system(size: 12))
-                                    .foregroundColor(.red.opacity(0.6))
+                                    .foregroundColor(isSelected ? .white.opacity(0.7) : .red.opacity(0.6))
                                     .padding(8)
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -1761,8 +1803,7 @@ struct SMSImportWizard: View {
                         .padding(.trailing, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(isCustomCategory && customCategoryLabel == name
-                                      ? Color.purple : Color.purple.opacity(0.08))
+                                .fill(isSelected ? Color.purple : Color.purple.opacity(0.08))
                         )
                     }
                 }
