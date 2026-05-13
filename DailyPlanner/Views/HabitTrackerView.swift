@@ -396,16 +396,20 @@ struct HabitRow: View {
                         .foregroundColor(habit.swiftUIColor)
                 }
             }
-            // Week mini-progress (Sun–Sat) — each day is tappable
+            // Week mini-progress — each day is tappable
             HStack(spacing: 4) {
-                let days = ["S","M","T","W","T","F","S"]
+                let fmt = DateFormatter()
                 ForEach(0..<7) { i in
+                    let dayLabel: String = {
+                        fmt.dateFormat = "EEEEE"
+                        return fmt.string(from: weekDates[i])
+                    }()
                     Button(action: { onToggleDay(weekDates[i]) }) {
                         VStack(spacing: 2) {
                             Circle()
                                 .fill(weekProgress[i] ? habit.swiftUIColor : Color.secondary.opacity(0.15))
                                 .frame(width: 20, height: 20)
-                            Text(days[i]).font(.system(size: 8)).foregroundColor(.secondary)
+                            Text(dayLabel).font(.system(size: 8)).foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity)
                     }
