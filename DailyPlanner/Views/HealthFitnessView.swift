@@ -185,7 +185,7 @@ struct HealthFitnessView: View {
     private func autoSync() {
         guard HealthKitManager.shared.isAvailable else { return }
         guard !isSyncing else { return }
-        syncFromAppleHealth()
+        performSync()
     }
 
     private func syncFromAppleHealth() {
@@ -194,18 +194,18 @@ struct HealthFitnessView: View {
             return
         }
 
-        // If step-count access was explicitly denied, prompt the user to fix it
-        // in Settings — but still attempt to fetch whatever data IS available
-        // (calories, workouts, exercise time) so the UI is never left empty.
         if HealthKitManager.shared.isStepCountAuthDenied {
             showSettingsAlert = true
         }
 
+        performSync()
+    }
+
+    private func performSync() {
+        guard !isSyncing else { return }
         isSyncing = true
         let dateToSync = vm.selectedDate
         HealthKitManager.shared.requestAuthorization {
-            // Always fetch regardless of auth result —
-            // HealthKit returns 0 for denied types but never hangs.
             HealthKitManager.shared.fetchAllHealthData(for: dateToSync) { data in
                 vm.syncHealthKitData(
                     for: dateToSync,
