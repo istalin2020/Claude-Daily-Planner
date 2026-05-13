@@ -25,7 +25,7 @@ struct SettingsView: View {
                         Label("Roll Over Pending Tasks Daily",
                               systemImage: "arrow.uturn.right.circle.fill")
                     }
-                    .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
+                    .tint(vm.settings.themeColor.primary)
 
                     if vm.settings.autoRollover {
                         Text("Incomplete tasks from the previous day are automatically carried forward to today.")
@@ -141,7 +141,7 @@ struct SettingsView: View {
                     Toggle(isOn: $vm.settings.notificationsEnabled) {
                         Label("Enable Daily Reminders", systemImage: "bell.badge.fill")
                     }
-                    .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
+                    .tint(vm.settings.themeColor.primary)
                     .onChange(of: vm.settings.notificationsEnabled) { _, enabled in
                         if enabled {
                             requestNotificationPermission()
@@ -206,7 +206,7 @@ struct SettingsView: View {
                                       systemImage: "plus.circle.fill")
                                     .foregroundColor(vm.settings.notificationTimes.count >= 7
                                                      ? .secondary
-                                                     : Color(red: 0.45, green: 0.25, blue: 0.85))
+                                                     : vm.settings.themeColor.primary)
                             }
                             .disabled(vm.settings.notificationTimes.count >= 7)
                         }
@@ -254,7 +254,7 @@ struct SettingsView: View {
                     } label: {
                         HStack {
                             Label("Share Tasks", systemImage: "square.and.arrow.up.fill")
-                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                                .foregroundColor(vm.settings.themeColor.primary)
                             Spacer()
                             if !pro.isPro {
                                 ProInlineBadge()
@@ -289,7 +289,7 @@ struct SettingsView: View {
                     } label: {
                         HStack {
                             Label("Export Data (CSV / Report)", systemImage: "square.and.arrow.up.fill")
-                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                                .foregroundColor(vm.settings.themeColor.primary)
                             Spacer()
                             if !pro.isPro {
                                 ProInlineBadge()
@@ -308,7 +308,7 @@ struct SettingsView: View {
                     } label: {
                         HStack {
                             Label("Weekly / Monthly Summary", systemImage: "calendar.badge.clock")
-                                .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                                .foregroundColor(vm.settings.themeColor.primary)
                             Spacer()
                             if !pro.isPro {
                                 ProInlineBadge()
@@ -320,12 +320,69 @@ struct SettingsView: View {
                     }
                 }
 
-                // ── 10. DARK MODE ──────────────────────────────────────────
+                // ── 10. DISPLAY ───────────────────────────────────────────
                 Section("Display") {
                     Toggle(isOn: $vm.settings.isDarkMode) {
                         Label("Dark Mode", systemImage: vm.settings.isDarkMode ? "moon.fill" : "sun.max.fill")
                     }
-                    .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
+                    .tint(vm.settings.themeColor.primary)
+
+                    if pro.isPro {
+                        Toggle(isOn: Binding(
+                            get: { vm.settings.isLiquidGlass },
+                            set: { vm.settings.isLiquidGlass = $0; vm.saveSettings() }
+                        )) {
+                            HStack(spacing: 10) {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(red: 0.6, green: 0.85, blue: 1.0),
+                                                    Color(red: 0.4, green: 0.6, blue: 0.95)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 28, height: 28)
+                                    Image(systemName: "drop.fill")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
+                                Text("Liquid Glass")
+                                    .font(.system(size: 15))
+                            }
+                        }
+                        .tint(vm.settings.themeColor.primary)
+                    } else {
+                        Button(action: { showProUpgrade = true }) {
+                            HStack(spacing: 10) {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(red: 0.6, green: 0.85, blue: 1.0),
+                                                    Color(red: 0.4, green: 0.6, blue: 0.95)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 28, height: 28)
+                                    Image(systemName: "drop.fill")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
+                                Text("Liquid Glass")
+                                    .font(.system(size: 15))
+                                Spacer()
+                                ProInlineBadge()
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
 
                 // ── 11. COLOR THEME ────────────────────────────────────────
@@ -508,13 +565,14 @@ struct TimePickerSheet: View {
     @Binding var time: Date
     let onAdd: () -> Void
     @Environment(\.dismiss) var dismiss
+    @Environment(\.themeAccent) private var accent
 
     var body: some View {
         NavigationView {
             VStack(spacing: 24) {
                 Image(systemName: "alarm.fill")
                     .font(.system(size: 44))
-                    .foregroundColor(Color(red: 0.45, green: 0.25, blue: 0.85))
+                    .foregroundColor(accent)
 
                 Text("Choose Reminder Time")
                     .font(.title3).fontWeight(.bold)
@@ -531,7 +589,7 @@ struct TimePickerSheet: View {
                         .font(.system(size: 16, weight: .bold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color(red: 0.45, green: 0.25, blue: 0.85))
+                        .background(accent)
                         .foregroundColor(.white)
                         .cornerRadius(14)
                 }

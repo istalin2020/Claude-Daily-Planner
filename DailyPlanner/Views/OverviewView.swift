@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OverviewView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @Environment(\.themeAccent) private var accent
 
     private var entry: DailyEntry { vm.currentEntry }
 
@@ -30,7 +31,7 @@ struct OverviewView: View {
                         Circle().stroke(Color.secondary.opacity(0.2), lineWidth: 6)
                         Circle()
                             .trim(from: 0, to: entry.taskCompletionRate)
-                            .stroke(Color(red: 0.45, green: 0.25, blue: 0.85),
+                            .stroke(accent,
                                     style: StrokeStyle(lineWidth: 6, lineCap: .round))
                             .rotationEffect(.degrees(-90))
                         Text("\(vm.completionPercent)%")
@@ -387,6 +388,7 @@ struct OverviewView: View {
 // MARK: - PRO Overview Card (shows PRO lock badge, tappable to navigate)
 struct ProOverviewCard<Content: View>: View {
     @EnvironmentObject var pro: ProManager
+    @Environment(\.isLiquidGlass) private var isGlass
     let section: AppSection
     let action: () -> Void
     @ViewBuilder let content: Content
@@ -400,7 +402,7 @@ struct ProOverviewCard<Content: View>: View {
                         .foregroundColor(.white)
                         .padding(6)
                         .background(section.color)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: isGlass ? 10 : 8, style: .continuous))
                     Text(section.rawValue)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary)
@@ -414,10 +416,8 @@ struct ProOverviewCard<Content: View>: View {
                 }
                 content
             }
-            .padding(14)
-            .background(Color(.systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+            .padding(isGlass ? 16 : 14)
+            .glassCard()
             .padding(.horizontal, 12)
         }
         .buttonStyle(PlainButtonStyle())
@@ -426,6 +426,7 @@ struct ProOverviewCard<Content: View>: View {
 
 // MARK: - Overview Card
 struct OverviewCard<Content: View>: View {
+    @Environment(\.isLiquidGlass) private var isGlass
     let section: AppSection
     let action: () -> Void
     @ViewBuilder let content: Content
@@ -439,7 +440,7 @@ struct OverviewCard<Content: View>: View {
                         .foregroundColor(.white)
                         .padding(6)
                         .background(section.color)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: isGlass ? 10 : 8, style: .continuous))
                     Text(section.rawValue)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary)
@@ -450,10 +451,8 @@ struct OverviewCard<Content: View>: View {
                 }
                 content
             }
-            .padding(14)
-            .background(Color(.systemBackground))
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 2)
+            .padding(isGlass ? 16 : 14)
+            .glassCard()
             .padding(.horizontal, 12)
         }
         .buttonStyle(PlainButtonStyle())
@@ -515,9 +514,7 @@ struct QuickStatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+        .glassQuickStat()
     }
 }
 

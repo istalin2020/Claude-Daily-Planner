@@ -10,48 +10,43 @@ struct SectionHeader: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            LinearGradient(
-                colors: [section.color, section.color.opacity(0.75)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            .frame(height: 80)
-            .overlay(
-                HStack(spacing: 14) {
-                    Image(systemName: section.icon)
-                        .font(.system(size: 28, weight: .semibold))
+            HStack(spacing: 14) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(.white)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(section.rawValue)
+                        .font(.title3).fontWeight(.bold)
                         .foregroundColor(.white)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(section.rawValue)
-                            .font(.title3).fontWeight(.bold)
-                            .foregroundColor(.white)
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.85))
-                    }
-                    Spacer()
-                    if totalCount > 0 {
-                        VStack(spacing: 2) {
-                            Text("\(completedCount)/\(totalCount)")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                            Text("Done")
-                                .font(.caption2)
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                    }
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            vm.selectedSection = .overview
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 26))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.85))
                 }
-                .padding(.horizontal, 16)
-            )
+                Spacer()
+                if totalCount > 0 {
+                    VStack(spacing: 2) {
+                        Text("\(completedCount)/\(totalCount)")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("Done")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        vm.selectedSection = .overview
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 80)
+            .glassSectionHeader(color: section.color)
         }
     }
 }
@@ -72,13 +67,8 @@ struct AddButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(color.opacity(0.1))
             .foregroundColor(color)
-            .cornerRadius(14)
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(color.opacity(0.3), lineWidth: 1)
-            )
+            .glassAddButton(color: color)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -164,17 +154,7 @@ struct TaskRowCard: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(isHighlighted
-                      ? color.opacity(0.18)
-                      : (task.isCompleted ? color.opacity(0.05) : Color(.systemBackground)))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(isHighlighted ? color : Color.clear, lineWidth: 2)
-        )
-        .shadow(color: .black.opacity(task.isCompleted ? 0.03 : 0.07), radius: 4, y: 2)
+        .glassTaskRow(color: color, isHighlighted: isHighlighted, isCompleted: task.isCompleted)
         .animation(.easeInOut(duration: 0.2), value: task.isCompleted)
         .animation(.easeInOut(duration: 0.4), value: isHighlighted)
     }

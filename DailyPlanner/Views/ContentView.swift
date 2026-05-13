@@ -25,7 +25,7 @@ struct ContentView: View {
             }
             .animation(.easeInOut(duration: 0.25), value: vm.selectedSection)
         }
-        .background(Color(.systemGroupedBackground))
+        .background { GlassAppBackground() }
         .sheet(isPresented: $showSettings) {
             SettingsView().environmentObject(pro)
         }
@@ -125,14 +125,7 @@ struct AppHeaderView: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 10)
-        .background(
-            LinearGradient(
-                colors: [vm.settings.themeColor.primary.opacity(0.85),
-                         vm.settings.themeColor.secondary],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .glassHeader()
     }
 }
 
@@ -157,7 +150,7 @@ struct SectionTabBarView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
             }
-            .background(Color(.systemBackground))
+            .background(.ultraThinMaterial)
             .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
             .onChange(of: vm.selectedSection) { _, newSection in
                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -184,9 +177,7 @@ struct SectionTabButton: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .background(isSelected ? section.color : Color(.secondarySystemBackground))
-            .foregroundColor(isSelected ? .white : .secondary)
-            .cornerRadius(20)
+            .glassTab(isSelected: isSelected, color: section.color)
         }
         .buttonStyle(PlainButtonStyle())
     }

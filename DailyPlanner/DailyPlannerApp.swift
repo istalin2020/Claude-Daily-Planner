@@ -13,6 +13,9 @@ struct DailyPlannerApp: App {
                 .environmentObject(proManager)
                 .preferredColorScheme(viewModel.settings.isDarkMode ? .dark : .light)
                 .tint(viewModel.settings.themeColor.primary)
+                .environment(\.isLiquidGlass, viewModel.settings.isLiquidGlass)
+                .environment(\.themeAccent, viewModel.settings.themeColor.primary)
+                .environment(\.themeSecondary, viewModel.settings.themeColor.secondary)
                 // Handle deep links for accepting shared task lists.
                 // Two formats are supported:
                 //   New (CloudKit live sync): dailyplanner://accept-share?token=X&name=Y&section=Z

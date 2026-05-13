@@ -104,7 +104,7 @@ struct DateScrollerView: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
+        .background(.ultraThinMaterial)
         .shadow(color: .black.opacity(0.05), radius: 3, y: 2)
         .sheet(isPresented: $showMonthPicker) {
             MonthYearPickerView(monthOffset: $monthOffset, maxFuture: maxFutureMonths)
@@ -115,6 +115,7 @@ struct DateScrollerView: View {
 
 // MARK: - Date Cell
 struct DateCell: View {
+    @Environment(\.themeAccent) private var accent
     let date: Date
     let isSelected: Bool
     let hasEntry: Bool
@@ -139,35 +140,19 @@ struct DateCell: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(
                     isSelected ? .white :
-                    isToday    ? Color(red: 0.45, green: 0.25, blue: 0.85) :
-                    isFuture   ? Color(red: 0.45, green: 0.25, blue: 0.85).opacity(0.55) :
+                    isToday    ? accent :
+                    isFuture   ? accent.opacity(0.55) :
                                  .primary
                 )
 
             Circle()
                 .fill(hasEntry
-                      ? (isSelected ? Color.white.opacity(0.7)
-                                    : Color(red: 0.45, green: 0.25, blue: 0.85))
+                      ? (isSelected ? Color.white.opacity(0.7) : accent)
                       : Color.clear)
                 .frame(width: 5, height: 5)
         }
         .frame(width: 42, height: 60)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected
-                      ? LinearGradient(colors: [Color(red: 0.45, green: 0.25, blue: 0.85),
-                                                Color(red: 0.6,  green: 0.3,  blue: 0.95)],
-                                       startPoint: .top, endPoint: .bottom)
-                      : LinearGradient(colors: [Color.clear, Color.clear],
-                                       startPoint: .top, endPoint: .bottom))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isToday && !isSelected
-                        ? Color(red: 0.45, green: 0.25, blue: 0.85).opacity(0.5)
-                        : Color.clear,
-                        lineWidth: 1.5)
-        )
+        .glassDateCell(isSelected: isSelected, isToday: isToday)
     }
 }
 
@@ -176,6 +161,7 @@ struct MonthYearPickerView: View {
     @Binding var monthOffset: Int
     let maxFuture: Int
     @Environment(\.dismiss) var dismiss
+    @Environment(\.themeAccent) private var accent
 
     private let months = Calendar.current.monthSymbols
     private let currentYear = Calendar.current.component(.year, from: Date())
@@ -236,7 +222,7 @@ struct MonthYearPickerView: View {
                 dismiss()
             }
             .buttonStyle(.borderedProminent)
-            .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
+            .tint(accent)
             .padding(.bottom)
         }
         .padding(.horizontal)

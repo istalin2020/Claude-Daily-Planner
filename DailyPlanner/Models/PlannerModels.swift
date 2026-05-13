@@ -1021,6 +1021,7 @@ struct AppSettings: Codable {
 
     // MARK: - Theme
     var themeColor: ThemeColor = .purple
+    var isLiquidGlass: Bool = false
 
     // MARK: - Medications
     var medications: [Medication] = []
@@ -1060,6 +1061,7 @@ struct AppSettings: Codable {
          habitLogs: [String: HabitLog] = [:],
          categoryBudgets: [String: Double] = [:],
          themeColor: ThemeColor = .purple,
+         isLiquidGlass: Bool = false,
          medications: [Medication] = [],
          customExpenseCategories: [String] = [],
          sharingSettings: SharingSettings = SharingSettings(),
@@ -1083,6 +1085,7 @@ struct AppSettings: Codable {
         self.habitLogs = habitLogs
         self.categoryBudgets = categoryBudgets
         self.themeColor = themeColor
+        self.isLiquidGlass = isLiquidGlass
         self.medications = medications
         self.customExpenseCategories = customExpenseCategories
         self.sharingSettings = sharingSettings
@@ -1110,6 +1113,7 @@ struct AppSettings: Codable {
         habitLogs            = try c.decodeIfPresent([String: HabitLog].self,         forKey: .habitLogs)            ?? [:]
         categoryBudgets      = try c.decodeIfPresent([String: Double].self,           forKey: .categoryBudgets)      ?? [:]
         themeColor                = try c.decodeIfPresent(ThemeColor.self,             forKey: .themeColor)                ?? .purple
+        isLiquidGlass             = try c.decodeIfPresent(Bool.self,                  forKey: .isLiquidGlass)             ?? false
         medications               = try c.decodeIfPresent([Medication].self,           forKey: .medications)               ?? []
         customExpenseCategories   = try c.decodeIfPresent([String].self,              forKey: .customExpenseCategories)    ?? []
         sharingSettings           = try c.decodeIfPresent(SharingSettings.self,       forKey: .sharingSettings)            ?? SharingSettings()
