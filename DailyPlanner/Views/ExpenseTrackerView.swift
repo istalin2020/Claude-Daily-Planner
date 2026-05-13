@@ -1246,6 +1246,9 @@ struct SMSImportWizard: View {
 
     @State private var transactionType: TransactionType = .expense
     @State private var amount = ""
+    @State private var originalAmount = ""
+    @State private var originalCurrency = ""
+    @State private var wasConverted = false
     @State private var merchant = ""
     @State private var category: ExpenseCategory = .other
     @State private var isCustomCategory = false
@@ -1854,35 +1857,58 @@ struct SMSImportWizard: View {
     // MARK: - Parsed Summary Card
 
     private func parsedSummaryCard(_ p: ParsedTransaction) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.purple.opacity(0.12))
-                    .frame(width: 44, height: 44)
-                Image(systemName: "building.columns.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.purple)
-            }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(p.bankName)
-                    .font(.system(size: 14, weight: .bold))
-                HStack(spacing: 8) {
-                    if !p.accountLast4.isEmpty {
-                        Text("••••\(p.accountLast4)")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                    if let bal = p.balance {
-                        Text("Bal: \(sym)\(String(format: "%.3f", bal))")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.purple.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "building.columns.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.purple)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(p.bankName)
+                        .font(.system(size: 14, weight: .bold))
+                    HStack(spacing: 8) {
+                        if !p.accountLast4.isEmpty {
+                            Text("••••\(p.accountLast4)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        if let bal = p.balance {
+                            Text("Bal: \(sym)\(String(format: "%.3f", bal))")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    if wasConverted {
+                        Text("\(originalCurrency) \(originalAmount)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .strikethrough()
+                    }
+                    Text("\(sym)\(amount)")
+                        .font(.system(size: 18, weight: .heavy))
+                        .foregroundColor(.purple)
+                }
             }
-            Spacer()
-            Text("\(sym)\(String(format: "%.3f", p.amount))")
-                .font(.system(size: 18, weight: .heavy))
-                .foregroundColor(.purple)
+
+            if wasConverted {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                    Text("Converted from \(originalCurrency) to \(vm.settings.currency.rawValue) (approximate rate)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                    Spacer()
+                }
+                .padding(.top, 2)
+            }
         }
         .padding(14)
         .background(Color.purple.opacity(0.06))
@@ -1901,7 +1927,6 @@ struct SMSImportWizard: View {
     private func applyParsed(_ p: ParsedTransaction) {
         parsed = p
         smsText = p.rawText
-        amount = String(format: "%.3f", p.amount)
         merchant = p.merchant.isEmpty ? "Bank Transaction" : p.merchant
         category = p.category
         transactionType = p.isCredit ? .income : .expense
@@ -1909,11 +1934,21 @@ struct SMSImportWizard: View {
         customCategoryLabel = ""
         parseError = false
 
-        if p.confidenceType == .high {
-            step = .type
+        let localCurrency = vm.settings.currency.rawValue
+        if CurrencyConverter.needsConversion(detected: p.currencyDetected, local: localCurrency),
+           let converted = CurrencyConverter.convert(amount: p.amount, from: p.currencyDetected, to: localCurrency) {
+            originalAmount = String(format: "%.3f", p.amount)
+            originalCurrency = p.currencyDetected
+            wasConverted = true
+            amount = String(format: "%.3f", converted)
         } else {
-            step = .type
+            originalAmount = ""
+            originalCurrency = ""
+            wasConverted = false
+            amount = String(format: "%.3f", p.amount)
         }
+
+        step = .type
     }
 
     private func saveTransaction() {
