@@ -6,7 +6,14 @@ import WidgetKit
 class PlannerViewModel: ObservableObject {
     @Published var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     @Published var entries: [String: DailyEntry] = [:]
-    @Published var selectedSection: AppSection = .overview
+    @Published var selectedSection: AppSection = .overview {
+        didSet {
+            if selectedSection == .overview && oldValue != .overview {
+                lastVisitedSection = oldValue
+            }
+        }
+    }
+    var lastVisitedSection: AppSection? = nil
     @Published var settings: AppSettings = AppSettings()
     @Published var iCloudAvailable = false
     @Published var highlightedTaskID: UUID? = nil

@@ -13,6 +13,7 @@ struct OverviewView: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(spacing: 14) {
                 // Date heading
@@ -73,6 +74,7 @@ struct OverviewView: View {
                         }
                     }
                 }
+                .id(AppSection.topPriorities.id)
 
                 // To-Do Lists Card
                 OverviewCard(section: .toDoLists, action: { vm.selectedSection = .toDoLists }) {
@@ -88,6 +90,7 @@ struct OverviewView: View {
                         }
                     }
                 }
+                .id(AppSection.toDoLists.id)
 
                 // Calls & Emails Card
                 OverviewCard(section: .callsEmails, action: { vm.selectedSection = .callsEmails }) {
@@ -103,6 +106,7 @@ struct OverviewView: View {
                         }
                     }
                 }
+                .id(AppSection.callsEmails.id)
 
                 // Personal To-Do Card
                 OverviewCard(section: .personalTodo, action: { vm.selectedSection = .personalTodo }) {
@@ -118,6 +122,7 @@ struct OverviewView: View {
                         }
                     }
                 }
+                .id(AppSection.personalTodo.id)
 
                 // Health & Fitness Card
                 OverviewCard(section: .healthFitness, action: { vm.selectedSection = .healthFitness }) {
@@ -135,6 +140,7 @@ struct OverviewView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
+                .id(AppSection.healthFitness.id)
 
                 // Water Tracker Card
                 OverviewCard(section: .waterTracker, action: { vm.selectedSection = .waterTracker }) {
@@ -153,6 +159,7 @@ struct OverviewView: View {
                             .font(.caption).foregroundColor(.secondary)
                     }
                 }
+                .id(AppSection.waterTracker.id)
 
                 // Food Tracker Card
                 OverviewCard(section: .foodTracker, action: { vm.selectedSection = .foodTracker }) {
@@ -164,6 +171,7 @@ struct OverviewView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
+                .id(AppSection.foodTracker.id)
 
                 // Daily Schedule Card
                 OverviewCard(section: .dailySchedule, action: { vm.selectedSection = .dailySchedule }) {
@@ -185,6 +193,7 @@ struct OverviewView: View {
                         }
                     }
                 }
+                .id(AppSection.dailySchedule.id)
 
                 // Appointments Card
                 OverviewCard(section: .appointments, action: { vm.selectedSection = .appointments }) {
@@ -205,6 +214,7 @@ struct OverviewView: View {
                         }
                     }
                 }
+                .id(AppSection.appointments.id)
 
                 // Notes Card
                 OverviewCard(section: .notes, action: { vm.selectedSection = .notes }) {
@@ -218,6 +228,7 @@ struct OverviewView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+                .id(AppSection.notes.id)
 
                 // Expense Tracker Card
                 OverviewCard(section: .expenseTracker, action: { vm.selectedSection = .expenseTracker }) {
@@ -277,6 +288,7 @@ struct OverviewView: View {
                         .padding(.top, 2)
                     }
                 }
+                .id(AppSection.expenseTracker.id)
 
                 // Rate Your Day Card
                 OverviewCard(section: .rateYourDay, action: { vm.selectedSection = .rateYourDay }) {
@@ -287,6 +299,7 @@ struct OverviewView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
+                .id(AppSection.rateYourDay.id)
 
                 // Habit Tracker Card (PRO)
                 ProOverviewCard(
@@ -320,6 +333,7 @@ struct OverviewView: View {
                         }
                     }
                 }
+                .id(AppSection.habits.id)
 
                 // Sleep Tracker Card (PRO)
                 ProOverviewCard(
@@ -353,6 +367,7 @@ struct OverviewView: View {
                         EmptyOverviewRow(text: "No sleep logged yet")
                     }
                 }
+                .id(AppSection.sleepTracker.id)
 
                 // Medication Tracker Card (PRO)
                 ProOverviewCard(
@@ -378,10 +393,22 @@ struct OverviewView: View {
                         }
                     }
                 }
+                .id(AppSection.medications.id)
 
                 Spacer(minLength: 24)
             }
         }
+        .onAppear {
+            if let target = vm.lastVisitedSection {
+                vm.lastVisitedSection = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        proxy.scrollTo(target.id, anchor: .top)
+                    }
+                }
+            }
+        }
+        } // ScrollViewReader
     }
 }
 
