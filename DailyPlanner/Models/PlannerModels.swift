@@ -1038,6 +1038,15 @@ struct AppSettings: Codable {
     var smartBankSMSEnabled: Bool = true
     var dismissedSMSHashes: Set<String> = []
 
+    // MARK: - Gmail Expense Sync (PRO)
+    /// The Gmail address the user connected (empty = not connected).
+    var gmailConnectedEmail: String = ""
+    /// Epoch-seconds of the last successful sync. Next sync only reads
+    /// messages received after this point ("continue where it left off").
+    var gmailLastSyncEpoch: Double = 0
+    /// Gmail message IDs already imported, so re-syncs never duplicate.
+    var gmailProcessedMessageIDs: Set<String> = []
+
     // MARK: - Carry Forward
     /// When true, automatically carries forward the previous month's balance
     /// and savings at the start of each new month (no popup prompt).
@@ -1068,6 +1077,9 @@ struct AppSettings: Codable {
          receivedSharedLists: [ReceivedSharedList] = [],
          smartBankSMSEnabled: Bool = true,
          dismissedSMSHashes: Set<String> = [],
+         gmailConnectedEmail: String = "",
+         gmailLastSyncEpoch: Double = 0,
+         gmailProcessedMessageIDs: Set<String> = [],
          autoCarryForward: Bool = false,
          lastCarryForwardMonthKey: String = "") {
         self.isDarkMode = isDarkMode
@@ -1092,6 +1104,9 @@ struct AppSettings: Codable {
         self.receivedSharedLists = receivedSharedLists
         self.smartBankSMSEnabled = smartBankSMSEnabled
         self.dismissedSMSHashes = dismissedSMSHashes
+        self.gmailConnectedEmail = gmailConnectedEmail
+        self.gmailLastSyncEpoch = gmailLastSyncEpoch
+        self.gmailProcessedMessageIDs = gmailProcessedMessageIDs
         self.autoCarryForward = autoCarryForward
         self.lastCarryForwardMonthKey = lastCarryForwardMonthKey
     }
@@ -1120,6 +1135,9 @@ struct AppSettings: Codable {
         receivedSharedLists       = try c.decodeIfPresent([ReceivedSharedList].self,  forKey: .receivedSharedLists)        ?? []
         smartBankSMSEnabled       = try c.decodeIfPresent(Bool.self,                 forKey: .smartBankSMSEnabled)        ?? true
         dismissedSMSHashes        = try c.decodeIfPresent(Set<String>.self,          forKey: .dismissedSMSHashes)         ?? []
+        gmailConnectedEmail       = try c.decodeIfPresent(String.self,               forKey: .gmailConnectedEmail)        ?? ""
+        gmailLastSyncEpoch        = try c.decodeIfPresent(Double.self,               forKey: .gmailLastSyncEpoch)         ?? 0
+        gmailProcessedMessageIDs  = try c.decodeIfPresent(Set<String>.self,          forKey: .gmailProcessedMessageIDs)   ?? []
         autoCarryForward          = try c.decodeIfPresent(Bool.self,                 forKey: .autoCarryForward)           ?? false
         lastCarryForwardMonthKey  = try c.decodeIfPresent(String.self,               forKey: .lastCarryForwardMonthKey)   ?? ""
     }

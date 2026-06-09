@@ -59,5 +59,21 @@
 	<string>Daily Planner saves your water intake and sleep records to Apple Health so your health data stays in sync across all your apps.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Gmail OAuth callback. Replace the placeholder below with YOUR reversed
+	     Google client ID (Client ID with the halves swapped), e.g.
+	     com.googleusercontent.apps.1234567890-abcdefg -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>GoogleOAuth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.YOUR_REVERSED_CLIENT_ID</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

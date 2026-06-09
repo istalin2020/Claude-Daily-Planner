@@ -714,6 +714,80 @@ class PlannerViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Gmail Expense Sync
+
+    /// Adds an imported expense to the calendar day it actually occurred,
+    /// rather than the currently-selected date.
+    func addExpense(_ expense: Expense, on date: Date) {
+        let key = dateKey(for: date)
+        var e = entries[key] ?? DailyEntry(date: date)
+        e.expenses.append(expense)
+        entries[key] = e
+        objectWillChange.send()
+    }
+
+    /// Builds an Expense from a parsed Gmail transaction, converting foreign
+    /// currency to the user's local currency when needed.
+    func expense(from candidate: GmailCandidate,
+                 customCategoryLabel: String = "",
+                 overrideCategory: ExpenseCategory? = nil) -> Expense {
+        let p = candidate.parsed
+        let localCurrency = settings.currency.rawValue
+        var amount = p.amount
+        if CurrencyConverter.needsConversion(detected: p.currencyDetected, local: localCurrency),
+           let converted = CurrencyConverter.convert(amount: p.amount, from: p.currencyDetected, to: localCurrency) {
+            amount = converted
+        }
+        let desc = p.merchant.isEmpty ? "\(p.bankName) Transaction" : p.merchant
+
+        if p.isCredit {
+            return Expense(amount: amount, category: .other, description: desc,
+                           isIncome: true, isFromSMS: true)
+        } else {
+            let useCustom = !customCategoryLabel.isEmpty
+            return Expense(amount: amount,
+                           category: useCustom ? .other : (overrideCategory ?? p.category),
+                           customCategoryLabel: useCustom ? customCategoryLabel : "",
+                           description: desc,
+                           isFromSMS: true)
+        }
+    }
+
+    /// True when a candidate can be added automatically without asking the user:
+    /// all credits (income) and debits whose category was confidently detected.
+    func gmailCanAutoAdd(_ candidate: GmailCandidate) -> Bool {
+        let p = candidate.parsed
+        if p.isCredit { return true }
+        return p.confidenceCategory == .high && p.category != .other
+    }
+
+    /// Records handled Gmail message IDs and advances the incremental cursor.
+    /// Pass `advanceCursorTo: nil` to leave the cursor untouched (e.g. when the
+    /// user cancels mid-review, so pending items are re-offered next sync).
+    func finalizeGmailSync(handledIDs: [String], advanceCursorTo newestEpoch: Double?) {
+        settings.gmailProcessedMessageIDs.formUnion(handledIDs)
+        if settings.gmailProcessedMessageIDs.count > 1000 {
+            settings.gmailProcessedMessageIDs = Set(Array(settings.gmailProcessedMessageIDs).suffix(500))
+        }
+        if let e = newestEpoch, e > settings.gmailLastSyncEpoch {
+            settings.gmailLastSyncEpoch = e
+        }
+        saveSettings()
+    }
+
+    func setGmailConnected(email: String) {
+        settings.gmailConnectedEmail = email
+        saveSettings()
+    }
+
+    func gmailDisconnect() {
+        GmailSyncService.shared.disconnect()
+        settings.gmailConnectedEmail = ""
+        settings.gmailLastSyncEpoch = 0
+        settings.gmailProcessedMessageIDs = []
+        saveSettings()
+    }
+
     func updateSavings(_ amount: Double) {
         var e = currentEntry
         e.savings = amount

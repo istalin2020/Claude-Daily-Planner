@@ -50,6 +50,9 @@
 		AA700000000000000000001A /* BankSMSParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001A /* BankSMSParser.swift */; };
 		AA700000000000000000001B /* CurrencyConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001B /* CurrencyConverter.swift */; };
 		AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001C /* LiquidGlassTheme.swift */; };
+		AA700000000000000000001D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001D /* KeychainHelper.swift */; };
+		AA700000000000000000001E /* GmailSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001E /* GmailSyncService.swift */; };
+		AA700000000000000000001F /* GmailSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001F /* GmailSyncView.swift */; };
 		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
 		BB810000000000000000001A /* DailyPlannerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB900000000000000000001A /* DailyPlannerWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -101,6 +104,9 @@
 		AA710000000000000000001A /* BankSMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankSMSParser.swift; sourceTree = "<group>"; };
 		AA710000000000000000001B /* CurrencyConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyConverter.swift; sourceTree = "<group>"; };
 		AA710000000000000000001C /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
+		AA710000000000000000001D /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		AA710000000000000000001E /* GmailSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncService.swift; sourceTree = "<group>"; };
+		AA710000000000000000001F /* GmailSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncView.swift; sourceTree = "<group>"; };
 		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
 		BB110000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB120000000000000000001A /* DailyPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlannerWidget.entitlements; sourceTree = "<group>"; };
@@ -191,6 +197,8 @@
 				AA6A0000000000000000001A /* CloudKitSharingService.swift */,
 				AA710000000000000000001A /* BankSMSParser.swift */,
 				AA710000000000000000001B /* CurrencyConverter.swift */,
+				AA710000000000000000001D /* KeychainHelper.swift */,
+				AA710000000000000000001E /* GmailSyncService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -198,6 +206,7 @@
 		AA3A0000000000000000001A /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AA710000000000000000001F /* GmailSyncView.swift */,
 				AA150000000000000000001A /* ContentView.swift */,
 				AA3B0000000000000000001A /* Components */,
 				AA1B0000000000000000001A /* OverviewView.swift */,
@@ -446,6 +455,9 @@
 				AA700000000000000000001A /* BankSMSParser.swift in Sources */,
 				AA700000000000000000001B /* CurrencyConverter.swift in Sources */,
 				AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */,
+				AA700000000000000000001D /* KeychainHelper.swift in Sources */,
+				AA700000000000000000001E /* GmailSyncService.swift in Sources */,
+				AA700000000000000000001F /* GmailSyncView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

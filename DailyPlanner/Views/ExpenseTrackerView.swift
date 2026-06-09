@@ -17,6 +17,7 @@ struct ExpenseTrackerView: View {
     @State private var showSMSImport = false
     @State private var detectedSMS: ParsedTransaction? = nil
     @State private var hasCheckedClipboard = false
+    @State private var showGmailSync = false
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -148,6 +149,9 @@ struct ExpenseTrackerView: View {
                 vm.addExpense(expense)
             }
             .environmentObject(vm)
+        }
+        .sheet(isPresented: $showGmailSync) {
+            GmailSyncView(sym: sym).environmentObject(vm)
         }
         .sheet(item: $editingExpense) { expense in
             EditTransactionSheet(expense: expense, currencySymbol: sym) { updated in
@@ -327,6 +331,26 @@ struct ExpenseTrackerView: View {
                 }
                 .padding(.horizontal, 16)
             }
+
+            // ── Expense Sync from Gmail (PRO) ──────────────────────
+            Button {
+                if pro.isPro { showGmailSync = true } else { showProUpgrade = true }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "envelope.badge.fill")
+                        .font(.system(size: 16))
+                    Text("Expense Sync from Gmail")
+                        .font(.system(size: 15, weight: .semibold))
+                    Spacer()
+                    if !pro.isPro { ProInlineBadge() }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12).padding(.horizontal, 14)
+                .background(Color(red: 0.85, green: 0.2, blue: 0.2).opacity(0.1))
+                .foregroundColor(Color(red: 0.85, green: 0.2, blue: 0.2))
+                .cornerRadius(14)
+            }
+            .padding(.horizontal, 16)
         }
     }
 
