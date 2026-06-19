@@ -23,7 +23,7 @@ enum GmailConfig {
 
     /// ← PASTE YOUR iOS OAuth Client ID HERE.
     /// Looks like: "1234567890-abcdefghijklmnop.apps.googleusercontent.com"
-    static let clientID = ""
+    static let clientID = "295054109320-dnj7a038qmm5lk6dqj5hv5bm7o4fe4kr.apps.googleusercontent.com"
 
     static let scope = "https://www.googleapis.com/auth/gmail.readonly"
 
@@ -61,6 +61,7 @@ enum GmailSyncError: LocalizedError {
     case authFailed(String)
     case network(String)
     case noRefreshToken
+    case reconnectNeeded
 
     var errorDescription: String? {
         switch self {
@@ -69,6 +70,7 @@ enum GmailSyncError: LocalizedError {
         case .authFailed(let m): return "Google sign-in failed: \(m)"
         case .network(let m):  return "Couldn't reach Gmail: \(m)"
         case .noRefreshToken:  return "Gmail isn't connected. Please connect your account first."
+        case .reconnectNeeded: return "Your Gmail connection has expired. Tap “Reconnect Gmail” to sign in again."
         }
     }
 }
@@ -214,9 +216,21 @@ final class GmailSyncService: NSObject, ObservableObject {
             "client_id":     GmailConfig.clientID,
             "grant_type":    "refresh_token"
         ]
-        let tokens = try await postToken(params)
-        accessToken = tokens.accessToken
-        accessTokenExpiry = Date().addingTimeInterval(tokens.expiresIn - 60)
+        do {
+            let tokens = try await postToken(params)
+            accessToken = tokens.accessToken
+            accessTokenExpiry = Date().addingTimeInterval(tokens.expiresIn - 60)
+        } catch let GmailSyncError.authFailed(message) {
+            // Google revokes refresh tokens for "Testing" mode apps after ~7 days
+            // (and on password changes / revocation). It reports this as
+            // "invalid_grant". Treat that as a friendly "reconnect" prompt rather
+            // than a scary auth error, and clear the dead token.
+            if message.contains("invalid_grant") {
+                disconnect()
+                throw GmailSyncError.reconnectNeeded
+            }
+            throw GmailSyncError.authFailed(message)
+        }
     }
 
     private func postToken(_ params: [String: String]) async throws -> TokenResponse {

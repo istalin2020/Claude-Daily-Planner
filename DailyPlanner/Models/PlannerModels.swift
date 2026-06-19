@@ -1046,6 +1046,10 @@ struct AppSettings: Codable {
     var gmailLastSyncEpoch: Double = 0
     /// Gmail message IDs already imported, so re-syncs never duplicate.
     var gmailProcessedMessageIDs: Set<String> = []
+    /// Epoch-seconds of when the Gmail account was last connected/reconnected.
+    /// While the Google project is in "Testing" mode, the refresh token expires
+    /// ~7 days after this, so the app uses it to show a friendly reconnect nudge.
+    var gmailConnectedEpoch: Double = 0
 
     // MARK: - Carry Forward
     /// When true, automatically carries forward the previous month's balance
@@ -1080,6 +1084,7 @@ struct AppSettings: Codable {
          gmailConnectedEmail: String = "",
          gmailLastSyncEpoch: Double = 0,
          gmailProcessedMessageIDs: Set<String> = [],
+         gmailConnectedEpoch: Double = 0,
          autoCarryForward: Bool = false,
          lastCarryForwardMonthKey: String = "") {
         self.isDarkMode = isDarkMode
@@ -1107,6 +1112,7 @@ struct AppSettings: Codable {
         self.gmailConnectedEmail = gmailConnectedEmail
         self.gmailLastSyncEpoch = gmailLastSyncEpoch
         self.gmailProcessedMessageIDs = gmailProcessedMessageIDs
+        self.gmailConnectedEpoch = gmailConnectedEpoch
         self.autoCarryForward = autoCarryForward
         self.lastCarryForwardMonthKey = lastCarryForwardMonthKey
     }
@@ -1138,6 +1144,7 @@ struct AppSettings: Codable {
         gmailConnectedEmail       = try c.decodeIfPresent(String.self,               forKey: .gmailConnectedEmail)        ?? ""
         gmailLastSyncEpoch        = try c.decodeIfPresent(Double.self,               forKey: .gmailLastSyncEpoch)         ?? 0
         gmailProcessedMessageIDs  = try c.decodeIfPresent(Set<String>.self,          forKey: .gmailProcessedMessageIDs)   ?? []
+        gmailConnectedEpoch       = try c.decodeIfPresent(Double.self,               forKey: .gmailConnectedEpoch)        ?? 0
         autoCarryForward          = try c.decodeIfPresent(Bool.self,                 forKey: .autoCarryForward)           ?? false
         lastCarryForwardMonthKey  = try c.decodeIfPresent(String.self,               forKey: .lastCarryForwardMonthKey)   ?? ""
     }

@@ -145,6 +145,8 @@ struct GmailSyncView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            reconnectReminder
+
             Button(action: sync) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.triangle.2.circlepath")
@@ -152,6 +154,15 @@ struct GmailSyncView: View {
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
                 .background(accent).foregroundColor(.white).cornerRadius(14)
+            }
+
+            Button(action: connect) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Reconnect Gmail")
+                }
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(accent)
             }
 
             Button(role: .destructive, action: disconnect) {
@@ -162,6 +173,46 @@ struct GmailSyncView: View {
         .frame(maxWidth: .infinity)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
+    }
+
+    /// A gentle heads-up that the Google "Testing" mode connection expires
+    /// weekly, so the periodic re-login isn't a surprise.
+    @ViewBuilder
+    private var reconnectReminder: some View {
+        if let days = vm.gmailDaysUntilReconnect {
+            if days <= 0 {
+                reminderBanner(
+                    icon: "exclamationmark.triangle.fill",
+                    color: .orange,
+                    title: "Reconnect needed",
+                    message: "Google signs you out weekly while the app is in test mode. Tap “Reconnect Gmail” below to sign in again, then sync."
+                )
+            } else if days <= 2 {
+                reminderBanner(
+                    icon: "clock.badge.exclamationmark.fill",
+                    color: .orange,
+                    title: days == 1 ? "Reconnect in ~1 day" : "Reconnect in ~\(days) days",
+                    message: "Google signs you out weekly in test mode. You can reconnect anytime to reset the timer."
+                )
+            }
+        }
+    }
+
+    private func reminderBanner(icon: String, color: Color, title: String, message: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).foregroundColor(color)
+                .font(.system(size: 16))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(message).font(.caption2).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(color.opacity(0.12))
+        .cornerRadius(12)
     }
 
     private var infoCard: some View {

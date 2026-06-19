@@ -777,6 +777,7 @@ class PlannerViewModel: ObservableObject {
 
     func setGmailConnected(email: String) {
         settings.gmailConnectedEmail = email
+        settings.gmailConnectedEpoch = Date().timeIntervalSince1970
         saveSettings()
     }
 
@@ -785,7 +786,25 @@ class PlannerViewModel: ObservableObject {
         settings.gmailConnectedEmail = ""
         settings.gmailLastSyncEpoch = 0
         settings.gmailProcessedMessageIDs = []
+        settings.gmailConnectedEpoch = 0
         saveSettings()
+    }
+
+    /// Number of days left before the test-mode Gmail refresh token is expected
+    /// to expire (~7 days from connection). Returns nil when not connected.
+    var gmailDaysUntilReconnect: Int? {
+        guard !settings.gmailConnectedEmail.isEmpty,
+              settings.gmailConnectedEpoch > 0 else { return nil }
+        let expiry = settings.gmailConnectedEpoch + 7 * 24 * 3600
+        let remaining = expiry - Date().timeIntervalSince1970
+        return Int(floor(remaining / (24 * 3600)))
+    }
+
+    /// True when the Gmail connection is expired or within ~2 days of expiring,
+    /// so the UI can show a gentle "reconnect soon" nudge.
+    var gmailNeedsReconnectSoon: Bool {
+        guard let days = gmailDaysUntilReconnect else { return false }
+        return days <= 2
     }
 
     func updateSavings(_ amount: Double) {
