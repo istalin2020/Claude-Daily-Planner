@@ -782,7 +782,12 @@ class PlannerViewModel: ObservableObject {
     }
 
     func gmailDisconnect() {
-        GmailSyncService.shared.disconnect()
+        // GmailSyncService is @MainActor-isolated (it drives the sign-in UI),
+        // so hop onto the main actor to clear the stored token instead of
+        // requiring every caller of this method to be actor-isolated.
+        Task { @MainActor in
+            GmailSyncService.shared.disconnect()
+        }
         settings.gmailConnectedEmail = ""
         settings.gmailLastSyncEpoch = 0
         settings.gmailProcessedMessageIDs = []
