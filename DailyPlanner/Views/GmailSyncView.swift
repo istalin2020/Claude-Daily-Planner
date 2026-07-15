@@ -238,7 +238,7 @@ struct GmailSyncView: View {
             }
             .confirmationDialog("Which period do you want to sync?",
                                 isPresented: $showSyncChoice, titleVisibility: .visible) {
-                Button("Current Month (from day 1)") {
+                Button("Current Month") {
                     startSync(monthStart: Self.currentMonthStart)
                 }
                 Button("Previous Month…") {
