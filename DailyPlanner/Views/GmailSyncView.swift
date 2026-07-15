@@ -39,6 +39,18 @@ struct GmailSyncView: View {
     @State private var selectedMonthIndex = 0
     @State private var showResetConfirm = false
 
+    /// What the user chose for each reviewed item this session, keyed by the
+    /// Gmail message ID. Lets the Back button revisit an item, show the prior
+    /// choice, and cleanly replace the saved expense (or un-skip / re-skip).
+    private struct ReviewDecision {
+        var expenseID: UUID?          // nil when the item was skipped
+        var description: String
+        var category: ExpenseCategory
+        var customLabel: String
+        var skipped: Bool
+    }
+    @State private var decisions: [String: ReviewDecision] = [:]
+
     private let accent = Color(red: 0.85, green: 0.2, blue: 0.2)   // Gmail-ish red
 
     var body: some View {
@@ -370,11 +382,25 @@ struct GmailSyncView: View {
 
                 // Actions
                 VStack(spacing: 8) {
-                    Button(action: { saveReviewItem(candidate) }) {
-                        Text(reviewIndex == reviewQueue.count - 1 ? "Save & Finish" : "Save & Next")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(accent).foregroundColor(.white).cornerRadius(14)
+                    HStack(spacing: 8) {
+                        if reviewIndex > 0 {
+                            Button(action: goBackReview) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "chevron.left")
+                                    Text("Back")
+                                }
+                                .fontWeight(.semibold)
+                                .padding(.vertical, 14).padding(.horizontal, 18)
+                                .background(Color(.secondarySystemBackground))
+                                .foregroundColor(.primary).cornerRadius(14)
+                            }
+                        }
+                        Button(action: { saveReviewItem(candidate) }) {
+                            Text(reviewIndex == reviewQueue.count - 1 ? "Save & Finish" : "Save & Next")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                                .background(accent).foregroundColor(.white).cornerRadius(14)
+                        }
                     }
                     Button(action: { skipReviewItem(candidate) }) {
                         Text("Skip this one").font(.system(size: 13, weight: .medium))
@@ -545,7 +571,7 @@ struct GmailSyncView: View {
                            color: Color(red: 0.1, green: 0.65, blue: 0.35),
                            label: "Income added", value: "\(addedIncome)")
                 summaryRow(icon: "arrow.up.circle.fill", color: .red,
-                           label: "Expenses added", value: "\(addedExpenses)")
+                           label: "Expenses added", value: "\(addedExpenses + reviewSavedCount)")
             }
             .padding(16)
             .background(Color(.secondarySystemBackground))
@@ -604,7 +630,8 @@ struct GmailSyncView: View {
         errorText = nil
         addedIncome = 0
         addedExpenses = 0
-        reviewQueue = vm.settings.gmailPendingReview
+        decisions = [:]
+        reviewQueue = reparsed(vm.settings.gmailPendingReview)
         reviewIndex = 0
         loadReviewItem()
         phase = .review
@@ -622,6 +649,7 @@ struct GmailSyncView: View {
         phase = .working
         addedIncome = 0
         addedExpenses = 0
+        decisions = [:]
         newestEpoch = vm.settings.gmailLastSyncEpoch
 
         Task {
@@ -650,11 +678,12 @@ struct GmailSyncView: View {
                                      advanceCursorTo: newestEpoch)
 
                 // Resume-safe review queue: anything still pending from an
-                // earlier interrupted review comes first, then the new items.
-                // The queue is persisted, and Save/Skip removes items one by
-                // one — so closing the app never loses unreviewed expenses.
+                // earlier interrupted review comes first (re-parsed with the
+                // latest parser), then the new items. The queue is persisted,
+                // and Save/Skip removes items one by one — so closing the app
+                // never loses unreviewed expenses.
                 var seen = Set<String>()
-                let combined = (vm.settings.gmailPendingReview + queue)
+                let combined = (reparsed(vm.settings.gmailPendingReview) + queue)
                     .filter { seen.insert($0.id).inserted }
                 vm.setGmailPendingReview(combined)
 
@@ -675,15 +704,31 @@ struct GmailSyncView: View {
 
     private func loadReviewItem() {
         guard reviewIndex < reviewQueue.count else { return }
-        let p = reviewQueue[reviewIndex].parsed
-        editDescription = p.merchant.isEmpty ? "\(p.bankName) Transaction" : p.merchant
-        selectedCategory = .other
-        selectedCustomLabel = ""
+        let c = reviewQueue[reviewIndex]
         showNewCategoryField = false
         newCategoryName = ""
+
+        // Returning to an already-decided item: show the earlier choice so
+        // the user can check it or change it.
+        if let prior = decisions[c.id] {
+            editDescription = prior.description
+            selectedCategory = prior.category
+            selectedCustomLabel = prior.customLabel
+        } else {
+            let p = c.parsed
+            editDescription = p.merchant.isEmpty ? "\(p.bankName) Transaction" : p.merchant
+            selectedCategory = .other
+            selectedCustomLabel = ""
+        }
     }
 
     private func saveReviewItem(_ c: GmailCandidate) {
+        // Re-deciding after Back: remove the previously saved expense first
+        // so the change replaces it instead of duplicating.
+        if let prior = decisions[c.id], let oldID = prior.expenseID {
+            vm.deleteExpense(byID: oldID, on: c.date)
+        }
+
         var expense = selectedCustomLabel.isEmpty
             ? vm.expense(from: c, overrideCategory: selectedCategory)
             : vm.expense(from: c, customCategoryLabel: selectedCustomLabel)
@@ -692,16 +737,36 @@ struct GmailSyncView: View {
 
         vm.addExpense(expense, on: c.date)
         vm.removeGmailPendingReview(id: c.id)
-        addedExpenses += 1
+        decisions[c.id] = ReviewDecision(expenseID: expense.id,
+                                         description: expense.description,
+                                         category: selectedCategory,
+                                         customLabel: selectedCustomLabel,
+                                         skipped: false)
         advanceReview()
     }
 
     private func skipReviewItem(_ c: GmailCandidate) {
-        // Skipped = never added and never shown again. Items neither saved
-        // nor skipped stay in the persisted pending queue and return on the
-        // next sync, so an interrupted review resumes where it left off.
+        // Skipped = never added and never shown again. If the user had saved
+        // it earlier and came Back, un-save it. Items neither saved nor
+        // skipped stay in the persisted pending queue and return next sync.
+        if let prior = decisions[c.id], let oldID = prior.expenseID {
+            vm.deleteExpense(byID: oldID, on: c.date)
+        }
         vm.removeGmailPendingReview(id: c.id)
+        decisions[c.id] = ReviewDecision(expenseID: nil,
+                                         description: editDescription,
+                                         category: selectedCategory,
+                                         customLabel: selectedCustomLabel,
+                                         skipped: true)
         advanceReview()
+    }
+
+    /// Steps back to the previous transaction so the user can check or
+    /// change the category they chose for it.
+    private func goBackReview() {
+        guard reviewIndex > 0 else { return }
+        reviewIndex -= 1
+        loadReviewItem()
     }
 
     private func advanceReview() {
@@ -710,6 +775,21 @@ struct GmailSyncView: View {
             loadReviewItem()
         } else {
             phase = .summary
+        }
+    }
+
+    /// Number of review items the user chose to save (not skip) this session.
+    private var reviewSavedCount: Int {
+        decisions.values.filter { !$0.skipped }.count
+    }
+
+    /// Re-runs the (fixed) parser over stored candidates using their raw
+    /// email text, so items persisted before a parser improvement pick up
+    /// correct descriptions, card numbers, and dates automatically.
+    private func reparsed(_ items: [GmailCandidate]) -> [GmailCandidate] {
+        items.map { c in
+            guard let fresh = BankSMSParser.parse(c.parsed.rawText) else { return c }
+            return GmailCandidate(id: c.id, date: c.date, parsed: fresh)
         }
     }
 

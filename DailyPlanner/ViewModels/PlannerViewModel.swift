@@ -716,6 +716,17 @@ class PlannerViewModel: ObservableObject {
 
     // MARK: - Gmail Expense Sync
 
+    /// Deletes an expense from a specific calendar day (not selectedDate).
+    /// Used by the Gmail review's Back button to replace an earlier decision.
+    func deleteExpense(byID id: UUID, on date: Date) {
+        let key = dateKey(for: date)
+        guard var e = entries[key] else { return }
+        e.expenses.removeAll { $0.id == id }
+        e.deletedExpenseIDs.insert(id)
+        entries[key] = e
+        objectWillChange.send()
+    }
+
     /// Adds an imported expense to the calendar day it actually occurred,
     /// rather than the currently-selected date.
     func addExpense(_ expense: Expense, on date: Date) {
@@ -1523,8 +1534,16 @@ class PlannerViewModel: ObservableObject {
             .dropFirst()
             .sink { [weak self] _ in
                 self?.saveData()
-                self?.updateWidgetData()
             }
+            .store(in: &cancellables)
+
+        // Widget refresh is EXPENSIVE (WidgetCenter.reloadAllTimelines runs on
+        // the main thread) — doing it per keystroke made typing feel laggy.
+        // Debounce so widgets refresh once, shortly after edits stop.
+        $entries
+            .dropFirst()
+            .debounce(for: .seconds(1), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.updateWidgetData() }
             .store(in: &cancellables)
 
         // Push shared task lists to CloudKit 3 seconds after any task change.
