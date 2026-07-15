@@ -341,7 +341,6 @@ struct ExpenseTrackerView: View {
                         .font(.system(size: 16))
                     Text("Expense Sync from Gmail")
                         .font(.system(size: 15, weight: .semibold))
-                    Spacer()
                     if !pro.isPro {
                         ProInlineBadge()
                     } else if pro.isPro && vm.gmailNeedsReconnectSoon {

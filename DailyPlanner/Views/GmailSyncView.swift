@@ -23,8 +23,6 @@ struct GmailSyncView: View {
     @State private var reviewQueue: [GmailCandidate] = []
     @State private var reviewIndex = 0
     @State private var newestEpoch: Double = 0
-    @State private var addedIncome = 0
-    @State private var addedExpenses = 0
 
     // Per-item review state
     @State private var editDescription = ""
@@ -48,6 +46,7 @@ struct GmailSyncView: View {
         var category: ExpenseCategory
         var customLabel: String
         var skipped: Bool
+        var isIncome: Bool
     }
     @State private var decisions: [String: ReviewDecision] = [:]
 
@@ -323,11 +322,11 @@ struct GmailSyncView: View {
 
     private var infoCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Credits are added as income", systemImage: "arrow.down.circle.fill")
+            Label("Credits are saved as income, debits as expenses", systemImage: "arrow.up.arrow.down.circle.fill")
                 .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
-            Label("Debits are added as categorized expenses", systemImage: "arrow.up.circle.fill")
-                .foregroundColor(.red)
-            Label("Unknown categories are asked one by one", systemImage: "questionmark.circle.fill")
+            Label("Every transaction is shown — you choose add or skip", systemImage: "checkmark.circle.fill")
+                .foregroundColor(.blue)
+            Label("Closing mid-review resumes where you left off", systemImage: "arrow.uturn.forward.circle.fill")
                 .foregroundColor(.orange)
         }
         .font(.system(size: 12, weight: .medium))
@@ -352,17 +351,21 @@ struct GmailSyncView: View {
     // MARK: - Review wizard
 
     private var reviewView: some View {
-        VStack(spacing: 0) {
+        let isCredit = reviewIndex < reviewQueue.count && reviewQueue[reviewIndex].parsed.isCredit
+
+        return VStack(spacing: 0) {
             // Progress
             VStack(spacing: 6) {
                 HStack {
                     Text("Review \(reviewIndex + 1) of \(reviewQueue.count)")
                         .font(.system(size: 13, weight: .semibold))
                     Spacer()
-                    Text("Unknown category")
-                        .font(.caption2).foregroundColor(.orange)
+                    Text(isCredit ? "Income (Credit)" : "Expense (Debit)")
+                        .font(.caption2)
+                        .foregroundColor(isCredit ? Color(red: 0.1, green: 0.65, blue: 0.35) : .orange)
                         .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(Color.orange.opacity(0.15)).cornerRadius(8)
+                        .background((isCredit ? Color(red: 0.1, green: 0.65, blue: 0.35) : Color.orange).opacity(0.15))
+                        .cornerRadius(8)
                 }
                 ProgressView(value: Double(reviewIndex), total: Double(max(reviewQueue.count, 1)))
                     .tint(accent)
@@ -375,7 +378,10 @@ struct GmailSyncView: View {
                     VStack(spacing: 16) {
                         transactionSummaryCard(candidate)
                         descriptionEditor
-                        categoryPicker
+                        // Income has no category — only debits pick one.
+                        if !isCredit {
+                            categoryPicker
+                        }
                     }
                     .padding(.horizontal, 16).padding(.top, 4)
                 }
@@ -455,8 +461,9 @@ struct GmailSyncView: View {
                 Text("Amount").font(.caption).foregroundColor(.secondary)
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(sym)\(String(format: "%.2f", converted ?? p.amount))")
-                        .font(.system(size: 20, weight: .bold)).foregroundColor(.red)
+                    Text("\(p.isCredit ? "+" : "")\(sym)\(String(format: "%.2f", converted ?? p.amount))")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(p.isCredit ? Color(red: 0.1, green: 0.65, blue: 0.35) : .red)
                     if let converted = converted {
                         Text("\(p.currencyDetected) \(String(format: "%.2f", p.amount)) → \(sym)\(String(format: "%.2f", converted))")
                             .font(.caption2).foregroundColor(.secondary)
@@ -569,9 +576,9 @@ struct GmailSyncView: View {
             VStack(spacing: 10) {
                 summaryRow(icon: "arrow.down.circle.fill",
                            color: Color(red: 0.1, green: 0.65, blue: 0.35),
-                           label: "Income added", value: "\(addedIncome)")
+                           label: "Income added", value: "\(reviewSavedIncome)")
                 summaryRow(icon: "arrow.up.circle.fill", color: .red,
-                           label: "Expenses added", value: "\(addedExpenses + reviewSavedCount)")
+                           label: "Expenses added", value: "\(reviewSavedExpenses)")
             }
             .padding(16)
             .background(Color(.secondarySystemBackground))
@@ -628,8 +635,6 @@ struct GmailSyncView: View {
     /// without hitting Gmail again.
     private func resumePendingReview() {
         errorText = nil
-        addedIncome = 0
-        addedExpenses = 0
         decisions = [:]
         reviewQueue = reparsed(vm.settings.gmailPendingReview)
         reviewIndex = 0
@@ -647,8 +652,6 @@ struct GmailSyncView: View {
         errorText = nil
         statusText = "Reading \(monthLabel(monthStart)) bank emails…"
         phase = .working
-        addedIncome = 0
-        addedExpenses = 0
         decisions = [:]
         newestEpoch = vm.settings.gmailLastSyncEpoch
 
@@ -660,16 +663,12 @@ struct GmailSyncView: View {
                     alreadyProcessed: vm.settings.gmailProcessedMessageIDs
                 )
 
+                // EVERY transaction — credit and debit alike — goes through
+                // the review screen so the user decides whether to include it.
                 var queue: [GmailCandidate] = []
                 for c in candidates {
                     newestEpoch = max(newestEpoch, c.date.timeIntervalSince1970)
-                    if vm.gmailCanAutoAdd(c) {
-                        let expense = vm.expense(from: c)
-                        vm.addExpense(expense, on: c.date)
-                        if expense.isIncome { addedIncome += 1 } else { addedExpenses += 1 }
-                    } else {
-                        queue.append(c)
-                    }
+                    queue.append(c)
                 }
 
                 // Advance the cursor NOW, covering every email seen in this
@@ -716,7 +715,9 @@ struct GmailSyncView: View {
             selectedCustomLabel = prior.customLabel
         } else {
             let p = c.parsed
-            editDescription = p.merchant.isEmpty ? "\(p.bankName) Transaction" : p.merchant
+            editDescription = p.merchant.isEmpty
+                ? "\(p.bankName) \(p.isCredit ? "Credit" : "Transaction")"
+                : p.merchant
             selectedCategory = .other
             selectedCustomLabel = ""
         }
@@ -729,9 +730,15 @@ struct GmailSyncView: View {
             vm.deleteExpense(byID: oldID, on: c.date)
         }
 
-        var expense = selectedCustomLabel.isEmpty
-            ? vm.expense(from: c, overrideCategory: selectedCategory)
-            : vm.expense(from: c, customCategoryLabel: selectedCustomLabel)
+        // Credits are saved as income (no category); debits use the picker.
+        var expense: Expense
+        if c.parsed.isCredit {
+            expense = vm.expense(from: c)
+        } else {
+            expense = selectedCustomLabel.isEmpty
+                ? vm.expense(from: c, overrideCategory: selectedCategory)
+                : vm.expense(from: c, customCategoryLabel: selectedCustomLabel)
+        }
         let trimmed = editDescription.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty { expense.description = trimmed }
 
@@ -741,7 +748,8 @@ struct GmailSyncView: View {
                                          description: expense.description,
                                          category: selectedCategory,
                                          customLabel: selectedCustomLabel,
-                                         skipped: false)
+                                         skipped: false,
+                                         isIncome: c.parsed.isCredit)
         advanceReview()
     }
 
@@ -757,7 +765,8 @@ struct GmailSyncView: View {
                                          description: editDescription,
                                          category: selectedCategory,
                                          customLabel: selectedCustomLabel,
-                                         skipped: true)
+                                         skipped: true,
+                                         isIncome: c.parsed.isCredit)
         advanceReview()
     }
 
@@ -778,9 +787,14 @@ struct GmailSyncView: View {
         }
     }
 
-    /// Number of review items the user chose to save (not skip) this session.
-    private var reviewSavedCount: Int {
-        decisions.values.filter { !$0.skipped }.count
+    /// Income items the user chose to save (not skip) this session.
+    private var reviewSavedIncome: Int {
+        decisions.values.filter { !$0.skipped && $0.isIncome }.count
+    }
+
+    /// Expense items the user chose to save (not skip) this session.
+    private var reviewSavedExpenses: Int {
+        decisions.values.filter { !$0.skipped && !$0.isIncome }.count
     }
 
     /// Re-runs the (fixed) parser over stored candidates using their raw
