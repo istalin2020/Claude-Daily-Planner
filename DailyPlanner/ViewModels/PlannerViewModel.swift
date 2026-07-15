@@ -742,14 +742,15 @@ class PlannerViewModel: ObservableObject {
 
         if p.isCredit {
             return Expense(amount: amount, category: .other, description: desc,
-                           isIncome: true, isFromSMS: true)
+                           isIncome: true, isFromSMS: true, isFromGmail: true)
         } else {
             let useCustom = !customCategoryLabel.isEmpty
             return Expense(amount: amount,
                            category: useCustom ? .other : (overrideCategory ?? p.category),
                            customCategoryLabel: useCustom ? customCategoryLabel : "",
                            description: desc,
-                           isFromSMS: true)
+                           isFromSMS: true,
+                           isFromGmail: true)
         }
     }
 
@@ -772,6 +773,27 @@ class PlannerViewModel: ObservableObject {
         if let e = newestEpoch, e > settings.gmailLastSyncEpoch {
             settings.gmailLastSyncEpoch = e
         }
+        saveSettings()
+    }
+
+    /// Removes every bank-imported expense (Gmail sync and pasted SMS, all
+    /// months — includes items imported before the isFromGmail flag existed)
+    /// and clears the Gmail sync history, so the user can start over with a
+    /// completely fresh sync. Manually-typed expenses are untouched.
+    func resetGmailSyncData() {
+        var updated = entries
+        for (key, entry) in updated {
+            var e = entry
+            let importedIDs = e.expenses.filter { $0.isFromGmail || $0.isFromSMS }.map(\.id)
+            guard !importedIDs.isEmpty else { continue }
+            e.expenses.removeAll { $0.isFromGmail || $0.isFromSMS }
+            e.deletedExpenseIDs.formUnion(importedIDs)
+            updated[key] = e
+        }
+        entries = updated
+        settings.gmailLastSyncEpoch = 0
+        settings.gmailProcessedMessageIDs = []
+        settings.gmailPendingReview = []
         saveSettings()
     }
 

@@ -172,8 +172,10 @@ struct BankSMSParser {
     private static func extractMerchant(from text: String) -> String {
         let patterns: [(String, Int)] = [
             // Bank emails often carry an explicit "Description : <merchant>" line —
-            // always the most reliable source, so try it first.
-            (#"(?i)description\s*[:\-]\s*([^\n\r]+)"#, 1),
+            // always the most reliable source, so try it first. Stop at the next
+            // "Label :" so single-line (HTML-flattened) bodies don't leak through.
+            (#"(?i)description\s*[:\-]\s*(.+?)\s+(?:amount|date\s*/?\s*time|transaction\s+country|currency|balance|avl|available|card|account)\s*[:\-]"#, 1),
+            (#"(?i)description\s*[:\-]\s*([^\n\r]{2,40})"#, 1),
             (#"(?:POS|pos)[:\s]+(.+?)(?:\.|,|$|\n)"#, 1),
             (#"(?:UPI)[:\s/-]+(.+?)(?:\.|,|$|\n|Ref)"#, 1),
             (#"(?:to|at|for|towards)\s+([A-Z][A-Za-z0-9 &'.@-]{2,30})"#, 1),
@@ -292,10 +294,13 @@ struct BankSMSParser {
 
     // MARK: - Transaction date/time
 
-    /// Pulls the raw "Date/Time : 13 JUL 26 23:11" style line from the message.
+    /// Pulls the raw "Date/Time : 13 JUL 26 23:11" style value from the message.
+    /// Captures only a date/time-shaped token — never free text — so it stays
+    /// correct even when the whole email body is flattened onto one line.
     private static func extractDateTimeText(from text: String) -> String {
         let patterns = [
-            #"(?i)date\s*/?\s*time\s*[:\-]\s*([^\n\r]+)"#,
+            // "13 JUL 26 23:11", "13-Jul-2026 23:11:05", "13/07/26, 23:11"
+            #"(?i)date\s*/?\s*time\s*[:\-]\s*(\d{1,2}[ \-/](?:[A-Za-z]{3,9}|\d{1,2})[ \-/]\d{2,4}(?:[ ,]*(?:at\s+)?\d{1,2}:\d{2}(?::\d{2})?)?)"#,
             #"(?i)\bon\s+(\d{1,2}[-/][A-Za-z0-9]{2,3}[-/]\d{2,4}(?:[ ,]+\d{1,2}:\d{2}(?::\d{2})?)?)"#,
         ]
         for pattern in patterns {

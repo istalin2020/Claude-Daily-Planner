@@ -33,6 +33,12 @@ struct GmailSyncView: View {
     @State private var showNewCategoryField = false
     @State private var newCategoryName = ""
 
+    // Sync-period selection & reset
+    @State private var showSyncChoice = false
+    @State private var showMonthPicker = false
+    @State private var selectedMonthIndex = 0
+    @State private var showResetConfirm = false
+
     private let accent = Color(red: 0.85, green: 0.2, blue: 0.2)   // Gmail-ish red
 
     var body: some View {
@@ -52,7 +58,59 @@ struct GmailSyncView: View {
                     Button(phase == .summary ? "Done" : "Close") { finishAndDismiss() }
                 }
             }
+            .sheet(isPresented: $showMonthPicker) { monthPickerSheet }
         }
+    }
+
+    // MARK: - Month selection
+
+    /// First moment of the current calendar month.
+    private static var currentMonthStart: Date {
+        let cal = Calendar.current
+        return cal.date(from: cal.dateComponents([.year, .month], from: Date())) ?? Date()
+    }
+
+    /// The last 12 previous months (newest first), for the wheel picker.
+    private var previousMonths: [Date] {
+        let cal = Calendar.current
+        return (1...12).compactMap { cal.date(byAdding: .month, value: -$0, to: Self.currentMonthStart) }
+    }
+
+    private func monthLabel(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMMM yyyy"
+        return fmt.string(from: date)
+    }
+
+    private var monthPickerSheet: some View {
+        VStack(spacing: 16) {
+            Text("Choose a month to sync")
+                .font(.headline)
+                .padding(.top, 20)
+
+            Picker("Month", selection: $selectedMonthIndex) {
+                ForEach(Array(previousMonths.enumerated()), id: \.offset) { idx, month in
+                    Text(monthLabel(month)).tag(idx)
+                }
+            }
+            .pickerStyle(.wheel)
+
+            Button {
+                showMonthPicker = false
+                startSync(monthStart: previousMonths[selectedMonthIndex])
+            } label: {
+                Text("Sync \(monthLabel(previousMonths[selectedMonthIndex]))")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(accent).foregroundColor(.white).cornerRadius(14)
+            }
+            .padding(.horizontal, 24)
+
+            Button("Cancel") { showMonthPicker = false }
+                .font(.system(size: 13)).foregroundColor(.secondary)
+                .padding(.bottom, 16)
+        }
+        .presentationDetents([.medium])
     }
 
     // MARK: - Home
@@ -158,13 +216,24 @@ struct GmailSyncView: View {
                 }
             }
 
-            Button(action: sync) {
+            Button(action: { showSyncChoice = true }) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                     Text("Sync Now").fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
                 .background(accent).foregroundColor(.white).cornerRadius(14)
+            }
+            .confirmationDialog("Which period do you want to sync?",
+                                isPresented: $showSyncChoice, titleVisibility: .visible) {
+                Button("Current Month (from day 1)") {
+                    startSync(monthStart: Self.currentMonthStart)
+                }
+                Button("Previous Month…") {
+                    selectedMonthIndex = 0
+                    showMonthPicker = true
+                }
+                Button("Cancel", role: .cancel) {}
             }
 
             Button(action: connect) {
@@ -178,6 +247,20 @@ struct GmailSyncView: View {
 
             Button(role: .destructive, action: disconnect) {
                 Text("Disconnect").font(.system(size: 13, weight: .medium))
+            }
+
+            Button(role: .destructive, action: { showResetConfirm = true }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "trash")
+                    Text("Reset Synced Expenses")
+                }
+                .font(.system(size: 13, weight: .medium))
+            }
+            .alert("Reset Synced Expenses?", isPresented: $showResetConfirm) {
+                Button("Reset", role: .destructive) { vm.resetGmailSyncData() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Removes ALL bank-imported expenses (Gmail sync and pasted SMS) from every month, and clears the sync history so you can sync fresh. Manually-entered expenses are kept.")
             }
         }
         .padding(16)
@@ -527,9 +610,15 @@ struct GmailSyncView: View {
         phase = .review
     }
 
-    private func sync() {
+    /// Syncs one calendar month of bank emails, from its day 1 up to the end
+    /// of the month (or "now" for the current month). Message-ID de-dup means
+    /// re-syncing the same month never creates duplicate expenses.
+    private func startSync(monthStart: Date) {
+        let cal = Calendar.current
+        let monthEnd = cal.date(byAdding: .month, value: 1, to: monthStart) ?? Date()
+
         errorText = nil
-        statusText = "Reading bank emails…"
+        statusText = "Reading \(monthLabel(monthStart)) bank emails…"
         phase = .working
         addedIncome = 0
         addedExpenses = 0
@@ -538,7 +627,8 @@ struct GmailSyncView: View {
         Task {
             do {
                 let candidates = try await gmail.fetchTransactions(
-                    sinceEpoch: vm.settings.gmailLastSyncEpoch,
+                    from: monthStart,
+                    to: min(monthEnd, Date()),
                     alreadyProcessed: vm.settings.gmailProcessedMessageIDs
                 )
 

@@ -116,20 +116,20 @@ final class GmailSyncService: NSObject, ObservableObject {
         accessTokenExpiry = .distantPast
     }
 
-    // MARK: Fetch transactions since a given epoch
+    // MARK: Fetch transactions within a date window
 
-    /// Reads bank emails received after `sinceEpoch` (0 = last 90 days on first run),
-    /// parses each into a transaction candidate, and skips already-processed IDs.
-    func fetchTransactions(sinceEpoch: Double,
+    /// Reads bank emails received within [startDate, endDate) — typically one
+    /// calendar month — parses each into a transaction candidate, and skips
+    /// already-processed IDs so re-syncing the same month never duplicates.
+    func fetchTransactions(from startDate: Date,
+                           to endDate: Date,
                            alreadyProcessed: Set<String>) async throws -> [GmailCandidate] {
         try await ensureAccessToken()
 
-        // First sync: look back 90 days. Later syncs: only new mail.
-        let afterEpoch = sinceEpoch > 0
-            ? Int(sinceEpoch)
-            : Int(Date().addingTimeInterval(-90 * 24 * 3600).timeIntervalSince1970)
+        let after  = Int(startDate.timeIntervalSince1970)
+        let before = Int(endDate.timeIntervalSince1970)
 
-        let query = "after:\(afterEpoch) (debited OR credited OR debit OR credit OR spent OR \"transaction\" OR purchase OR withdrawn) (account OR \"a/c\" OR card OR bank OR balance)"
+        let query = "after:\(after) before:\(before) (debited OR credited OR debit OR credit OR spent OR \"transaction\" OR purchase OR withdrawn) (account OR \"a/c\" OR card OR bank OR balance)"
 
         let ids = try await listMessageIDs(query: query)
         var candidates: [GmailCandidate] = []
@@ -355,14 +355,20 @@ final class GmailSyncService: NSObject, ObservableObject {
     }
 
     private static func stripHTML(_ html: String) -> String {
-        let noTags = html.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+        // Convert structural tags to newlines BEFORE stripping, so each
+        // "Label : value" line of the bank email stays on its own line —
+        // the parser's line-bounded regexes depend on this.
+        var s = html.replacingOccurrences(of: "(?i)<br\\s*/?>", with: "\n", options: .regularExpression)
+        s = s.replacingOccurrences(of: "(?i)</(?:p|div|tr|li|table|h[1-6])>", with: "\n", options: .regularExpression)
+        let noTags = s.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
         return noTags
             .replacingOccurrences(of: "&nbsp;", with: " ")
             .replacingOccurrences(of: "&amp;",  with: "&")
             .replacingOccurrences(of: "&lt;",   with: "<")
             .replacingOccurrences(of: "&gt;",   with: ">")
             .replacingOccurrences(of: "&#39;",  with: "'")
-            .replacingOccurrences(of: "\\s+",   with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "[ \\t]+", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "\\s*\\n\\s*", with: "\n", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

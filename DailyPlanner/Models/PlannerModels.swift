@@ -390,6 +390,7 @@ struct Expense: Identifiable, Codable, Equatable {
     var isDeposit: Bool = false  // savings
     var isIncome: Bool = false   // income entry
     var isFromSMS: Bool = false  // auto-imported from bank SMS
+    var isFromGmail: Bool = false // imported by Gmail Expense Sync (resettable)
 
     /// The human-readable category name to display (custom label takes priority).
     var displayCategory: String {
@@ -403,7 +404,8 @@ struct Expense: Identifiable, Codable, Equatable {
          description: String,
          isDeposit: Bool = false,
          isIncome: Bool = false,
-         isFromSMS: Bool = false) {
+         isFromSMS: Bool = false,
+         isFromGmail: Bool = false) {
         self.id = id
         self.amount = amount
         self.category = category
@@ -412,6 +414,7 @@ struct Expense: Identifiable, Codable, Equatable {
         self.isDeposit = isDeposit
         self.isIncome = isIncome
         self.isFromSMS = isFromSMS
+        self.isFromGmail = isFromGmail
     }
 
     init(from decoder: Decoder) throws {
@@ -424,6 +427,7 @@ struct Expense: Identifiable, Codable, Equatable {
         isDeposit           = try c.decodeIfPresent(Bool.self,            forKey: .isDeposit)           ?? false
         isIncome            = try c.decodeIfPresent(Bool.self,            forKey: .isIncome)            ?? false
         isFromSMS           = try c.decodeIfPresent(Bool.self,            forKey: .isFromSMS)           ?? false
+        isFromGmail         = try c.decodeIfPresent(Bool.self,            forKey: .isFromGmail)         ?? false
     }
 }
 
