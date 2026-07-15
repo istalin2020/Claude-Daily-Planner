@@ -39,7 +39,9 @@ enum GmailConfig {
 }
 
 // MARK: - A single transaction candidate pulled from Gmail
-struct GmailCandidate: Identifiable {
+/// Codable so unreviewed candidates can be persisted and the review
+/// resumed exactly where the user left off, even after an app restart.
+struct GmailCandidate: Identifiable, Codable {
     let id: String          // Gmail message ID (used for de-duplication)
     let date: Date          // when the bank email was received
     let parsed: ParsedTransaction

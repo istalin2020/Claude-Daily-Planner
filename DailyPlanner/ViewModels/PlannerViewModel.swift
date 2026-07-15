@@ -775,6 +775,19 @@ class PlannerViewModel: ObservableObject {
         saveSettings()
     }
 
+    /// Persists the queue of not-yet-reviewed Gmail transactions so a review
+    /// interrupted by closing the app resumes exactly where it stopped.
+    func setGmailPendingReview(_ items: [GmailCandidate]) {
+        settings.gmailPendingReview = items
+        saveSettings()
+    }
+
+    /// Removes one reviewed (saved or skipped) item from the persisted queue.
+    func removeGmailPendingReview(id: String) {
+        settings.gmailPendingReview.removeAll { $0.id == id }
+        saveSettings()
+    }
+
     func setGmailConnected(email: String) {
         settings.gmailConnectedEmail = email
         settings.gmailConnectedEpoch = Date().timeIntervalSince1970
@@ -792,6 +805,7 @@ class PlannerViewModel: ObservableObject {
         settings.gmailLastSyncEpoch = 0
         settings.gmailProcessedMessageIDs = []
         settings.gmailConnectedEpoch = 0
+        settings.gmailPendingReview = []
         saveSettings()
     }
 

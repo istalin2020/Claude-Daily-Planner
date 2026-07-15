@@ -1,6 +1,6 @@
 import Foundation
 
-struct ParsedTransaction {
+struct ParsedTransaction: Codable {
     let amount: Double
     let isCredit: Bool
     let merchant: String
@@ -19,7 +19,7 @@ struct ParsedTransaction {
     /// Empty when the message has no explicit date/time line.
     let txnDateTime: String
 
-    enum ConfidenceLevel {
+    enum ConfidenceLevel: String, Codable {
         case high
         case low
     }

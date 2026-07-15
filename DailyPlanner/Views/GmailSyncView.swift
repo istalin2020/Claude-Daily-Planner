@@ -146,6 +146,18 @@ struct GmailSyncView: View {
 
             reconnectReminder
 
+            if !vm.settings.gmailPendingReview.isEmpty {
+                Button(action: resumePendingReview) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.uturn.forward.circle.fill")
+                        Text("Continue Review (\(vm.settings.gmailPendingReview.count) pending)")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(Color.orange).foregroundColor(.white).cornerRadius(14)
+                }
+            }
+
             Button(action: sync) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.triangle.2.circlepath")
@@ -503,6 +515,18 @@ struct GmailSyncView: View {
         errorText = nil
     }
 
+    /// Resumes an interrupted review directly from the persisted queue,
+    /// without hitting Gmail again.
+    private func resumePendingReview() {
+        errorText = nil
+        addedIncome = 0
+        addedExpenses = 0
+        reviewQueue = vm.settings.gmailPendingReview
+        reviewIndex = 0
+        loadReviewItem()
+        phase = .review
+    }
+
     private func sync() {
         errorText = nil
         statusText = "Reading bank emails…"
@@ -530,17 +554,24 @@ struct GmailSyncView: View {
                     }
                 }
 
-                // Advance the cursor NOW, covering every email seen in this sync.
-                // Whatever the user does next (save, skip, or close mid-review),
-                // the next sync only brings in strictly newer emails — nothing
-                // from this batch is ever shown again.
+                // Advance the cursor NOW, covering every email seen in this
+                // sync — the next sync fetches only strictly newer emails.
                 vm.finalizeGmailSync(handledIDs: candidates.map(\.id),
                                      advanceCursorTo: newestEpoch)
 
-                if queue.isEmpty {
+                // Resume-safe review queue: anything still pending from an
+                // earlier interrupted review comes first, then the new items.
+                // The queue is persisted, and Save/Skip removes items one by
+                // one — so closing the app never loses unreviewed expenses.
+                var seen = Set<String>()
+                let combined = (vm.settings.gmailPendingReview + queue)
+                    .filter { seen.insert($0.id).inserted }
+                vm.setGmailPendingReview(combined)
+
+                if combined.isEmpty {
                     phase = .summary
                 } else {
-                    reviewQueue = queue
+                    reviewQueue = combined
                     reviewIndex = 0
                     loadReviewItem()
                     phase = .review
@@ -570,13 +601,16 @@ struct GmailSyncView: View {
         if !trimmed.isEmpty { expense.description = trimmed }
 
         vm.addExpense(expense, on: c.date)
+        vm.removeGmailPendingReview(id: c.id)
         addedExpenses += 1
         advanceReview()
     }
 
     private func skipReviewItem(_ c: GmailCandidate) {
-        // Skipped = never added, and (because the whole batch was already
-        // marked processed at fetch time) never shown again on future syncs.
+        // Skipped = never added and never shown again. Items neither saved
+        // nor skipped stay in the persisted pending queue and return on the
+        // next sync, so an interrupted review resumes where it left off.
+        vm.removeGmailPendingReview(id: c.id)
         advanceReview()
     }
 
@@ -602,9 +636,9 @@ struct GmailSyncView: View {
     }
 
     private func finishAndDismiss() {
-        // The sync cursor was already advanced when the emails were fetched,
-        // so closing at any point simply drops the unreviewed items — they
-        // are treated as skipped and won't be shown again.
+        // Closing mid-review is safe: unreviewed items remain in the
+        // persisted pending queue and are offered again next time, so the
+        // user never loses track of their expenses.
         dismiss()
     }
 
