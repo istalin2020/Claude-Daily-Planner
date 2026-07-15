@@ -22,7 +22,6 @@ struct GmailSyncView: View {
     // Sync results
     @State private var reviewQueue: [GmailCandidate] = []
     @State private var reviewIndex = 0
-    @State private var handledIDs: [String] = []
     @State private var newestEpoch: Double = 0
     @State private var addedIncome = 0
     @State private var addedExpenses = 0
@@ -305,9 +304,32 @@ struct GmailSyncView: View {
                 Image(systemName: "building.columns.fill").foregroundColor(.secondary)
                 Text(p.bankName).font(.system(size: 13, weight: .semibold))
                 Spacer()
-                Text(c.date, style: .date).font(.caption).foregroundColor(.secondary)
+                Text(c.date.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption).foregroundColor(.secondary)
             }
             Divider()
+
+            // Card / account / date details from the email, so the user can
+            // recognize which of their cards this transaction belongs to and
+            // decide whether to add or skip it.
+            VStack(spacing: 6) {
+                if !p.cardNumber.isEmpty {
+                    detailRow(icon: "creditcard.fill", label: "Card", value: p.cardNumber)
+                }
+                if !p.accountLast4.isEmpty {
+                    detailRow(icon: "number.circle.fill", label: "Account", value: "xxxx\(p.accountLast4)")
+                }
+                if !p.txnDateTime.isEmpty {
+                    detailRow(icon: "clock.fill", label: "Date/Time", value: p.txnDateTime)
+                }
+                if !p.merchant.isEmpty {
+                    detailRow(icon: "text.alignleft", label: "Details", value: p.merchant)
+                }
+            }
+            if !p.cardNumber.isEmpty || !p.accountLast4.isEmpty || !p.txnDateTime.isEmpty || !p.merchant.isEmpty {
+                Divider()
+            }
+
             HStack {
                 Text("Amount").font(.caption).foregroundColor(.secondary)
                 Spacer()
@@ -324,6 +346,22 @@ struct GmailSyncView: View {
         .padding(16)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
+    }
+
+    private func detailRow(icon: String, label: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .frame(width: 16)
+            Text(label)
+                .font(.caption).foregroundColor(.secondary)
+                .frame(width: 70, alignment: .leading)
+            Text(value)
+                .font(.system(size: 12, weight: .medium))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .multilineTextAlignment(.trailing)
+        }
     }
 
     private var descriptionEditor: some View {
@@ -419,7 +457,7 @@ struct GmailSyncView: View {
             .cornerRadius(16)
             .padding(.horizontal, 24)
 
-            Text("Next sync will continue from the most recent email.")
+            Text("Next sync will only bring in new emails — saved and skipped items won't appear again.")
                 .font(.caption).foregroundColor(.secondary)
                 .multilineTextAlignment(.center).padding(.horizontal, 24)
             Spacer()
@@ -471,7 +509,6 @@ struct GmailSyncView: View {
         phase = .working
         addedIncome = 0
         addedExpenses = 0
-        handledIDs = []
         newestEpoch = vm.settings.gmailLastSyncEpoch
 
         Task {
@@ -487,15 +524,20 @@ struct GmailSyncView: View {
                     if vm.gmailCanAutoAdd(c) {
                         let expense = vm.expense(from: c)
                         vm.addExpense(expense, on: c.date)
-                        handledIDs.append(c.id)
                         if expense.isIncome { addedIncome += 1 } else { addedExpenses += 1 }
                     } else {
                         queue.append(c)
                     }
                 }
 
+                // Advance the cursor NOW, covering every email seen in this sync.
+                // Whatever the user does next (save, skip, or close mid-review),
+                // the next sync only brings in strictly newer emails — nothing
+                // from this batch is ever shown again.
+                vm.finalizeGmailSync(handledIDs: candidates.map(\.id),
+                                     advanceCursorTo: newestEpoch)
+
                 if queue.isEmpty {
-                    vm.finalizeGmailSync(handledIDs: handledIDs, advanceCursorTo: newestEpoch)
                     phase = .summary
                 } else {
                     reviewQueue = queue
@@ -528,14 +570,13 @@ struct GmailSyncView: View {
         if !trimmed.isEmpty { expense.description = trimmed }
 
         vm.addExpense(expense, on: c.date)
-        handledIDs.append(c.id)
         addedExpenses += 1
         advanceReview()
     }
 
     private func skipReviewItem(_ c: GmailCandidate) {
-        // Mark processed so it isn't offered again, but don't add it.
-        handledIDs.append(c.id)
+        // Skipped = never added, and (because the whole batch was already
+        // marked processed at fetch time) never shown again on future syncs.
         advanceReview()
     }
 
@@ -544,7 +585,6 @@ struct GmailSyncView: View {
             reviewIndex += 1
             loadReviewItem()
         } else {
-            vm.finalizeGmailSync(handledIDs: handledIDs, advanceCursorTo: newestEpoch)
             phase = .summary
         }
     }
@@ -562,11 +602,9 @@ struct GmailSyncView: View {
     }
 
     private func finishAndDismiss() {
-        // If the user closes mid-review, persist what they've handled so far
-        // without advancing the cursor — pending items return next sync.
-        if phase == .review && !handledIDs.isEmpty {
-            vm.finalizeGmailSync(handledIDs: handledIDs, advanceCursorTo: nil)
-        }
+        // The sync cursor was already advanced when the emails were fetched,
+        // so closing at any point simply drops the unreviewed items — they
+        // are treated as skipped and won't be shown again.
         dismiss()
     }
 

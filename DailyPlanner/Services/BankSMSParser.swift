@@ -12,6 +12,12 @@ struct ParsedTransaction {
     let currencyDetected: String
     let confidenceType: ConfidenceLevel
     let confidenceCategory: ConfidenceLevel
+    /// Masked card number exactly as it appears in the message,
+    /// e.g. "4228**** ****2787". Empty when the message has none.
+    let cardNumber: String
+    /// Raw "Date/Time" text from the message, e.g. "13 JUL 26 23:11".
+    /// Empty when the message has no explicit date/time line.
+    let txnDateTime: String
 
     enum ConfidenceLevel {
         case high
@@ -63,7 +69,9 @@ struct BankSMSParser {
             rawText: trimmed,
             currencyDetected: currency,
             confidenceType: typeConfidence,
-            confidenceCategory: catConfidence
+            confidenceCategory: catConfidence,
+            cardNumber: extractCardNumber(from: trimmed),
+            txnDateTime: extractDateTimeText(from: trimmed)
         )
     }
 
@@ -163,6 +171,9 @@ struct BankSMSParser {
 
     private static func extractMerchant(from text: String) -> String {
         let patterns: [(String, Int)] = [
+            // Bank emails often carry an explicit "Description : <merchant>" line —
+            // always the most reliable source, so try it first.
+            (#"(?i)description\s*[:\-]\s*([^\n\r]+)"#, 1),
             (#"(?:POS|pos)[:\s]+(.+?)(?:\.|,|$|\n)"#, 1),
             (#"(?:UPI)[:\s/-]+(.+?)(?:\.|,|$|\n|Ref)"#, 1),
             (#"(?:to|at|for|towards)\s+([A-Z][A-Za-z0-9 &'.@-]{2,30})"#, 1),
@@ -246,15 +257,52 @@ struct BankSMSParser {
 
     private static func extractAccount(from text: String) -> String {
         let patterns = [
-            #"(?:a/c|acct|account)\s*[:#]?\s*\d*[Xx*]+(\d{4})"#,
+            #"(?i)(?:a/c|acct|account)(?:\s*(?:number|no\.?))?\s*[:#]?\s*\d*[Xx*]+(\d{4})"#,
             #"(?:XX|xx|\*\*)\d*(\d{4})"#,
-            #"(?:a/c|acct|account)\s*(\d{4})"#,
+            #"(?i)(?:a/c|acct|account)(?:\s*(?:number|no\.?))?\s*[:#]?\s*(\d{4})"#,
         ]
         for pattern in patterns {
             if let regex = try? NSRegularExpression(pattern: pattern),
                let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)),
                let range = Range(match.range(at: 1), in: text) {
                 return String(text[range])
+            }
+        }
+        return ""
+    }
+
+    // MARK: - Card number
+
+    /// Pulls the masked card number as printed in the message,
+    /// e.g. "Your Debit card number 4228**** ****2787" → "4228**** ****2787".
+    private static func extractCardNumber(from text: String) -> String {
+        let patterns = [
+            #"(?i)card\s*(?:number|no\.?)?\s*[:#]?\s*((?:[0-9Xx\*]{4}[\s\-]?){2,4}[0-9]{2,4})"#,
+            #"(?i)card\s+ending\s+(?:with|in)\s+[Xx\*]*(\d{4})"#,
+        ]
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)),
+               let range = Range(match.range(at: 1), in: text) {
+                return String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        return ""
+    }
+
+    // MARK: - Transaction date/time
+
+    /// Pulls the raw "Date/Time : 13 JUL 26 23:11" style line from the message.
+    private static func extractDateTimeText(from text: String) -> String {
+        let patterns = [
+            #"(?i)date\s*/?\s*time\s*[:\-]\s*([^\n\r]+)"#,
+            #"(?i)\bon\s+(\d{1,2}[-/][A-Za-z0-9]{2,3}[-/]\d{2,4}(?:[ ,]+\d{1,2}:\d{2}(?::\d{2})?)?)"#,
+        ]
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)),
+               let range = Range(match.range(at: 1), in: text) {
+                return String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
         return ""
