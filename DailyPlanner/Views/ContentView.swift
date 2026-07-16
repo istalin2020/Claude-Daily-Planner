@@ -20,6 +20,9 @@ struct ContentView: View {
 
             // Main Content
             ZStack {
+                // Themed wash behind each section (office / health / finance…)
+                ThemedSectionBackdrop(section: vm.selectedSection)
+
                 currentSectionView
                     .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
@@ -44,7 +47,7 @@ struct ContentView: View {
     @ViewBuilder
     private var currentSectionView: some View {
         switch vm.selectedSection {
-        case .overview:         OverviewView()
+        case .overview:         HomeDashboardView()
         case .topPriorities:   TopPrioritiesView()
         case .toDoLists:       ToDoListsView()
         case .callsEmails:     CallsEmailsView()
