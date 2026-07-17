@@ -12,11 +12,12 @@ struct ContentView: View {
             // App Header
             AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
 
-            // Date Scroller
-            DateScrollerView()
-
-            // Section Tab Bar
-            SectionTabBarView()
+            // Date scroller + category bar live inside sections only —
+            // the front page is a clean, full-screen tile dashboard.
+            if vm.selectedSection != .overview {
+                DateScrollerView()
+                SectionTabBarView()
+            }
 
             // Main Content
             ZStack {

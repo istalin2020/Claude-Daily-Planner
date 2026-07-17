@@ -95,33 +95,32 @@ struct HomeDashboardView: View {
     @State private var expandedGroup: HomeTileGroup? = nil
     @State private var appeared = false
 
-    private let columns = [GridItem(.flexible(), spacing: 14),
-                           GridItem(.flexible(), spacing: 14)]
-
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 18) {
-                pulseCard
-                    .padding(.top, 14)
+        GeometryReader { geo in
+            // Three rows fill the whole page: 2×2 grid + full-width bottom tile.
+            let spacing: CGFloat = 14
+            let hPad: CGFloat = 16
+            let vPad: CGFloat = 14
+            let rowHeight = max(120, (geo.size.height - vPad * 2 - spacing * 2) / 3)
 
-                LazyVGrid(columns: columns, spacing: 14) {
-                    ForEach(Array(HomeTileGroup.allCases.enumerated()), id: \.element) { index, group in
-                        AnimatedGroupTile(group: group,
-                                          headline: headline(for: group),
-                                          delay: Double(index) * 0.07) {
-                            open(group)
-                        }
-                        .scrollTransition { content, phase in
-                            content
-                                .opacity(phase.isIdentity ? 1 : 0.55)
-                                .scaleEffect(phase.isIdentity ? 1 : 0.93)
-                        }
-                    }
+            VStack(spacing: spacing) {
+                HStack(spacing: spacing) {
+                    tile(.tasks,  index: 0)
+                    tile(.health, index: 1)
                 }
-                .padding(.horizontal, 16)
+                .frame(height: rowHeight)
 
-                Spacer(minLength: 30)
+                HStack(spacing: spacing) {
+                    tile(.finance,  index: 2)
+                    tile(.schedule, index: 3)
+                }
+                .frame(height: rowHeight)
+
+                tile(.journal, index: 4)
+                    .frame(height: rowHeight)
             }
+            .padding(.horizontal, hPad)
+            .padding(.vertical, vPad)
             .opacity(appeared ? 1 : 0)
             .offset(y: appeared ? 0 : 14)
         }
@@ -133,6 +132,14 @@ struct HomeDashboardView: View {
                 .environmentObject(vm)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+    }
+
+    private func tile(_ group: HomeTileGroup, index: Int) -> some View {
+        AnimatedGroupTile(group: group,
+                          headline: headline(for: group),
+                          delay: Double(index) * 0.07) {
+            open(group)
         }
     }
 
@@ -173,132 +180,6 @@ struct HomeDashboardView: View {
         }
     }
 
-    // MARK: - Today's Pulse
-
-    private var pulseCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
-                    .symbolEffect(.pulse, options: .repeating)
-                Text("Today's Pulse")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
-                Spacer()
-                Text(Date(), format: .dateTime.weekday(.wide))
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.7))
-            }
-
-            VStack(spacing: 8) {
-                ForEach(insights) { insight in
-                    HStack(spacing: 10) {
-                        Image(systemName: insight.icon)
-                            .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.9))
-                            .frame(width: 20)
-                        Text(insight.title)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.white.opacity(0.92))
-                        Spacer()
-                        Text(insight.value)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.white)
-                        Image(systemName: insight.isPositive
-                              ? "arrow.up.right.circle.fill"
-                              : "arrow.down.right.circle.fill")
-                            .font(.system(size: 15))
-                            .foregroundColor(insight.isPositive
-                                             ? Color(red: 0.45, green: 1.0, blue: 0.60)
-                                             : Color(red: 1.0, green: 0.55, blue: 0.50))
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 22)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.12, green: 0.14, blue: 0.30),
-                                 Color(red: 0.05, green: 0.06, blue: 0.16)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22)
-                        .strokeBorder(
-                            LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.05)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing),
-                            lineWidth: 1
-                        )
-                )
-        )
-        .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
-        .padding(.horizontal, 16)
-    }
-
-    private struct PulseInsight: Identifiable {
-        let id = UUID()
-        let icon: String
-        let title: String
-        let value: String
-        let isPositive: Bool
-    }
-
-    /// Up to four live signals — what's going well and what's slipping.
-    private var insights: [PulseInsight] {
-        var list: [PulseInsight] = []
-        let cal = Calendar.current
-        let today = vm.currentEntry
-        let yesterday = vm.entry(for: cal.date(byAdding: .day, value: -1, to: vm.selectedDate) ?? vm.selectedDate)
-
-        // Tasks: completion vs yesterday
-        let todayRate = today.taskCompletionRate
-        let yesterdayRate = yesterday.taskCompletionRate
-        list.append(PulseInsight(
-            icon: "checkmark.circle.fill",
-            title: "Tasks completed",
-            value: "\(Int(todayRate * 100))%",
-            isPositive: todayRate >= yesterdayRate
-        ))
-
-        // Water progress
-        let waterOK = today.waterGoal > 0 &&
-                      Double(today.waterGlasses) / Double(today.waterGoal) >= 0.5
-        list.append(PulseInsight(
-            icon: "drop.fill",
-            title: "Water intake",
-            value: "\(today.waterGlasses)/\(today.waterGoal)",
-            isPositive: waterOK
-        ))
-
-        // Steps vs target
-        let steps = today.fitness.displaySteps
-        list.append(PulseInsight(
-            icon: "figure.walk",
-            title: "Steps",
-            value: "\(steps)",
-            isPositive: steps >= vm.settings.stepsTarget / 2
-        ))
-
-        // Spending: today vs 7-day average (lower is positive)
-        let last7 = (1...7).compactMap { back -> Double? in
-            guard let d = cal.date(byAdding: .day, value: -back, to: vm.selectedDate) else { return nil }
-            return vm.entry(for: d).totalExpenses
-        }
-        let avg = last7.isEmpty ? 0 : last7.reduce(0, +) / Double(last7.count)
-        let spent = today.totalExpenses
-        list.append(PulseInsight(
-            icon: "creditcard.fill",
-            title: "Spending vs 7-day avg",
-            value: "\(vm.settings.currency.symbol)\(String(format: "%.0f", spent))",
-            isPositive: spent <= avg || avg == 0
-        ))
-
-        return list
-    }
 }
 
 // MARK: - Animated tile
@@ -373,7 +254,7 @@ struct AnimatedGroupTile: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
-            .frame(height: 165)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 24))
             .overlay(
                 RoundedRectangle(cornerRadius: 24)
