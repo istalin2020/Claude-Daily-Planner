@@ -12,9 +12,9 @@ struct ContentView: View {
             // App Header
             AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
 
-            // Date scroller + category bar live inside sections only —
-            // the front page is a clean, full-screen tile dashboard.
-            if vm.selectedSection != .overview {
+            // Date scroller + category bar live inside sections (and the
+            // To-Do hub) only — the front page is a clean tile dashboard.
+            if vm.selectedSection != .overview || vm.showTasksHub {
                 DateScrollerView()
                 SectionTabBarView()
             }
@@ -48,7 +48,12 @@ struct ContentView: View {
     @ViewBuilder
     private var currentSectionView: some View {
         switch vm.selectedSection {
-        case .overview:         HomeDashboardView()
+        case .overview:
+            if vm.showTasksHub {
+                TasksHubView()
+            } else {
+                HomeDashboardView()
+            }
         case .topPriorities:   TopPrioritiesView()
         case .toDoLists:       ToDoListsView()
         case .callsEmails:     CallsEmailsView()
@@ -102,13 +107,17 @@ struct AppHeaderView: View {
                     .foregroundColor(.white.opacity(0.85))
             }
             Spacer()
-            Button(action: { vm.selectToday() }) {
-                Text("Today")
-                    .font(.caption).fontWeight(.semibold)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(Color.white.opacity(0.25))
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+            // "Today" only matters where a date is being browsed — hide it
+            // on the tile front page.
+            if vm.selectedSection != .overview || vm.showTasksHub {
+                Button(action: { vm.selectToday() }) {
+                    Text("Today")
+                        .font(.caption).fontWeight(.semibold)
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background(Color.white.opacity(0.25))
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
             }
             // Crown / PRO button
             CrownButton().environmentObject(pro)

@@ -11,9 +11,17 @@ class PlannerViewModel: ObservableObject {
             if selectedSection == .overview && oldValue != .overview {
                 lastVisitedSection = oldValue
             }
+            // Leaving the overview (e.g. jumping into a task section from the
+            // hub) closes the hub, so the Overview tab returns to the tiles.
+            if selectedSection != .overview {
+                showTasksHub = false
+            }
         }
     }
     var lastVisitedSection: AppSection? = nil
+    /// When true, the Overview slot shows the To-Do hub page (four task tiles
+    /// with pending items) instead of the main tile dashboard.
+    @Published var showTasksHub: Bool = false
     @Published var settings: AppSettings = AppSettings()
     @Published var iCloudAvailable = false
     @Published var highlightedTaskID: UUID? = nil

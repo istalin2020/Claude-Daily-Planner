@@ -138,13 +138,19 @@ struct HomeDashboardView: View {
     private func tile(_ group: HomeTileGroup, index: Int) -> some View {
         AnimatedGroupTile(group: group,
                           headline: headline(for: group),
-                          delay: Double(index) * 0.07) {
+                          delay: Double(index) * 0.07,
+                          bulletItems: group == .tasks ? group.sections.map(\.rawValue) : []) {
             open(group)
         }
     }
 
     private func open(_ group: HomeTileGroup) {
-        if group.sections.count == 1 {
+        if group == .tasks {
+            // To-Do List opens its own hub page with the four task tiles.
+            withAnimation(.easeInOut(duration: 0.25)) {
+                vm.showTasksHub = true
+            }
+        } else if group.sections.count == 1 {
             withAnimation(.easeInOut(duration: 0.25)) {
                 vm.selectedSection = group.sections[0]
             }
@@ -188,6 +194,7 @@ struct AnimatedGroupTile: View {
     let group: HomeTileGroup
     let headline: String
     let delay: Double
+    var bulletItems: [String] = []
     let action: () -> Void
 
     @State private var floatPhase = false
@@ -238,11 +245,29 @@ struct AnimatedGroupTile: View {
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
-                    Text(group.tagline)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.white.opacity(0.75))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                    if bulletItems.isEmpty {
+                        Text(group.tagline)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.75))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    } else {
+                        // Sub-lists shown one by one with bullets
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(bulletItems, id: \.self) { item in
+                                HStack(spacing: 5) {
+                                    Circle()
+                                        .fill(.white.opacity(0.85))
+                                        .frame(width: 4, height: 4)
+                                    Text(item)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.92))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                }
+                            }
+                        }
+                    }
                     Text(headline)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.white.opacity(0.95))
@@ -356,6 +381,154 @@ struct GroupDetailSheet: View {
                 .padding(16)
             }
         }
+    }
+}
+
+// MARK: - To-Do hub page
+
+/// Opened by the "To-Do List" tile: the four task categories as tiles,
+/// two per row, each previewing up to 8 pending tasks. Tapping a tile
+/// jumps into that category.
+struct TasksHubView: View {
+    @EnvironmentObject var vm: PlannerViewModel
+
+    private let sections: [AppSection] = [.topPriorities, .toDoLists,
+                                          .callsEmails, .personalTodo]
+    private let columns = [GridItem(.flexible(), spacing: 12),
+                           GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 12) {
+                HStack {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            vm.showTasksHub = false
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                            Text("Overview")
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                    }
+                    Spacer()
+                    Text("To-Do List")
+                        .font(.system(size: 17, weight: .bold))
+                    Spacer()
+                    // Invisible twin keeps the title optically centered
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Overview")
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .opacity(0)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(sections) { section in
+                        TaskHubTile(section: section)
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                Spacer(minLength: 30)
+            }
+        }
+    }
+}
+
+struct TaskHubTile: View {
+    @EnvironmentObject var vm: PlannerViewModel
+    let section: AppSection
+
+    private var tasks: [PlannerTask] {
+        let e = vm.currentEntry
+        switch section {
+        case .topPriorities: return e.topPriorities
+        case .toDoLists:     return e.toDoLists
+        case .callsEmails:   return e.callsEmails
+        case .personalTodo:  return e.personalTodo
+        default:             return []
+        }
+    }
+
+    var body: some View {
+        let pending = tasks.filter { !$0.isCompleted }
+
+        return Button {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                vm.selectedSection = section
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(.white.opacity(0.25))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: section.icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    Text(section.rawValue)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Spacer(minLength: 0)
+                }
+
+                if pending.isEmpty {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text(tasks.isEmpty ? "No items yet" : "All done 🎉")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.85))
+                        Spacer()
+                    }
+                    Spacer()
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(pending.prefix(8)) { task in
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(.white.opacity(0.85))
+                                    .frame(width: 4, height: 4)
+                                Text(task.title)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.95))
+                                    .lineLimit(1)
+                            }
+                        }
+                        if pending.count > 8 {
+                            Text("+\(pending.count - 8) more")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.7))
+                                .padding(.top, 1)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 210)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(LinearGradient(colors: [section.color, section.color.opacity(0.72)],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(.white.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(color: section.color.opacity(0.35), radius: 8, y: 4)
+        }
+        .buttonStyle(TilePressStyle())
     }
 }
 
