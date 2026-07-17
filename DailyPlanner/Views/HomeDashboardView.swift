@@ -226,21 +226,25 @@ struct AnimatedGroupTile: View {
                         .rotationEffect(.degrees(floatPhase ? [8.0, -6.0, 5.0][i % 3] : [-4.0, 5.0, -6.0][i % 3]))
                 }
 
-                // Foreground content
-                VStack(alignment: .leading, spacing: 6) {
-                    ZStack {
-                        Circle()
-                            .fill(.white.opacity(0.22))
-                            .frame(width: 44, height: 44)
-                        Image(systemName: group.icon)
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
-                            .symbolEffect(.pulse, options: .repeating.speed(0.6))
+                // Foreground content — category name centered in the tile
+                VStack(spacing: 8) {
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(.white.opacity(0.22))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: group.icon)
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.white)
+                                .symbolEffect(.pulse, options: .repeating.speed(0.6))
+                        }
+                        Spacer()
                     }
                     Spacer(minLength: 0)
                     Text(group.rawValue)
                         .font(.system(size: 24, weight: .heavy))
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .minimumScaleFactor(0.6)
                     Text(headline)
@@ -250,9 +254,10 @@ struct AnimatedGroupTile: View {
                         .background(Capsule().fill(.white.opacity(0.18)))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                    Spacer(minLength: 0)
                 }
                 .padding(14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 24))
