@@ -138,11 +138,17 @@ struct BankSMSParser {
     // MARK: - Credit / Debit
 
     private static func detectCreditWithConfidence(in text: String) -> (Bool, ParsedTransaction.ConfidenceLevel) {
+        // "credit card" / "debit card" name the INSTRUMENT, not the money
+        // direction — a purchase made WITH a credit card is an expense.
+        // Neutralize those phrases so they never influence detection.
         let lower = text.lowercased()
+            .replacingOccurrences(of: #"credit\s+card"#, with: "card", options: .regularExpression)
+            .replacingOccurrences(of: #"debit\s+card"#,  with: "card", options: .regularExpression)
         let creditWords = ["credited", "credit", "received", "deposited", "refund",
                            "cash back", "cashback", "reversed", "added", "incoming"]
         let debitWords = ["debited", "debit", "spent", "withdrawn", "sent",
-                          "paid", "purchase", "transferred", "payment", "outgoing"]
+                          "paid", "purchase", "transferred", "payment", "outgoing",
+                          "utilised", "utilized", "has been used", "charged"]
 
         var creditPos = Int.max
         var debitPos = Int.max
