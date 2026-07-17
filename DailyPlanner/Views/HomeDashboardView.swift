@@ -136,10 +136,11 @@ struct HomeDashboardView: View {
     }
 
     private func tile(_ group: HomeTileGroup, index: Int) -> some View {
+        // Every tile lists its inner sections one by one with bullets.
         AnimatedGroupTile(group: group,
                           headline: headline(for: group),
                           delay: Double(index) * 0.07,
-                          bulletItems: group == .tasks ? group.sections.map(\.rawValue) : []) {
+                          bulletItems: group.sections.map(\.rawValue)) {
             open(group)
         }
     }
@@ -394,8 +395,6 @@ struct TasksHubView: View {
 
     private let sections: [AppSection] = [.topPriorities, .toDoLists,
                                           .callsEmails, .personalTodo]
-    private let columns = [GridItem(.flexible(), spacing: 12),
-                           GridItem(.flexible(), spacing: 12)]
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -427,12 +426,11 @@ struct TasksHubView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
 
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(sections) { section in
-                        TaskHubTile(section: section)
-                    }
+                // Light cards, one after another, each previewing 5 pending tasks
+                ForEach(sections) { section in
+                    TaskHubCard(section: section)
+                        .padding(.horizontal, 16)
                 }
-                .padding(.horizontal, 16)
 
                 Spacer(minLength: 30)
             }
@@ -440,7 +438,7 @@ struct TasksHubView: View {
     }
 }
 
-struct TaskHubTile: View {
+struct TaskHubCard: View {
     @EnvironmentObject var vm: PlannerViewModel
     let section: AppSection
 
@@ -455,6 +453,16 @@ struct TaskHubTile: View {
         }
     }
 
+    private var emptyText: String {
+        switch section {
+        case .topPriorities: return "No priorities yet"
+        case .toDoLists:     return "No to-do items"
+        case .callsEmails:   return "No calls or emails"
+        case .personalTodo:  return "No personal tasks"
+        default:             return "Nothing here"
+        }
+    }
+
     var body: some View {
         let pending = tasks.filter { !$0.isCompleted }
 
@@ -463,70 +471,57 @@ struct TaskHubTile: View {
                 vm.selectedSection = section
             }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(.white.opacity(0.25))
-                            .frame(width: 32, height: 32)
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(section.color)
+                            .frame(width: 40, height: 40)
                         Image(systemName: section.icon)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(.white)
                     }
                     Text(section.rawValue)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Spacer(minLength: 0)
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.5))
                 }
 
                 if pending.isEmpty {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Text(tasks.isEmpty ? "No items yet" : "All done 🎉")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white.opacity(0.85))
-                        Spacer()
-                    }
-                    Spacer()
+                    Text(tasks.isEmpty ? emptyText : "All done 🎉")
+                        .font(.system(size: 15))
+                        .italic()
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .padding(.leading, 2)
+                        .padding(.bottom, 2)
                 } else {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(pending.prefix(8)) { task in
-                            HStack(spacing: 5) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(pending.prefix(5)) { task in
+                            HStack(spacing: 10) {
                                 Circle()
-                                    .fill(.white.opacity(0.85))
-                                    .frame(width: 4, height: 4)
+                                    .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1.5)
+                                    .frame(width: 20, height: 20)
                                 Text(task.title)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.95))
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.primary)
                                     .lineLimit(1)
                             }
                         }
-                        if pending.count > 8 {
-                            Text("+\(pending.count - 8) more")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.7))
-                                .padding(.top, 1)
+                        if pending.count > 5 {
+                            Text("+\(pending.count - 5) more")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary.opacity(0.8))
+                                .padding(.leading, 2)
                         }
                     }
-                    Spacer(minLength: 0)
                 }
             }
-            .padding(12)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 210)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(LinearGradient(colors: [section.color, section.color.opacity(0.72)],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(.white.opacity(0.2), lineWidth: 1)
-            )
-            .shadow(color: section.color.opacity(0.35), radius: 8, y: 4)
+            .glassCard()
         }
         .buttonStyle(TilePressStyle())
     }
