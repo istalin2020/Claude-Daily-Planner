@@ -136,11 +136,9 @@ struct HomeDashboardView: View {
     }
 
     private func tile(_ group: HomeTileGroup, index: Int) -> some View {
-        // Every tile lists its inner sections one by one with bullets.
         AnimatedGroupTile(group: group,
                           headline: headline(for: group),
-                          delay: Double(index) * 0.07,
-                          bulletItems: group.sections.map(\.rawValue)) {
+                          delay: Double(index) * 0.07) {
             open(group)
         }
     }
@@ -195,7 +193,6 @@ struct AnimatedGroupTile: View {
     let group: HomeTileGroup
     let headline: String
     let delay: Double
-    var bulletItems: [String] = []
     let action: () -> Void
 
     @State private var floatPhase = false
@@ -242,37 +239,14 @@ struct AnimatedGroupTile: View {
                     }
                     Spacer(minLength: 0)
                     Text(group.rawValue)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 24, weight: .heavy))
                         .foregroundColor(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                    if bulletItems.isEmpty {
-                        Text(group.tagline)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white.opacity(0.75))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    } else {
-                        // Sub-lists shown one by one with bullets
-                        VStack(alignment: .leading, spacing: 3) {
-                            ForEach(bulletItems, id: \.self) { item in
-                                HStack(spacing: 5) {
-                                    Circle()
-                                        .fill(.white.opacity(0.85))
-                                        .frame(width: 4, height: 4)
-                                    Text(item)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.92))
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                }
-                            }
-                        }
-                    }
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.6)
                     Text(headline)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white.opacity(0.95))
-                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
                         .background(Capsule().fill(.white.opacity(0.18)))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
