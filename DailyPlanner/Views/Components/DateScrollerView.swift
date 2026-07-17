@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DateScrollerView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    /// Compact mode: smaller month header and date cells (used on hub pages).
+    var compact: Bool = false
     @State private var monthOffset: Int = 0
     @State private var showMonthPicker = false
 
@@ -42,7 +44,7 @@ struct DateScrollerView: View {
                 Spacer()
                 Button(action: { showMonthPicker = true }) {
                     Text(monthYear)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: compact ? 12 : 13, weight: .bold))
                         .foregroundColor(.primary)
                 }
                 Spacer()
@@ -55,17 +57,18 @@ struct DateScrollerView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 6)
+            .padding(.vertical, compact ? 3 : 6)
 
             // Date scroll
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: compact ? 6 : 8) {
                         ForEach(datesInMonth, id: \.self) { date in
                             DateCell(
                                 date: date,
                                 isSelected: cal.isDate(date, inSameDayAs: vm.selectedDate),
-                                hasEntry: vm.entries[vm.dateKey(for: date)]?.hasData ?? false
+                                hasEntry: vm.entries[vm.dateKey(for: date)]?.hasData ?? false,
+                                compact: compact
                             )
                             .onTapGesture {
                                 withAnimation(.spring(response: 0.3)) {
@@ -119,6 +122,7 @@ struct DateCell: View {
     let date: Date
     let isSelected: Bool
     let hasEntry: Bool
+    var compact: Bool = false
 
     private let cal = Calendar.current
 
@@ -131,13 +135,13 @@ struct DateCell: View {
     private var isFuture: Bool { date > cal.startOfDay(for: Date()) }
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: compact ? 2 : 3) {
             Text(dayName)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: compact ? 8 : 10, weight: .medium))
                 .foregroundColor(isSelected ? .white : .secondary)
 
             Text(dayNum)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: compact ? 13 : 16, weight: .bold))
                 .foregroundColor(
                     isSelected ? .white :
                     isToday    ? accent :
@@ -149,9 +153,9 @@ struct DateCell: View {
                 .fill(hasEntry
                       ? (isSelected ? Color.white.opacity(0.7) : accent)
                       : Color.clear)
-                .frame(width: 5, height: 5)
+                .frame(width: compact ? 4 : 5, height: compact ? 4 : 5)
         }
-        .frame(width: 42, height: 60)
+        .frame(width: compact ? 34 : 42, height: compact ? 46 : 60)
         .glassDateCell(isSelected: isSelected, isToday: isToday)
     }
 }

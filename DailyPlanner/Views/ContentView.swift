@@ -12,9 +12,13 @@ struct ContentView: View {
             // App Header
             AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
 
-            // Date scroller + category bar live inside sections (and the
-            // To-Do hub) only — the front page is a clean tile dashboard.
-            if vm.selectedSection != .overview || vm.showTasksHub {
+            // Date scroller + category bar live inside sections only —
+            // the front page is a clean tile dashboard, and the To-Do hub
+            // gets a back bar plus a compact date picker (no category band).
+            if vm.selectedSection == .overview && vm.showTasksHub {
+                tasksHubTopBar
+                DateScrollerView(compact: true)
+            } else if vm.selectedSection != .overview {
                 DateScrollerView()
                 SectionTabBarView()
             }
@@ -43,6 +47,37 @@ struct ContentView: View {
         .sheet(isPresented: $showUpgrade) {
             ProUpgradeView().environmentObject(pro)
         }
+    }
+
+    /// Back bar shown at the top of the To-Do hub, above the date picker.
+    private var tasksHubTopBar: some View {
+        HStack {
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    vm.showTasksHub = false
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("Overview")
+                }
+                .font(.system(size: 14, weight: .semibold))
+            }
+            Spacer()
+            Text("To-Do List")
+                .font(.system(size: 16, weight: .bold))
+            Spacer()
+            // Invisible twin keeps the title optically centered
+            HStack(spacing: 4) {
+                Image(systemName: "chevron.left")
+                Text("Overview")
+            }
+            .font(.system(size: 14, weight: .semibold))
+            .opacity(0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
     }
 
     @ViewBuilder

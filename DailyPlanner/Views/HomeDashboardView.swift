@@ -373,33 +373,6 @@ struct TasksHubView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 12) {
-                HStack {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            vm.showTasksHub = false
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("Overview")
-                        }
-                        .font(.system(size: 14, weight: .semibold))
-                    }
-                    Spacer()
-                    Text("To-Do List")
-                        .font(.system(size: 17, weight: .bold))
-                    Spacer()
-                    // Invisible twin keeps the title optically centered
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("Overview")
-                    }
-                    .font(.system(size: 14, weight: .semibold))
-                    .opacity(0)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-
                 // Light cards, one after another, each previewing 5 pending tasks
                 ForEach(sections) { section in
                     TaskHubCard(section: section)
@@ -408,6 +381,7 @@ struct TasksHubView: View {
 
                 Spacer(minLength: 30)
             }
+            .padding(.top, 12)
         }
     }
 }
