@@ -2,7 +2,6 @@ import SwiftUI
 
 struct PersonalTodoView: View {
     @EnvironmentObject var vm: PlannerViewModel
-    @State private var showAddSheet = false
     @State private var editingTask: PlannerTask? = nil
     @State private var taskToDelete: PlannerTask? = nil
     @State private var showPopper = false
@@ -14,11 +13,6 @@ struct PersonalTodoView: View {
             VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
-                    SectionHeader(section: .personalTodo,
-                                  subtitle: "Your personal task list",
-                                  completedCount: entry.personalTodo.filter(\.isCompleted).count,
-                                  totalCount: entry.personalTodo.count)
-
                     if entry.personalTodo.isEmpty {
                         EmptySectionView(section: .personalTodo,
                                          message: "Add your personal tasks for the day")
@@ -81,16 +75,6 @@ struct PersonalTodoView: View {
                     Spacer(minLength: 40)
                 }
             }
-            .sheet(isPresented: $showAddSheet) {
-                AddItemWithRecurrenceSheet(
-                    title: "Add Personal Task",
-                    placeholder: "What do you need to do?",
-                    accentColor: AppSection.personalTodo.color,
-                    icon: AppSection.personalTodo.icon
-                ) { text, recurrence, notes, subtasks in
-                    vm.addPersonalTodo(text, recurrence: recurrence, notes: notes, subtasks: subtasks)
-                }
-            }
             .sheet(item: $editingTask) { task in
                 EditTaskSheet(
                     task: task,
@@ -117,10 +101,11 @@ struct PersonalTodoView: View {
                 }
             }
 
-            // Fixed add bar — stays put while the task list scrolls.
+            // Fixed add bar — type and press Add, no sheet needed.
             if !vm.isFuture {
-                AddButton(label: "Add Task", color: AppSection.personalTodo.color) {
-                    showAddSheet = true
+                InlineAddBar(placeholder: "Add a personal task…",
+                             color: AppSection.personalTodo.color) { text in
+                    vm.addPersonalTodo(text)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

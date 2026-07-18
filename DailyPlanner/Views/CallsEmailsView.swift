@@ -2,7 +2,6 @@ import SwiftUI
 
 struct CallsEmailsView: View {
     @EnvironmentObject var vm: PlannerViewModel
-    @State private var showAddSheet = false
     @State private var editingTask: PlannerTask? = nil
     @State private var taskToDelete: PlannerTask? = nil
     @State private var showPopper = false
@@ -14,11 +13,6 @@ struct CallsEmailsView: View {
             VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
-                    SectionHeader(section: .callsEmails,
-                                  subtitle: "Track your calls and emails",
-                                  completedCount: entry.callsEmails.filter(\.isCompleted).count,
-                                  totalCount: entry.callsEmails.count)
-
                     if entry.callsEmails.isEmpty {
                         EmptySectionView(section: .callsEmails,
                                          message: "Add calls and emails you need to make today")
@@ -81,16 +75,6 @@ struct CallsEmailsView: View {
                     Spacer(minLength: 40)
                 }
             }
-            .sheet(isPresented: $showAddSheet) {
-                AddItemWithRecurrenceSheet(
-                    title: "Add Call or Email",
-                    placeholder: "Who to call or email?",
-                    accentColor: AppSection.callsEmails.color,
-                    icon: AppSection.callsEmails.icon
-                ) { text, recurrence, notes, subtasks in
-                    vm.addCallEmail(text, recurrence: recurrence, notes: notes, subtasks: subtasks)
-                }
-            }
             .sheet(item: $editingTask) { task in
                 EditTaskSheet(
                     task: task,
@@ -117,10 +101,11 @@ struct CallsEmailsView: View {
                 }
             }
 
-            // Fixed add bar — stays put while the task list scrolls.
+            // Fixed add bar — type and press Add, no sheet needed.
             if !vm.isFuture {
-                AddButton(label: "Add Call or Email", color: AppSection.callsEmails.color) {
-                    showAddSheet = true
+                InlineAddBar(placeholder: "Who to call or email?",
+                             color: AppSection.callsEmails.color) { text in
+                    vm.addCallEmail(text)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

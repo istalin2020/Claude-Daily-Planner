@@ -36,29 +36,32 @@ struct DateScrollerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Month / Year navigator
-            HStack {
+            // Month / Year navigator — arrows sit right beside the month name
+            // so they never clash with the page's back arrow at the edge.
+            HStack(spacing: 22) {
                 Button(action: { withAnimation { monthOffset -= 1 } }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.secondary)
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
                 }
-                Spacer()
                 Button(action: { showMonthPicker = true }) {
                     Text(monthYear)
                         .font(.system(size: compact ? 12 : 13, weight: .bold))
                         .foregroundColor(.primary)
                 }
-                Spacer()
                 Button(action: {
                     if monthOffset < maxFutureMonths { withAnimation { monthOffset += 1 } }
                 }) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(monthOffset < maxFutureMonths ? .secondary : Color.secondary.opacity(0.3))
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
                 }
             }
-            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity)
             .padding(.vertical, compact ? 3 : 6)
 
             // Date scroll

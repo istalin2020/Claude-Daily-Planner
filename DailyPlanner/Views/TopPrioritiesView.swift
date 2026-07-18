@@ -2,11 +2,9 @@ import SwiftUI
 
 struct TopPrioritiesView: View {
     @EnvironmentObject var vm: PlannerViewModel
-    @State private var showAddSheet = false
     @State private var editingTask: PlannerTask? = nil
     @State private var taskToDelete: PlannerTask? = nil
     @State private var showPopper = false
-    @State private var recurrence: Recurrence = .none
 
     var entry: DailyEntry { vm.currentEntry }
 
@@ -15,11 +13,6 @@ struct TopPrioritiesView: View {
             VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
-                    SectionHeader(section: .topPriorities,
-                                  subtitle: "Focus on what matters most today",
-                                  completedCount: entry.topPriorities.filter(\.isCompleted).count,
-                                  totalCount: entry.topPriorities.count)
-
                     if entry.topPriorities.isEmpty {
                         EmptySectionView(section: .topPriorities,
                                          message: "Add your top priorities to stay focused")
@@ -82,16 +75,6 @@ struct TopPrioritiesView: View {
                     Spacer(minLength: 40)
                 }
             }
-            .sheet(isPresented: $showAddSheet) {
-                AddItemWithRecurrenceSheet(
-                    title: "Add Top Priority",
-                    placeholder: "What's your top priority?",
-                    accentColor: AppSection.topPriorities.color,
-                    icon: AppSection.topPriorities.icon
-                ) { text, recurrence, notes, subtasks in
-                    vm.addTopPriority(text, recurrence: recurrence, notes: notes, subtasks: subtasks)
-                }
-            }
             .sheet(item: $editingTask) { task in
                 EditTaskSheet(
                     task: task,
@@ -118,10 +101,11 @@ struct TopPrioritiesView: View {
                 }
             }
 
-            // Fixed add bar — stays put while the task list scrolls.
+            // Fixed add bar — type and press Add, no sheet needed.
             if !vm.isFuture {
-                AddButton(label: "Add Priority", color: AppSection.topPriorities.color) {
-                    showAddSheet = true
+                InlineAddBar(placeholder: "What's your top priority?",
+                             color: AppSection.topPriorities.color) { text in
+                    vm.addTopPriority(text)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

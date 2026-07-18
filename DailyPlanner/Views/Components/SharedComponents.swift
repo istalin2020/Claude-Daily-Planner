@@ -818,3 +818,48 @@ struct NotesCard: View {
         .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
     }
 }
+
+// MARK: - Inline Add Bar
+/// A one-line "type and add" bar: text field with an Add button on the right.
+/// Pressing Add (or the keyboard's return key) adds the task immediately —
+/// no sheet, no extra taps.
+struct InlineAddBar: View {
+    let placeholder: String
+    let color: Color
+    let onAdd: (String) -> Void
+
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    private var trimmed: String { text.trimmingCharacters(in: .whitespaces) }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            TextField(placeholder, text: $text)
+                .focused($focused)
+                .submitLabel(.done)
+                .onSubmit { add() }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+
+            Button(action: add) {
+                Text("Add")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(trimmed.isEmpty ? Color.gray.opacity(0.4) : color)
+                    .cornerRadius(12)
+            }
+            .disabled(trimmed.isEmpty)
+        }
+    }
+
+    private func add() {
+        guard !trimmed.isEmpty else { return }
+        onAdd(trimmed)
+        text = ""
+    }
+}

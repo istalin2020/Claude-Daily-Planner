@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ToDoListsView: View {
     @EnvironmentObject var vm: PlannerViewModel
-    @State private var showAddSheet = false
     @State private var editingTask: PlannerTask? = nil
     @State private var showPopper = false
 
@@ -20,11 +19,6 @@ struct ToDoListsView: View {
             VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
-                    SectionHeader(section: .toDoLists,
-                                  subtitle: "Keep track of everything you need to do",
-                                  completedCount: entry.toDoLists.filter(\.isCompleted).count,
-                                  totalCount: entry.toDoLists.count)
-
                     if entry.toDoLists.isEmpty {
                         EmptySectionView(section: .toDoLists,
                                          message: "Add tasks to your to-do list")
@@ -93,16 +87,6 @@ struct ToDoListsView: View {
                     Spacer(minLength: 40)
                 }
             }
-            .sheet(isPresented: $showAddSheet) {
-                AddItemWithRecurrenceSheet(
-                    title: "Add To-Do",
-                    placeholder: "What do you need to do?",
-                    accentColor: AppSection.toDoLists.color,
-                    icon: AppSection.toDoLists.icon
-                ) { text, recurrence, notes, subtasks in
-                    vm.addToDoListItem(text, recurrence: recurrence, notes: notes, subtasks: subtasks)
-                }
-            }
             .sheet(item: $editingTask) { task in
                 EditTaskSheet(
                     task: task,
@@ -113,10 +97,11 @@ struct ToDoListsView: View {
                 }
             }
 
-            // Fixed add bar — stays put while the task list scrolls.
+            // Fixed add bar — type and press Add, no sheet needed.
             if !vm.isFuture {
-                AddButton(label: "Add To-Do", color: AppSection.toDoLists.color) {
-                    showAddSheet = true
+                InlineAddBar(placeholder: "What do you need to do?",
+                             color: AppSection.toDoLists.color) { text in
+                    vm.addToDoListItem(text)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
