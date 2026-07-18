@@ -110,7 +110,7 @@ struct TaskRowCard: View {
                         if task.isRolledOver, let originalDate = task.originalDate {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.uturn.right").font(.system(size: 9))
-                                Text("Rolled from \(shortDate(originalDate))")
+                                Text("Created \(shortDate(originalDate)) (\(daysPending(since: originalDate)))")
                                     .font(.system(size: 10))
                             }
                             .foregroundColor(.orange)
@@ -163,6 +163,15 @@ struct TaskRowCard: View {
         let fmt = DateFormatter()
         fmt.dateFormat = "MMM d"
         return fmt.string(from: date)
+    }
+
+    /// How long a rolled-over task has been pending, e.g. "2 days".
+    private func daysPending(since date: Date) -> String {
+        let cal = Calendar.current
+        let days = cal.dateComponents([.day],
+                                      from: cal.startOfDay(for: date),
+                                      to: cal.startOfDay(for: Date())).day ?? 0
+        return days == 1 ? "1 day" : "\(days) days"
     }
 }
 

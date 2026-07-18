@@ -17,19 +17,13 @@ struct ToDoListsView: View {
 
     var body: some View {
         ZStack {
+            VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
                     SectionHeader(section: .toDoLists,
                                   subtitle: "Keep track of everything you need to do",
                                   completedCount: entry.toDoLists.filter(\.isCompleted).count,
                                   totalCount: entry.toDoLists.count)
-
-                    if !vm.isFuture {
-                        AddButton(label: "Add To-Do", color: AppSection.toDoLists.color) {
-                            showAddSheet = true
-                        }
-                        .padding(.horizontal, 16).padding(.top, 12)
-                    }
 
                     if entry.toDoLists.isEmpty {
                         EmptySectionView(section: .toDoLists,
@@ -39,9 +33,10 @@ struct ToDoListsView: View {
                         let freshIncomplete  = entry.toDoLists.filter { !$0.isRolledOver && !$0.isCompleted }
                         let completed        = entry.toDoLists.filter { $0.isCompleted }
 
-                        if !rolledIncomplete.isEmpty {
-                            SectionGroupLabel(title: "Rolled Over", color: .orange)
-                            ForEach(rolledIncomplete) { task in
+                        // Newly added tasks first, rolled-over ones after.
+                        if !freshIncomplete.isEmpty {
+                            SectionGroupLabel(title: "Today's To-Dos", color: AppSection.toDoLists.color)
+                            ForEach(freshIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.toDoLists.color,
@@ -53,11 +48,9 @@ struct ToDoListsView: View {
                             }
                         }
 
-                        if !freshIncomplete.isEmpty {
-                            if !rolledIncomplete.isEmpty {
-                                SectionGroupLabel(title: "Today's To-Dos", color: AppSection.toDoLists.color)
-                            }
-                            ForEach(freshIncomplete) { task in
+                        if !rolledIncomplete.isEmpty {
+                            SectionGroupLabel(title: "Rolled Over", color: .orange)
+                            ForEach(rolledIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.toDoLists.color,
@@ -118,6 +111,17 @@ struct ToDoListsView: View {
                 ) { updatedTask in
                     vm.updateToDoListItem(task, with: updatedTask)
                 }
+            }
+
+            // Fixed add bar — stays put while the task list scrolls.
+            if !vm.isFuture {
+                AddButton(label: "Add To-Do", color: AppSection.toDoLists.color) {
+                    showAddSheet = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
+            }
             }
 
             if showPopper {

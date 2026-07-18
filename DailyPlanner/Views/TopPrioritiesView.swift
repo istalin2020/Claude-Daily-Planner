@@ -12,19 +12,13 @@ struct TopPrioritiesView: View {
 
     var body: some View {
         ZStack {
+            VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
                     SectionHeader(section: .topPriorities,
                                   subtitle: "Focus on what matters most today",
                                   completedCount: entry.topPriorities.filter(\.isCompleted).count,
                                   totalCount: entry.topPriorities.count)
-
-                    if !vm.isFuture {
-                        AddButton(label: "Add Priority", color: AppSection.topPriorities.color) {
-                            showAddSheet = true
-                        }
-                        .padding(.horizontal, 16).padding(.top, 12)
-                    }
 
                     if entry.topPriorities.isEmpty {
                         EmptySectionView(section: .topPriorities,
@@ -34,9 +28,10 @@ struct TopPrioritiesView: View {
                         let freshIncomplete  = entry.topPriorities.filter { !$0.isRolledOver && !$0.isCompleted }
                         let completed        = entry.topPriorities.filter { $0.isCompleted }
 
-                        if !rolledIncomplete.isEmpty {
-                            SectionGroupLabel(title: "Rolled Over", color: .orange)
-                            ForEach(rolledIncomplete) { task in
+                        // Newly added tasks first, rolled-over ones after.
+                        if !freshIncomplete.isEmpty {
+                            SectionGroupLabel(title: "Today's Priorities", color: AppSection.topPriorities.color)
+                            ForEach(freshIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.topPriorities.color,
@@ -48,11 +43,9 @@ struct TopPrioritiesView: View {
                             }
                         }
 
-                        if !freshIncomplete.isEmpty {
-                            if !rolledIncomplete.isEmpty {
-                                SectionGroupLabel(title: "Today's Priorities", color: AppSection.topPriorities.color)
-                            }
-                            ForEach(freshIncomplete) { task in
+                        if !rolledIncomplete.isEmpty {
+                            SectionGroupLabel(title: "Rolled Over", color: .orange)
+                            ForEach(rolledIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.topPriorities.color,
@@ -123,6 +116,17 @@ struct TopPrioritiesView: View {
                 if let task = taskToDelete {
                     Text("\"\(task.title)\" will be permanently removed.")
                 }
+            }
+
+            // Fixed add bar — stays put while the task list scrolls.
+            if !vm.isFuture {
+                AddButton(label: "Add Priority", color: AppSection.topPriorities.color) {
+                    showAddSheet = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
+            }
             }
 
             if showPopper {

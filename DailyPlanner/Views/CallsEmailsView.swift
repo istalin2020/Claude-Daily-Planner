@@ -11,19 +11,13 @@ struct CallsEmailsView: View {
 
     var body: some View {
         ZStack {
+            VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
                     SectionHeader(section: .callsEmails,
                                   subtitle: "Track your calls and emails",
                                   completedCount: entry.callsEmails.filter(\.isCompleted).count,
                                   totalCount: entry.callsEmails.count)
-
-                    if !vm.isFuture {
-                        AddButton(label: "Add Call or Email", color: AppSection.callsEmails.color) {
-                            showAddSheet = true
-                        }
-                        .padding(.horizontal, 16).padding(.top, 12)
-                    }
 
                     if entry.callsEmails.isEmpty {
                         EmptySectionView(section: .callsEmails,
@@ -33,9 +27,10 @@ struct CallsEmailsView: View {
                         let freshIncomplete  = entry.callsEmails.filter { !$0.isRolledOver && !$0.isCompleted }
                         let completed        = entry.callsEmails.filter { $0.isCompleted }
 
-                        if !rolledIncomplete.isEmpty {
-                            SectionGroupLabel(title: "Rolled Over", color: .orange)
-                            ForEach(rolledIncomplete) { task in
+                        // Newly added tasks first, rolled-over ones after.
+                        if !freshIncomplete.isEmpty {
+                            SectionGroupLabel(title: "Today's Calls & Emails", color: AppSection.callsEmails.color)
+                            ForEach(freshIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.callsEmails.color,
@@ -47,11 +42,9 @@ struct CallsEmailsView: View {
                             }
                         }
 
-                        if !freshIncomplete.isEmpty {
-                            if !rolledIncomplete.isEmpty {
-                                SectionGroupLabel(title: "Today's Calls & Emails", color: AppSection.callsEmails.color)
-                            }
-                            ForEach(freshIncomplete) { task in
+                        if !rolledIncomplete.isEmpty {
+                            SectionGroupLabel(title: "Rolled Over", color: .orange)
+                            ForEach(rolledIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.callsEmails.color,
@@ -122,6 +115,17 @@ struct CallsEmailsView: View {
                 if let task = taskToDelete {
                     Text("\"\(task.title)\" will be permanently removed.")
                 }
+            }
+
+            // Fixed add bar — stays put while the task list scrolls.
+            if !vm.isFuture {
+                AddButton(label: "Add Call or Email", color: AppSection.callsEmails.color) {
+                    showAddSheet = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
+            }
             }
 
             if showPopper {

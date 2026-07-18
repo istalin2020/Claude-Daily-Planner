@@ -11,19 +11,13 @@ struct PersonalTodoView: View {
 
     var body: some View {
         ZStack {
+            VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 0) {
                     SectionHeader(section: .personalTodo,
                                   subtitle: "Your personal task list",
                                   completedCount: entry.personalTodo.filter(\.isCompleted).count,
                                   totalCount: entry.personalTodo.count)
-
-                    if !vm.isFuture {
-                        AddButton(label: "Add Task", color: AppSection.personalTodo.color) {
-                            showAddSheet = true
-                        }
-                        .padding(.horizontal, 16).padding(.top, 12)
-                    }
 
                     if entry.personalTodo.isEmpty {
                         EmptySectionView(section: .personalTodo,
@@ -33,9 +27,10 @@ struct PersonalTodoView: View {
                         let freshIncomplete  = entry.personalTodo.filter { !$0.isRolledOver && !$0.isCompleted }
                         let completed        = entry.personalTodo.filter { $0.isCompleted }
 
-                        if !rolledIncomplete.isEmpty {
-                            SectionGroupLabel(title: "Rolled Over", color: .orange)
-                            ForEach(rolledIncomplete) { task in
+                        // Newly added tasks first, rolled-over ones after.
+                        if !freshIncomplete.isEmpty {
+                            SectionGroupLabel(title: "Today", color: AppSection.personalTodo.color)
+                            ForEach(freshIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.personalTodo.color,
@@ -47,11 +42,9 @@ struct PersonalTodoView: View {
                             }
                         }
 
-                        if !freshIncomplete.isEmpty {
-                            if !rolledIncomplete.isEmpty {
-                                SectionGroupLabel(title: "Today", color: AppSection.personalTodo.color)
-                            }
-                            ForEach(freshIncomplete) { task in
+                        if !rolledIncomplete.isEmpty {
+                            SectionGroupLabel(title: "Rolled Over", color: .orange)
+                            ForEach(rolledIncomplete) { task in
                                 TaskRowCard(
                                     task: task,
                                     color: AppSection.personalTodo.color,
@@ -122,6 +115,17 @@ struct PersonalTodoView: View {
                 if let task = taskToDelete {
                     Text("\"\(task.title)\" will be permanently removed.")
                 }
+            }
+
+            // Fixed add bar — stays put while the task list scrolls.
+            if !vm.isFuture {
+                AddButton(label: "Add Task", color: AppSection.personalTodo.color) {
+                    showAddSheet = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
+            }
             }
 
             if showPopper {

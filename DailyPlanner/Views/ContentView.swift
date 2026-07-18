@@ -18,6 +18,11 @@ struct ContentView: View {
             if vm.selectedSection == .overview && vm.showTasksHub {
                 tasksHubTopBar
                 DateScrollerView(compact: true)
+            } else if isTaskSection {
+                // Task sections: back bar above the month + dates,
+                // no horizontal category band.
+                sectionTopBar
+                DateScrollerView(compact: true)
             } else if vm.selectedSection != .overview {
                 DateScrollerView()
                 SectionTabBarView()
@@ -47,6 +52,43 @@ struct ContentView: View {
         .sheet(isPresented: $showUpgrade) {
             ProUpgradeView().environmentObject(pro)
         }
+    }
+
+    private var isTaskSection: Bool {
+        [.topPriorities, .toDoLists, .callsEmails, .personalTodo].contains(vm.selectedSection)
+    }
+
+    /// Back bar for task sections: shows the section name and returns to
+    /// the To-Do hub. Sits above the month/date picker.
+    private var sectionTopBar: some View {
+        HStack {
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    vm.showTasksHub = true
+                    vm.selectedSection = .overview
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("To-Do List")
+                }
+                .font(.system(size: 14, weight: .semibold))
+            }
+            Spacer()
+            Text(vm.selectedSection.rawValue)
+                .font(.system(size: 16, weight: .bold))
+            Spacer()
+            // Invisible twin keeps the title optically centered
+            HStack(spacing: 4) {
+                Image(systemName: "chevron.left")
+                Text("To-Do List")
+            }
+            .font(.system(size: 14, weight: .semibold))
+            .opacity(0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
     }
 
     /// Back bar shown at the top of the To-Do hub, above the date picker.

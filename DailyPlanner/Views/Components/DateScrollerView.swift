@@ -4,6 +4,8 @@ struct DateScrollerView: View {
     @EnvironmentObject var vm: PlannerViewModel
     /// Compact mode: smaller month header and date cells (used on hub pages).
     var compact: Bool = false
+    /// Hides the month/year navigator row entirely (used inside sections).
+    var showMonthRow: Bool = true
     @State private var monthOffset: Int = 0
     @State private var showMonthPicker = false
 
