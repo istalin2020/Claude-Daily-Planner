@@ -839,10 +839,16 @@ struct InlineAddBar: View {
                 .focused($focused)
                 .submitLabel(.done)
                 .onSubmit { add() }
+                .font(.system(size: 15))
                 .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color(.secondarySystemBackground))
+                .padding(.vertical, 11)
+                .background(Color(.systemBackground))
                 .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(color.opacity(0.45), lineWidth: 1.4)
+                )
+                .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
 
             Button(action: add) {
                 Text("Add")

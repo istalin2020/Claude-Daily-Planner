@@ -68,26 +68,28 @@ struct ContentView: View {
                     vm.selectedSection = .overview
                 }
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Image(systemName: "chevron.left")
                     Text("To-Do List")
                 }
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
             }
             Spacer()
             Text(vm.selectedSection.rawValue)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Spacer()
             // Invisible twin keeps the title optically centered
-            HStack(spacing: 4) {
+            HStack(spacing: 5) {
                 Image(systemName: "chevron.left")
                 Text("To-Do List")
             }
-            .font(.system(size: 14, weight: .semibold))
+            .font(.system(size: 17, weight: .semibold))
             .opacity(0)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .background(.ultraThinMaterial)
     }
 
@@ -99,26 +101,26 @@ struct ContentView: View {
                     vm.showTasksHub = false
                 }
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Image(systemName: "chevron.left")
                     Text("Overview")
                 }
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
             }
             Spacer()
             Text("To-Do List")
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
             Spacer()
             // Invisible twin keeps the title optically centered
-            HStack(spacing: 4) {
+            HStack(spacing: 5) {
                 Image(systemName: "chevron.left")
                 Text("Overview")
             }
-            .font(.system(size: 14, weight: .semibold))
+            .font(.system(size: 17, weight: .semibold))
             .opacity(0)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .background(.ultraThinMaterial)
     }
 
