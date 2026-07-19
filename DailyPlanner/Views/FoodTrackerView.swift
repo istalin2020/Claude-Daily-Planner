@@ -14,11 +14,6 @@ struct FoodTrackerView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .foodTracker,
-                              subtitle: "Log your meals and nutrition",
-                              completedCount: totalItems,
-                              totalCount: totalItems)
-
                 // ── Calorie banner (auto-calculated) ────────────────────────
                 CalorieBanner(total: entry.meals.totalCalories)
                     .padding(.horizontal, 16).padding(.top, 8)

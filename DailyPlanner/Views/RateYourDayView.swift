@@ -15,11 +15,6 @@ struct RateYourDayView: View {
         ZStack {
           ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .rateYourDay,
-                              subtitle: "Reflect on your day",
-                              completedCount: hasRating ? 1 : 0,
-                              totalCount: 1)
-
                 // Header card
                 VStack(spacing: 8) {
                     Text(overallEmoji)

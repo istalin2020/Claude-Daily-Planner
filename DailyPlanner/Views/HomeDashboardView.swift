@@ -92,7 +92,6 @@ struct HomeDashboardView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @EnvironmentObject var pro: ProManager
     @Environment(\.isLiquidGlass) private var isGlass
-    @State private var expandedGroup: HomeTileGroup? = nil
     @State private var appeared = false
 
     var body: some View {
@@ -127,12 +126,6 @@ struct HomeDashboardView: View {
         .onAppear {
             withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) { appeared = true }
         }
-        .sheet(item: $expandedGroup) { group in
-            GroupDetailSheet(group: group)
-                .environmentObject(vm)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
     }
 
     private func tile(_ group: HomeTileGroup, index: Int) -> some View {
@@ -144,17 +137,16 @@ struct HomeDashboardView: View {
     }
 
     private func open(_ group: HomeTileGroup) {
-        if group == .tasks {
-            // To-Do List opens its own hub page with the four task tiles.
-            withAnimation(.easeInOut(duration: 0.25)) {
-                vm.showTasksHub = true
-            }
-        } else if group.sections.count == 1 {
+        if group.sections.count == 1 {
+            // Single-section groups (Finance) jump straight in.
             withAnimation(.easeInOut(duration: 0.25)) {
                 vm.selectedSection = group.sections[0]
             }
         } else {
-            expandedGroup = group
+            // Every other group opens its hub page.
+            withAnimation(.easeInOut(duration: 0.25)) {
+                vm.activeHub = group
+            }
         }
     }
 
@@ -290,77 +282,103 @@ struct TilePressStyle: ButtonStyle {
     }
 }
 
-// MARK: - Group detail sheet
+// MARK: - Group hub page (Health, Schedule, Journal…)
 
-struct GroupDetailSheet: View {
+/// Opened by a group tile: the group's sections as light stacked cards,
+/// each with a live one-line summary. Tapping a card opens that section;
+/// the back bar above returns to the Overview tiles.
+struct GroupHubView: View {
     @EnvironmentObject var vm: PlannerViewModel
-    @Environment(\.dismiss) private var dismiss
     let group: HomeTileGroup
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Themed hero header
-            ZStack(alignment: .bottomLeading) {
-                LinearGradient(colors: group.gradient,
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-                HStack(spacing: 12) {
-                    Image(systemName: group.icon)
-                        .font(.system(size: 30, weight: .semibold))
-                        .foregroundColor(.white)
-                        .symbolEffect(.pulse, options: .repeating.speed(0.6))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(group.rawValue)
-                            .font(.title3).fontWeight(.bold)
-                            .foregroundColor(.white)
-                        Text(group.tagline)
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                    Spacer()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 12) {
+                ForEach(group.sections) { section in
+                    GroupHubCard(section: section, summary: summary(for: section))
+                        .padding(.horizontal, 16)
                 }
-                .padding(18)
+                Spacer(minLength: 30)
             }
-            .frame(height: 96)
-
-            // Section rows
-            ScrollView {
-                VStack(spacing: 10) {
-                    ForEach(group.sections) { section in
-                        Button {
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                withAnimation(.easeInOut(duration: 0.25)) {
-                                    vm.selectedSection = section
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 12) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(section.color.opacity(0.15))
-                                        .frame(width: 42, height: 42)
-                                    Image(systemName: section.icon)
-                                        .font(.system(size: 17))
-                                        .foregroundColor(section.color)
-                                }
-                                Text(section.rawValue)
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.secondary.opacity(0.5))
-                            }
-                            .padding(12)
-                            .background(Color(.secondarySystemBackground))
-                            .cornerRadius(16)
-                        }
-                        .buttonStyle(TilePressStyle())
-                    }
-                }
-                .padding(16)
-            }
+            .padding(.top, 12)
         }
+    }
+
+    /// A live one-line status for each section, shown under its name.
+    private func summary(for section: AppSection) -> String {
+        let e = vm.currentEntry
+        switch section {
+        case .healthFitness:
+            return "\(e.fitness.displaySteps) steps · \(e.fitness.displayCalories) cal"
+        case .waterTracker:
+            return "\(e.waterGlasses)/\(e.waterGoal) glasses"
+        case .foodTracker:
+            return e.meals.totalCalories > 0 ? "\(e.meals.totalCalories) kcal logged" : "No meals logged"
+        case .sleepTracker:
+            return e.sleep.durationHours != nil ? "Slept \(e.sleep.durationString)" : "Not logged"
+        case .medications:
+            let active = vm.settings.medications.filter(\.isActive).count
+            return active == 0 ? "No medications" : "\(active) active"
+        case .habits:
+            let habits = vm.settings.habits
+            guard !habits.isEmpty else { return "No habits yet" }
+            let done = habits.filter { vm.isHabitCompleted($0, for: vm.selectedDate) }.count
+            return "\(done)/\(habits.count) done today"
+        case .dailySchedule:
+            let pending = e.dailySchedule.filter { !$0.isCompleted }.count
+            return pending == 0 ? "All clear" : "\(pending) blocks pending"
+        case .appointments:
+            let upcoming = e.appointments.filter { !$0.isCompleted }.count
+            return upcoming == 0 ? "No appointments" : "\(upcoming) upcoming"
+        case .notes:
+            return e.notes.isEmpty ? "No notes yet" : String(e.notes.prefix(40))
+        case .rateYourDay:
+            return e.rating.mood > 0 ? "Rated \(e.rating.mood)/5" : "Not rated yet"
+        default:
+            return ""
+        }
+    }
+}
+
+struct GroupHubCard: View {
+    @EnvironmentObject var vm: PlannerViewModel
+    let section: AppSection
+    let summary: String
+
+    var body: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                vm.selectedSection = section
+            }
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(section.color)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: section.icon)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(section.rawValue)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(.primary)
+                    Text(summary)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.5))
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard()
+        }
+        .buttonStyle(TilePressStyle())
     }
 }
 

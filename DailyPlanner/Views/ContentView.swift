@@ -12,20 +12,15 @@ struct ContentView: View {
             // App Header
             AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
 
-            // Date scroller + category bar live inside sections only —
-            // the front page is a clean tile dashboard, and the To-Do hub
-            // gets a back bar plus a compact date picker (no category band).
-            if vm.selectedSection == .overview && vm.showTasksHub {
-                tasksHubTopBar
-                DateScrollerView(compact: true)
-            } else if isTaskSection {
-                // Task sections: back bar above the month + dates,
-                // no horizontal category band.
-                sectionTopBar
+            // The front page is a clean tile dashboard. Hub pages and every
+            // section get a back bar above a compact date picker — the
+            // horizontal category band is gone entirely.
+            if vm.selectedSection == .overview, let hub = vm.activeHub {
+                hubTopBar(hub)
                 DateScrollerView(compact: true)
             } else if vm.selectedSection != .overview {
-                DateScrollerView()
-                SectionTabBarView()
+                sectionTopBar
+                DateScrollerView(compact: true)
             }
 
             // Main Content
@@ -54,23 +49,25 @@ struct ContentView: View {
         }
     }
 
-    private var isTaskSection: Bool {
-        [.topPriorities, .toDoLists, .callsEmails, .personalTodo].contains(vm.selectedSection)
-    }
-
-    /// Back bar for task sections: shows the section name and returns to
-    /// the To-Do hub. Sits above the month/date picker.
+    /// Back bar for sections: shows the section name; back returns to the
+    /// section's group hub (or straight to Overview for single-section
+    /// groups like Finance). Sits above the month/date picker.
     private var sectionTopBar: some View {
-        HStack {
+        let group = HomeTileGroup.group(for: vm.selectedSection)
+        let backLabel = (group != nil && group!.sections.count > 1) ? group!.rawValue : "Overview"
+
+        return HStack {
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    vm.showTasksHub = true
+                    if let g = group, g.sections.count > 1 {
+                        vm.activeHub = g
+                    }
                     vm.selectedSection = .overview
                 }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "chevron.left")
-                    Text("To-Do List")
+                    Text(backLabel)
                 }
                 .font(.system(size: 17, weight: .semibold))
             }
@@ -83,7 +80,7 @@ struct ContentView: View {
             // Invisible twin keeps the title optically centered
             HStack(spacing: 5) {
                 Image(systemName: "chevron.left")
-                Text("To-Do List")
+                Text(backLabel)
             }
             .font(.system(size: 17, weight: .semibold))
             .opacity(0)
@@ -93,12 +90,12 @@ struct ContentView: View {
         .background(.ultraThinMaterial)
     }
 
-    /// Back bar shown at the top of the To-Do hub, above the date picker.
-    private var tasksHubTopBar: some View {
+    /// Back bar shown at the top of a group hub, above the date picker.
+    private func hubTopBar(_ hub: HomeTileGroup) -> some View {
         HStack {
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    vm.showTasksHub = false
+                    vm.activeHub = nil
                 }
             } label: {
                 HStack(spacing: 5) {
@@ -108,8 +105,10 @@ struct ContentView: View {
                 .font(.system(size: 17, weight: .semibold))
             }
             Spacer()
-            Text("To-Do List")
+            Text(hub.rawValue)
                 .font(.system(size: 20, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Spacer()
             // Invisible twin keeps the title optically centered
             HStack(spacing: 5) {
@@ -128,8 +127,12 @@ struct ContentView: View {
     private var currentSectionView: some View {
         switch vm.selectedSection {
         case .overview:
-            if vm.showTasksHub {
-                TasksHubView()
+            if let hub = vm.activeHub {
+                if hub == .tasks {
+                    TasksHubView()
+                } else {
+                    GroupHubView(group: hub)
+                }
             } else {
                 HomeDashboardView()
             }
@@ -188,7 +191,7 @@ struct AppHeaderView: View {
             Spacer()
             // "Today" only matters where a date is being browsed — hide it
             // on the tile front page.
-            if vm.selectedSection != .overview || vm.showTasksHub {
+            if vm.selectedSection != .overview || vm.activeHub != nil {
                 Button(action: { vm.selectToday() }) {
                     Text("Today")
                         .font(.caption).fontWeight(.semibold)

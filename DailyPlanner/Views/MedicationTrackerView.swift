@@ -14,11 +14,6 @@ struct MedicationTrackerView: View {
         ScrollView {
             VStack(spacing: 0) {
                 // Section header with close button (consistent with other sections)
-                SectionHeader(section: .medications,
-                              subtitle: "Stay on top of your medications",
-                              completedCount: todayLogs.count,
-                              totalCount: activeMeds.count)
-
                 VStack(spacing: 16) {
                 // Summary banner
                 summaryBanner

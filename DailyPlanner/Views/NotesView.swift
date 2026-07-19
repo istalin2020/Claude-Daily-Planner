@@ -11,11 +11,6 @@ struct NotesView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .notes,
-                              subtitle: "Capture your thoughts and ideas",
-                              completedCount: entry.notes.isEmpty ? 0 : 1,
-                              totalCount: 1)
-
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "note.text")

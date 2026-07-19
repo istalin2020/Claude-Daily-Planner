@@ -45,11 +45,6 @@ struct ExpenseTrackerView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .expenseTracker,
-                              subtitle: "Track income, spending & savings",
-                              completedCount: entry.expenses.count,
-                              totalCount: entry.expenses.count)
-
                 // ── Monthly Snapshot Cards ─────────────────────────────
                 monthlySnapshotSection
                     .padding(.top, 12)

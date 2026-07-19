@@ -15,11 +15,6 @@ struct WaterTrackerView: View {
         ZStack {
           ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .waterTracker,
-                              subtitle: "Stay hydrated throughout the day",
-                              completedCount: min(entry.waterGlasses, entry.waterGoal),
-                              totalCount: entry.waterGoal)
-
                 // Big visual tracker
                 VStack(spacing: 20) {
                     // Circular progress

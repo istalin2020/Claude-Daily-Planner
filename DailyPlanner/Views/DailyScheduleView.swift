@@ -10,11 +10,6 @@ struct DailyScheduleView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .dailySchedule,
-                              subtitle: "Plan and track your day hour by hour",
-                              completedCount: entry.dailySchedule.filter(\.isCompleted).count,
-                              totalCount: entry.dailySchedule.count)
-
                 if !vm.isFuture {
                     AddButton(label: "Add Schedule Block", color: AppSection.dailySchedule.color) {
                         showAddSheet = true

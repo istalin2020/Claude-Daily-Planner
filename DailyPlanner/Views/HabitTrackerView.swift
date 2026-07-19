@@ -17,11 +17,6 @@ struct HabitTrackerView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .habits,
-                              subtitle: "Build powerful daily habits",
-                              completedCount: completedCount,
-                              totalCount: todayHabits.count)
-
                 // Progress banner
                 if !vm.settings.habits.isEmpty {
                     HStack(spacing: 12) {

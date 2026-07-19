@@ -10,11 +10,6 @@ struct AppointmentsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .appointments,
-                              subtitle: "Manage your appointments for the day",
-                              completedCount: entry.appointments.filter(\.isCompleted).count,
-                              totalCount: entry.appointments.count)
-
                 if !vm.isFuture {
                     AddButton(label: "Add Appointment", color: AppSection.appointments.color) {
                         showAddSheet = true

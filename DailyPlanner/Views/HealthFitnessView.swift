@@ -17,11 +17,6 @@ struct HealthFitnessView: View {
         ScrollView {
             VStack(spacing: 0) {
 
-                SectionHeader(section: .healthFitness,
-                              subtitle: "Track workouts and physical activity",
-                              completedCount: fitness.activities.filter(\.isCompleted).count,
-                              totalCount: fitness.activities.count)
-
                 // Apple Health Sync Banner
                 AppleHealthSyncBanner(
                     syncedAt: fitness.hkSyncedAt,

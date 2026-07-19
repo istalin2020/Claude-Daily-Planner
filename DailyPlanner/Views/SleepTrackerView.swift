@@ -14,11 +14,6 @@ struct SleepTrackerView: View {
         ScrollView {
             VStack(spacing: 0) {
                 // Section header with close button (consistent with other sections)
-                SectionHeader(section: .sleepTracker,
-                              subtitle: "Track your sleep patterns",
-                              completedCount: sleep.bedtime != nil ? 1 : 0,
-                              totalCount: 1)
-
                 VStack(spacing: 16) {
                     // Summary Card
                     sleepSummaryCard
