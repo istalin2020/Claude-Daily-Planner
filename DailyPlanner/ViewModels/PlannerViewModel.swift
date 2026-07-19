@@ -150,6 +150,7 @@ class PlannerViewModel: ObservableObject {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
         let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces),
+                               originalDate: Calendar.current.startOfDay(for: selectedDate),
                                notes: notes, recurrence: recurrence, subtasks: subtasks)
         if let idx = e.topPriorities.firstIndex(where: { $0.isCompleted }) {
             e.topPriorities.insert(task, at: idx)
@@ -206,6 +207,7 @@ class PlannerViewModel: ObservableObject {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
         let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces),
+                               originalDate: Calendar.current.startOfDay(for: selectedDate),
                                notes: notes, recurrence: recurrence, subtasks: subtasks)
         // Insert before the first completed fresh (non-rolled-over) task so the
         // new item always lands below open tasks and above completed tasks.
@@ -262,6 +264,7 @@ class PlannerViewModel: ObservableObject {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
         let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces),
+                               originalDate: Calendar.current.startOfDay(for: selectedDate),
                                notes: notes, recurrence: recurrence, subtasks: subtasks)
         if let idx = e.callsEmails.firstIndex(where: { $0.isCompleted }) {
             e.callsEmails.insert(task, at: idx)
@@ -352,6 +355,7 @@ class PlannerViewModel: ObservableObject {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         var e = currentEntry
         let task = PlannerTask(title: title.trimmingCharacters(in: .whitespaces),
+                               originalDate: Calendar.current.startOfDay(for: selectedDate),
                                notes: notes, recurrence: recurrence, subtasks: subtasks)
         if let idx = e.personalTodo.firstIndex(where: { $0.isCompleted }) {
             e.personalTodo.insert(task, at: idx)
@@ -1242,25 +1246,33 @@ class PlannerViewModel: ObservableObject {
             // Insert rolled-over tasks at the top of today's lists.
             for var task in missingPriorities {
                 task.isRolledOver = true
-                task.originalDate = pastDate
+                // Preserve the task's true creation date across repeated
+                // rollovers — only stamp it on the first roll.
+                if task.originalDate == nil { task.originalDate = pastDate }
                 te.topPriorities.insert(task, at: 0)
                 existingIDs.insert(task.id)
             }
             for var task in missingTodos {
                 task.isRolledOver = true
-                task.originalDate = pastDate
+                // Preserve the task's true creation date across repeated
+                // rollovers — only stamp it on the first roll.
+                if task.originalDate == nil { task.originalDate = pastDate }
                 te.toDoLists.insert(task, at: 0)
                 existingIDs.insert(task.id)
             }
             for var task in missingCalls {
                 task.isRolledOver = true
-                task.originalDate = pastDate
+                // Preserve the task's true creation date across repeated
+                // rollovers — only stamp it on the first roll.
+                if task.originalDate == nil { task.originalDate = pastDate }
                 te.callsEmails.insert(task, at: 0)
                 existingIDs.insert(task.id)
             }
             for var task in missingPersonal {
                 task.isRolledOver = true
-                task.originalDate = pastDate
+                // Preserve the task's true creation date across repeated
+                // rollovers — only stamp it on the first roll.
+                if task.originalDate == nil { task.originalDate = pastDate }
                 te.personalTodo.insert(task, at: 0)
                 existingIDs.insert(task.id)
             }

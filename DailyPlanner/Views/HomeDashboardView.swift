@@ -92,7 +92,6 @@ struct HomeDashboardView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @EnvironmentObject var pro: ProManager
     @Environment(\.isLiquidGlass) private var isGlass
-    @State private var appeared = false
 
     var body: some View {
         GeometryReader { geo in
@@ -120,11 +119,6 @@ struct HomeDashboardView: View {
             }
             .padding(.horizontal, hPad)
             .padding(.vertical, vPad)
-            .opacity(appeared ? 1 : 0)
-            .offset(y: appeared ? 0 : 14)
-        }
-        .onAppear {
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) { appeared = true }
         }
     }
 
@@ -187,9 +181,6 @@ struct AnimatedGroupTile: View {
     let delay: Double
     let action: () -> Void
 
-    @State private var floatPhase = false
-    @State private var shown = false
-
     var body: some View {
         Button(action: action) {
             ZStack {
@@ -199,23 +190,21 @@ struct AnimatedGroupTile: View {
                                          startPoint: .topLeading,
                                          endPoint: .bottomTrailing))
 
-                // Soft glow blob that breathes
+                // Soft glow blob (static — keeps launch fast and smooth)
                 Circle()
                     .fill(.white.opacity(0.14))
                     .frame(width: 110, height: 110)
                     .blur(radius: 18)
-                    .offset(x: 48, y: floatPhase ? -58 : -46)
+                    .offset(x: 48, y: -52)
 
-                // Floating decorative symbols — the "animated picture"
+                // Decorative theme symbols — still artwork, same look
                 ForEach(Array(group.decorSymbols.enumerated()), id: \.offset) { i, symbol in
                     Image(systemName: symbol)
                         .font(.system(size: i == 0 ? 30 : 18, weight: .semibold))
                         .foregroundColor(.white.opacity(i == 0 ? 0.22 : 0.16))
-                        .offset(
-                            x: [42.0, -46.0, 30.0][i % 3],
-                            y: [-38.0, -6.0, 34.0][i % 3] + (floatPhase ? -6 : 6) * (i.isMultiple(of: 2) ? 1 : -1)
-                        )
-                        .rotationEffect(.degrees(floatPhase ? [8.0, -6.0, 5.0][i % 3] : [-4.0, 5.0, -6.0][i % 3]))
+                        .offset(x: [42.0, -46.0, 30.0][i % 3],
+                                y: [-38.0, -6.0, 34.0][i % 3])
+                        .rotationEffect(.degrees([8.0, -6.0, 5.0][i % 3]))
                 }
 
                 // Foreground content — category name centered in the tile
@@ -228,7 +217,6 @@ struct AnimatedGroupTile: View {
                             Image(systemName: group.icon)
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
-                                .symbolEffect(.pulse, options: .repeating.speed(0.6))
                         }
                         Spacer()
                     }
@@ -260,16 +248,6 @@ struct AnimatedGroupTile: View {
             .shadow(color: group.gradient[0].opacity(0.40), radius: 10, y: 5)
         }
         .buttonStyle(TilePressStyle())
-        .scaleEffect(shown ? 1 : 0.85)
-        .opacity(shown ? 1 : 0)
-        .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.72).delay(delay)) {
-                shown = true
-            }
-            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true).delay(delay)) {
-                floatPhase = true
-            }
-        }
     }
 }
 
