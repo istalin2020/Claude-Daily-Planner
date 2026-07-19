@@ -54,7 +54,6 @@ struct ContentView: View {
     /// groups like Finance). Sits above the month/date picker.
     private var sectionTopBar: some View {
         let group = HomeTileGroup.group(for: vm.selectedSection)
-        let backLabel = (group != nil && group!.sections.count > 1) ? group!.rawValue : "Overview"
 
         return HStack {
             Button {
@@ -67,7 +66,7 @@ struct ContentView: View {
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "chevron.left")
-                    Text(backLabel)
+                    Text("Back")
                 }
                 .font(.system(size: 17, weight: .semibold))
             }
@@ -80,7 +79,7 @@ struct ContentView: View {
             // Invisible twin keeps the title optically centered
             HStack(spacing: 5) {
                 Image(systemName: "chevron.left")
-                Text(backLabel)
+                Text("Back")
             }
             .font(.system(size: 17, weight: .semibold))
             .opacity(0)
@@ -100,7 +99,7 @@ struct ContentView: View {
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "chevron.left")
-                    Text("Overview")
+                    Text("Back")
                 }
                 .font(.system(size: 17, weight: .semibold))
             }
@@ -113,7 +112,7 @@ struct ContentView: View {
             // Invisible twin keeps the title optically centered
             HStack(spacing: 5) {
                 Image(systemName: "chevron.left")
-                Text("Overview")
+                Text("Back")
             }
             .font(.system(size: 17, weight: .semibold))
             .opacity(0)
