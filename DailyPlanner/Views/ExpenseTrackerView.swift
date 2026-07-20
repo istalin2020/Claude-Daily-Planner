@@ -2120,7 +2120,7 @@ struct TransactionsListSheet: View {
     let onEdit: (Expense) -> Void
     let onDelete: (Expense) -> Void
 
-    private struct DatedExpense: Identifiable {
+    struct DatedExpense: Identifiable {
         let id: UUID
         let date: Date
         let expense: Expense
