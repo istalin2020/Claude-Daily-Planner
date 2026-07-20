@@ -18,6 +18,7 @@ struct ExpenseTrackerView: View {
     @State private var detectedSMS: ParsedTransaction? = nil
     @State private var hasCheckedClipboard = false
     @State private var showGmailSync = false
+    @State private var showTransactions = false
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -50,9 +51,6 @@ struct ExpenseTrackerView: View {
                 monthlySummaryCard
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-
-                todayTransactionsList
-                    .padding(.top, 16)
 
                 // 2 ── Import options (Paste Bank SMS / Gmail sync) ─────
                 if !vm.isFuture {
@@ -92,6 +90,12 @@ struct ExpenseTrackerView: View {
         }
         .sheet(isPresented: $showSpendingTrends) {
             SpendingTrendsView().environmentObject(vm)
+        }
+        .sheet(isPresented: $showTransactions) {
+            TransactionsListSheet(monthDate: summaryDate, sym: sym,
+                                  onEdit: { editingExpense = $0 },
+                                  onDelete: { deleteConfirmItem = $0 })
+                .environmentObject(vm)
         }
         .sheet(isPresented: $showProUpgrade) {
             ProUpgradeView().environmentObject(pro)
@@ -320,6 +324,8 @@ struct ExpenseTrackerView: View {
         let categories    = vm.monthlyExpensesByDisplayCategory(for: summaryDate, upTo: cutoff)
         let barRatio: Double = totalIncome > 0 ? min(totalExpenses / totalIncome, 1.0) : 0
 
+        let incomeGreen = Color(red: 0.1, green: 0.62, blue: 0.35)
+
         return VStack(alignment: .leading, spacing: 0) {
 
             // Header with month navigation
@@ -327,23 +333,23 @@ struct ExpenseTrackerView: View {
                 Button { summaryMonthOffset -= 1 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.secondary)
                         .frame(width: 32, height: 32)
                 }
                 Spacer()
                 VStack(spacing: 2) {
                     Text(summaryMonthLabel)
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     Text("Monthly Overview")
                         .font(.caption2)
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(.secondary)
                 }
                 Spacer()
                 Button { summaryMonthOffset += 1 } label: {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.secondary)
                         .frame(width: 32, height: 32)
                 }
             }
@@ -355,10 +361,10 @@ struct ExpenseTrackerView: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.red.opacity(0.5))
+                        .fill(Color.red.opacity(0.55))
                         .frame(height: 6)
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(Color(red: 0.1, green: 0.85, blue: 0.5))
+                        .fill(incomeGreen)
                         .frame(width: geo.size.width * (1 - barRatio), height: 6)
                 }
             }
@@ -372,14 +378,14 @@ struct ExpenseTrackerView: View {
                     label: "Income",
                     amount: totalIncome,
                     sym: sym,
-                    color: Color(red: 0.1, green: 0.85, blue: 0.5),
+                    color: incomeGreen,
                     isHeader: true
                 )
                 .padding(.horizontal, 16)
 
                 if !categories.isEmpty {
                     Rectangle()
-                        .fill(Color.white.opacity(0.08))
+                        .fill(Color.secondary.opacity(0.18))
                         .frame(height: 1)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
@@ -394,11 +400,11 @@ struct ExpenseTrackerView: View {
                             .frame(width: 20)
                         Text(dc.name)
                             .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.primary)
                         Spacer()
                         Text("-\(sym)\(String(format: "%.2f", amount))")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color.red.opacity(0.9))
+                            .foregroundColor(Color.red)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
@@ -409,7 +415,7 @@ struct ExpenseTrackerView: View {
                         label: "Expense",
                         amount: totalExpenses,
                         sym: sym,
-                        color: Color.red.opacity(0.85),
+                        color: Color.red,
                         isHeader: true
                     )
                     .padding(.horizontal, 16)
@@ -418,7 +424,7 @@ struct ExpenseTrackerView: View {
                 // Savings row in monthly summary
                 if totalSavings > 0 {
                     Rectangle()
-                        .fill(Color.white.opacity(0.08))
+                        .fill(Color.secondary.opacity(0.18))
                         .frame(height: 1)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 4)
@@ -427,7 +433,7 @@ struct ExpenseTrackerView: View {
                         label: "Savings",
                         amount: totalSavings,
                         sym: sym,
-                        color: Color(red: 0.3, green: 0.5, blue: 0.95),
+                        color: Color(red: 0.2, green: 0.45, blue: 0.9),
                         isHeader: false
                     )
                     .padding(.horizontal, 16)
@@ -442,29 +448,38 @@ struct ExpenseTrackerView: View {
                 HStack {
                     Text("Balance")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     Spacer()
                     Text("\(balance >= 0 ? "+" : "")\(sym)\(String(format: "%.2f", balance))")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(balance >= 0
-                            ? Color(red: 0.1, green: 0.85, blue: 0.5)
-                            : Color.red.opacity(0.9))
+                        .foregroundColor(balance >= 0 ? incomeGreen : Color.red)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.bottom, 12)
+
+                // ── View all individual transactions ──
+                Button { showTransactions = true } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "list.bullet.rectangle.portrait")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("Transactions")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(AppSection.expenseTracker.color.opacity(0.15))
+                    .foregroundColor(AppSection.expenseTracker.color)
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 14)
             }
         }
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.1, green: 0.12, blue: 0.18), Color(red: 0.05, green: 0.07, blue: 0.12)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color(.secondarySystemBackground))
         )
-        .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
     }
 
     // MARK: - Today's Transactions List
@@ -600,7 +615,7 @@ struct SummaryRow: View {
         HStack {
             Text(label)
                 .font(.system(size: isHeader ? 15 : 13, weight: isHeader ? .bold : .regular))
-                .foregroundColor(isHeader ? .white : .white.opacity(0.75))
+                .foregroundColor(isHeader ? .primary : .secondary)
             Spacer()
             Text("\(sym)\(String(format: "%.2f", amount))")
                 .font(.system(size: isHeader ? 15 : 13, weight: isHeader ? .bold : .semibold))
@@ -619,7 +634,7 @@ struct DashedDivider: View {
                 path.move(to: .init(x: 0, y: 0))
                 path.addLine(to: .init(x: geo.size.width, y: 0))
             }
-            .stroke(Color.white.opacity(0.25),
+            .stroke(Color.secondary.opacity(0.35),
                     style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
         }
         .frame(height: 1)
@@ -2091,5 +2106,124 @@ struct LabeledPieChart: View {
 
     private func compact(_ v: Double) -> String {
         v >= 10000 ? String(format: "%.1fk", v / 1000) : String(format: "%.0f", v)
+    }
+}
+
+// MARK: - Transactions List Sheet
+/// Every individual income/expense/savings entry for the month, newest
+/// first, each with its date and description — opened from the summary card.
+struct TransactionsListSheet: View {
+    @EnvironmentObject var vm: PlannerViewModel
+    @Environment(\.dismiss) private var dismiss
+    let monthDate: Date
+    let sym: String
+    let onEdit: (Expense) -> Void
+    let onDelete: (Expense) -> Void
+
+    private struct DatedExpense: Identifiable {
+        let id: UUID
+        let date: Date
+        let expense: Expense
+    }
+
+    private var items: [DatedExpense] {
+        vm.monthlyEntries(for: monthDate)
+            .flatMap { entry in
+                entry.expenses.map { DatedExpense(id: $0.id, date: entry.date, expense: $0) }
+            }
+            .sorted { $0.date > $1.date }
+    }
+
+    private var monthLabel: String {
+        let f = DateFormatter(); f.dateFormat = "MMMM yyyy"
+        return f.string(from: monthDate)
+    }
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if items.isEmpty {
+                    VStack(spacing: 10) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 40))
+                            .foregroundColor(.secondary.opacity(0.5))
+                        Text("No transactions this month")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 6) {
+                            ForEach(items) { item in
+                                TransactionListRow(dated: item, sym: sym)
+                                    .padding(.horizontal, 16)
+                                    .onTapGesture { dismiss(); onEdit(item.expense) }
+                            }
+                        }
+                        .padding(.vertical, 12)
+                    }
+                }
+            }
+            .navigationTitle(monthLabel)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }.fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+private struct TransactionListRow: View {
+    let dated: TransactionsListSheet.DatedExpense
+    let sym: String
+
+    private var e: Expense { dated.expense }
+    private var color: Color {
+        if e.isIncome  { return Color(red: 0.1, green: 0.62, blue: 0.35) }
+        if e.isDeposit { return Color(red: 0.2, green: 0.45, blue: 0.9) }
+        return .red
+    }
+    private var icon: String {
+        if e.isIncome  { return "arrow.down.circle.fill" }
+        if e.isDeposit { return "banknote.fill" }
+        if !e.customCategoryLabel.isEmpty { return "tag.fill" }
+        return e.category.icon
+    }
+    private var typeLabel: String {
+        if e.isIncome  { return "Income" }
+        if e.isDeposit { return "Savings" }
+        return e.displayCategory
+    }
+    private var dateStr: String {
+        let f = DateFormatter(); f.dateFormat = "EEE, d MMM"
+        return f.string(from: dated.date)
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(color.opacity(0.15)).frame(width: 38, height: 38)
+                Image(systemName: icon).font(.system(size: 15)).foregroundColor(color)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(e.description.isEmpty ? typeLabel : e.description)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                Text("\(typeLabel) · \(dateStr)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Text("\(e.isIncome || e.isDeposit ? "+" : "-")\(sym)\(String(format: "%.2f", e.amount))")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(color)
+        }
+        .padding(10)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
     }
 }

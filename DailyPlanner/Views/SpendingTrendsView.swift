@@ -21,6 +21,7 @@ struct SpendingTrendsView: View {
         var id: String { rawValue }
     }
     @State private var period: Period = .daily
+    @State private var selectedLabel: String? = nil
 
     struct Point: Identifiable {
         let id = UUID()
@@ -42,6 +43,7 @@ struct SpendingTrendsView: View {
                     .pickerStyle(.segmented)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
+                    .onChange(of: period) { _, _ in selectedLabel = nil }
 
                     let data = points
                     let total = data.reduce(0) { $0 + $1.amount }
@@ -56,7 +58,29 @@ struct SpendingTrendsView: View {
                     }
                     .padding(.horizontal, 16)
 
-                    // Bars — highest highlighted, average as a dashed line
+                    // Tapped-bar readout
+                    if let sel = selectedLabel, let p = data.first(where: { $0.label == sel }) {
+                        HStack(spacing: 6) {
+                            Circle().fill(Color.orange).frame(width: 8, height: 8)
+                            Text(fullLabel(for: p.label))
+                                .font(.system(size: 13, weight: .medium))
+                            Spacer()
+                            Text("\(sym)\(String(format: "%.2f", p.amount))")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(Color(.tertiarySystemBackground))
+                        .cornerRadius(12)
+                        .padding(.horizontal, 16)
+                    } else {
+                        Text("Tap a bar to see its exact amount")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    // Bars — highest highlighted, average as a dashed line,
+                    // tap any bar to read its value above.
                     Chart {
                         ForEach(data) { p in
                             BarMark(
@@ -64,9 +88,10 @@ struct SpendingTrendsView: View {
                                 y: .value("Spent", p.amount)
                             )
                             .foregroundStyle(
-                                p.amount >= maxAmount && maxAmount > 0
-                                ? Color.orange.gradient
-                                : accent.gradient
+                                p.label == selectedLabel ? Color.orange.gradient
+                                : (p.amount >= maxAmount && maxAmount > 0
+                                   ? Color.orange.opacity(0.55).gradient
+                                   : accent.gradient)
                             )
                             .cornerRadius(4)
                         }
@@ -78,6 +103,19 @@ struct SpendingTrendsView: View {
                                     Text("average")
                                         .font(.system(size: 9))
                                         .foregroundColor(.secondary)
+                                }
+                        }
+                    }
+                    .chartOverlay { proxy in
+                        GeometryReader { geo in
+                            Rectangle().fill(.clear).contentShape(Rectangle())
+                                .onTapGesture { location in
+                                    if let plot = proxy.plotFrame {
+                                        let x = location.x - geo[plot].origin.x
+                                        if let label: String = proxy.value(atX: x) {
+                                            selectedLabel = (label == selectedLabel) ? nil : label
+                                        }
+                                    }
                                 }
                         }
                     }
@@ -188,6 +226,15 @@ struct SpendingTrendsView: View {
 
     private func compact(_ v: Double) -> String {
         v >= 10000 ? String(format: "%.1fk", v / 1000) : String(format: "%.0f", v)
+    }
+
+    private func fullLabel(for label: String) -> String {
+        switch period {
+        case .daily:   return "Day \(label)"
+        case .weekly:  return "Week of \(label)"
+        case .monthly: return "\(label)"
+        case .yearly:  return "Year \(label)"
+        }
     }
 }
 
