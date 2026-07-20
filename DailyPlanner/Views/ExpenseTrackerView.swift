@@ -43,60 +43,23 @@ struct ExpenseTrackerView: View {
     enum AddMode { case income, expense, savings }
 
     var body: some View {
+        VStack(spacing: 0) {
         ScrollView {
             VStack(spacing: 0) {
-                // ── Monthly Snapshot Cards ─────────────────────────────
-                monthlySnapshotSection
+                // ── Income & expense details on top ────────────────────
+                todayTransactionsList
                     .padding(.top, 12)
 
-                // ── Quick Add Buttons ──────────────────────────────────
+                // ── Import options ─────────────────────────────────────
                 if !vm.isFuture {
-                    quickAddButtons
-                        .padding(.top, 10)
+                    importButtons
+                        .padding(.top, 16)
                 }
 
-                // ── Monthly Summary Card ───────────────────────────────
-                monthlySummaryCard
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-
-                // ── Expense Pie Chart ─────────────────────────────────
+                // ── Expense Breakdown (labeled pie) ────────────────────
                 categoryPieChartSection
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-
-                // ── Budget Alerts ──────────────────────────────────────
-                let alerts = budgetAlerts()
-                if !alerts.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.orange)
-                            Text("Budget Alerts").font(.system(size: 14, weight: .bold))
-                        }
-                        .padding(.horizontal, 16)
-                        ForEach(alerts, id: \.category.rawValue) { alert in
-                            BudgetAlertRow(alert: alert, sym: sym)
-                                .padding(.horizontal, 16)
-                        }
-                    }
-                    .padding(.top, 16)
-                }
-
-                Button {
-                    if pro.isPro { showBudgets = true } else { showProUpgrade = true }
-                } label: {
-                    HStack(spacing: 6) {
-                        Label("Manage Budgets", systemImage: "chart.bar.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                        if !pro.isPro { ProInlineBadge() }
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 10)
-                    .background(Color.orange.opacity(0.1)).foregroundColor(.orange).cornerRadius(12)
-                }
-                .padding(.horizontal, 16).padding(.top, 8)
-                .sheet(isPresented: $showProUpgrade) {
-                    ProUpgradeView().environmentObject(pro)
-                }
 
                 // ── Spending Trends (PRO) ──────────────────────────────
                 Button {
@@ -118,17 +81,21 @@ struct ExpenseTrackerView: View {
                     .foregroundColor(Color(red: 0.1, green: 0.65, blue: 0.35))
                     .cornerRadius(12)
                 }
-                .padding(.horizontal, 16).padding(.top, 8)
+                .padding(.horizontal, 16).padding(.top, 12)
 
-                // ── Today's Transactions ───────────────────────────────
-                todayTransactionsList
+                // ── Monthly Summary Card ───────────────────────────────
+                monthlySummaryCard
+                    .padding(.horizontal, 16)
                     .padding(.top, 16)
 
-                Spacer(minLength: 40)
+                Spacer(minLength: 24)
             }
         }
         .sheet(isPresented: $showSpendingTrends) {
             SpendingTrendsView().environmentObject(vm)
+        }
+        .sheet(isPresented: $showProUpgrade) {
+            ProUpgradeView().environmentObject(pro)
         }
         .sheet(isPresented: $showAddSheet) {
             AddTransactionSheet(mode: addMode, currencySymbol: sym) { transaction in
@@ -183,6 +150,12 @@ struct ExpenseTrackerView: View {
                 Text("Delete \"\(item.description)\" (\(item.isIncome ? "+" : item.isDeposit ? "+" : "-")\(sym)\(String(format: "%.2f", item.amount)))?")
             }
         }
+
+        // ── Fixed bottom bar: always one tap away ──────────────────────
+        if !vm.isFuture {
+            bottomAddBar
+        }
+        }
     }
 
     // MARK: - Category Pie Chart
@@ -194,51 +167,35 @@ struct ExpenseTrackerView: View {
 
         return Group {
             if total > 0 {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Expense Breakdown")
                         .font(.system(size: 14, weight: .bold))
                         .padding(.leading, 4)
 
-                    Chart(categories, id: \.0) { dc, amount in
-                        SectorMark(
-                            angle: .value(dc.name, amount),
-                            innerRadius: .ratio(0.55),
-                            angularInset: 1.5
-                        )
-                        .foregroundStyle(dc.color)
-                        .cornerRadius(4)
-                    }
-                    .frame(height: 200)
-
-                    VStack(spacing: 6) {
-                        ForEach(categories, id: \.0) { dc, amount in
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(dc.color)
-                                    .frame(width: 10, height: 10)
-                                Image(systemName: dc.icon)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(dc.color)
-                                    .frame(width: 16)
-                                Text(dc.name)
-                                    .font(.system(size: 12))
-                                Spacer()
-                                Text("\(sym)\(String(format: "%.2f", amount))")
-                                    .font(.system(size: 12, weight: .semibold))
-                                Text("(\(Int(amount / total * 100))%)")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 36, alignment: .trailing)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 4)
+                    // Self-labeled pie: every slice carries its own callout
+                    // line with the category name, amount, and share.
+                    LabeledPieChart(slices: pieSlices(from: categories),
+                                    total: total, sym: sym)
+                        .frame(height: 330)
                 }
                 .padding(16)
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(16)
             }
         }
+    }
+
+    /// Top slices stay individual; the tail is grouped into "Others" so the
+    /// in-chart labels never overlap.
+    private func pieSlices(from categories: [(PlannerViewModel.DisplayCategory, Double)]) -> [LabeledPieChart.Slice] {
+        var slices = categories.prefix(6).map {
+            LabeledPieChart.Slice(name: $0.0.name, value: $0.1, color: $0.0.color)
+        }
+        let rest = categories.dropFirst(6).reduce(0.0) { $0 + $1.1 }
+        if rest > 0 {
+            slices.append(LabeledPieChart.Slice(name: "Others", value: rest, color: .gray))
+        }
+        return slices
     }
 
     private func budgetAlerts() -> [BudgetAlert] {
@@ -291,21 +248,26 @@ struct ExpenseTrackerView: View {
 
     // MARK: - Quick Add Buttons
 
-    private var quickAddButtons: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                FinanceAddButton(label: "Add Income", icon: "plus.circle.fill",
-                                 bg: Color(red: 0.1, green: 0.75, blue: 0.4).opacity(0.12),
-                                 fg: Color(red: 0.1, green: 0.65, blue: 0.35)) {
-                    addMode = .income; showAddSheet = true
-                }
-                FinanceAddButton(label: "Add Expense", icon: "minus.circle.fill",
-                                 bg: Color.red.opacity(0.1), fg: .red) {
-                    addMode = .expense; showAddSheet = true
-                }
+    /// Fixed bar at the bottom of the screen — never scrolls away.
+    private var bottomAddBar: some View {
+        HStack(spacing: 8) {
+            FinanceAddButton(label: "Add Income", icon: "plus.circle.fill",
+                             bg: Color(red: 0.1, green: 0.75, blue: 0.4).opacity(0.12),
+                             fg: Color(red: 0.1, green: 0.65, blue: 0.35)) {
+                addMode = .income; showAddSheet = true
             }
-            .padding(.horizontal, 16)
+            FinanceAddButton(label: "Add Expense", icon: "minus.circle.fill",
+                             bg: Color.red.opacity(0.1), fg: .red) {
+                addMode = .expense; showAddSheet = true
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+    }
 
+    private var importButtons: some View {
+        VStack(spacing: 8) {
             FinanceAddButton(
                 label: "Add Saving  \(sym)\(String(format: "%.2f", vm.monthlyTotalSavings(for: vm.selectedDate, upTo: vm.selectedDate)))",
                 icon: "banknote.fill",
@@ -1994,5 +1956,108 @@ struct SMSImportWizard: View {
             vm.dismissSMSHash(p.rawText)
         }
         dismiss()
+    }
+}
+
+// MARK: - Labeled Pie Chart
+/// A donut chart that labels each slice inside the drawing itself:
+/// a short leader line points from the slice to its name, amount, and
+/// percentage — no separate legend needed.
+struct LabeledPieChart: View {
+    struct Slice: Identifiable {
+        let id = UUID()
+        let name: String
+        let value: Double
+        let color: Color
+    }
+
+    let slices: [Slice]
+    let total: Double
+    let sym: String
+
+    private struct ComputedSlice: Identifiable {
+        let id = UUID()
+        let slice: Slice
+        let start: Double   // radians
+        let end: Double
+        let mid: Double
+    }
+
+    private var computed: [ComputedSlice] {
+        let sum = max(slices.reduce(0) { $0 + $1.value }, 0.0001)
+        var angle = -Double.pi / 2
+        return slices.map { s in
+            let sweep = s.value / sum * 2 * .pi
+            defer { angle += sweep }
+            return ComputedSlice(slice: s, start: angle, end: angle + sweep, mid: angle + sweep / 2)
+        }
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            let r = min(geo.size.width, geo.size.height) * 0.27
+            let lineEnd = r + 14
+
+            ZStack {
+                ForEach(computed) { c in
+                    // Slice
+                    Path { p in
+                        p.move(to: center)
+                        p.addArc(center: center, radius: r,
+                                 startAngle: .radians(c.start),
+                                 endAngle: .radians(c.end),
+                                 clockwise: false)
+                        p.closeSubpath()
+                    }
+                    .fill(c.slice.color)
+
+                    // Leader line: slice edge → outward → short horizontal tick
+                    let edge = point(center, r - 1, c.mid)
+                    let bend = point(center, lineEnd, c.mid)
+                    let isRight = cos(c.mid) >= 0
+                    let tip = CGPoint(x: bend.x + (isRight ? 10 : -10), y: bend.y)
+                    Path { p in
+                        p.move(to: edge)
+                        p.addLine(to: bend)
+                        p.addLine(to: tip)
+                    }
+                    .stroke(c.slice.color, lineWidth: 1.3)
+
+                    // Label at the end of the leader line
+                    VStack(alignment: isRight ? .leading : .trailing, spacing: 0) {
+                        Text(c.slice.name)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                        Text("\(sym)\(compact(c.slice.value)) · \(Int(round(c.slice.value / max(total, 0.0001) * 100)))%")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(width: 86, alignment: isRight ? .leading : .trailing)
+                    .position(x: tip.x + (isRight ? 47 : -47), y: tip.y)
+                }
+
+                // Donut hole with the total in the middle
+                Circle()
+                    .fill(Color(.secondarySystemBackground))
+                    .frame(width: r * 1.1, height: r * 1.1)
+                VStack(spacing: 1) {
+                    Text("Total")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                    Text("\(sym)\(compact(total))")
+                        .font(.system(size: 15, weight: .bold))
+                }
+            }
+        }
+    }
+
+    private func point(_ c: CGPoint, _ radius: CGFloat, _ angle: Double) -> CGPoint {
+        CGPoint(x: c.x + radius * CGFloat(cos(angle)),
+                y: c.y + radius * CGFloat(sin(angle)))
+    }
+
+    private func compact(_ v: Double) -> String {
+        v >= 10000 ? String(format: "%.1fk", v / 1000) : String(format: "%.0f", v)
     }
 }
