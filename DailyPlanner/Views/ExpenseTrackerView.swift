@@ -46,22 +46,26 @@ struct ExpenseTrackerView: View {
         VStack(spacing: 0) {
         ScrollView {
             VStack(spacing: 0) {
-                // ── Income & expense details on top ────────────────────
-                todayTransactionsList
+                // 1 ── Income & Expense list table ─────────────────────
+                monthlySummaryCard
+                    .padding(.horizontal, 16)
                     .padding(.top, 12)
 
-                // ── Import options ─────────────────────────────────────
+                todayTransactionsList
+                    .padding(.top, 16)
+
+                // 2 ── Import options (Paste Bank SMS / Gmail sync) ─────
                 if !vm.isFuture {
                     importButtons
                         .padding(.top, 16)
                 }
 
-                // ── Expense Breakdown (labeled pie) ────────────────────
+                // 3 ── Expense Breakdown (labeled pie) ─────────────────
                 categoryPieChartSection
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
 
-                // ── Spending Trends (PRO) ──────────────────────────────
+                // 4 ── Spending Trends (last) ──────────────────────────
                 Button {
                     if pro.isPro { showSpendingTrends = true } else { showProUpgrade = true }
                 } label: {
@@ -82,11 +86,6 @@ struct ExpenseTrackerView: View {
                     .cornerRadius(12)
                 }
                 .padding(.horizontal, 16).padding(.top, 12)
-
-                // ── Monthly Summary Card ───────────────────────────────
-                monthlySummaryCard
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
 
                 Spacer(minLength: 24)
             }
@@ -176,7 +175,7 @@ struct ExpenseTrackerView: View {
                     // line with the category name, amount, and share.
                     LabeledPieChart(slices: pieSlices(from: categories),
                                     total: total, sym: sym)
-                        .frame(height: 330)
+                        .frame(height: 360)
                 }
                 .padding(16)
                 .background(Color(.secondarySystemBackground))
@@ -268,15 +267,6 @@ struct ExpenseTrackerView: View {
 
     private var importButtons: some View {
         VStack(spacing: 8) {
-            FinanceAddButton(
-                label: "Add Saving  \(sym)\(String(format: "%.2f", vm.monthlyTotalSavings(for: vm.selectedDate, upTo: vm.selectedDate)))",
-                icon: "banknote.fill",
-                bg: Color(red: 0.3, green: 0.5, blue: 0.95).opacity(0.1),
-                fg: Color(red: 0.3, green: 0.5, blue: 0.95)) {
-                addMode = .savings; showAddSheet = true
-            }
-            .padding(.horizontal, 16)
-
             if vm.settings.smartBankSMSEnabled {
                 FinanceAddButton(
                     label: "Paste Bank SMS",
@@ -1993,15 +1983,54 @@ struct LabeledPieChart: View {
         }
     }
 
+    /// A slice paired with the collision-free Y its label was pushed to.
+    private struct Placed: Identifiable {
+        let id = UUID()
+        let c: ComputedSlice
+        let isRight: Bool
+        let labelY: CGFloat
+    }
+
+    /// Places labels so they never overlap: desired Y from each slice's mid
+    /// angle, then within each side sorted and spread apart by a min row gap.
+    private func placedLabels(center: CGPoint, r: CGFloat, height: CGFloat) -> [Placed] {
+        let rowGap: CGFloat = 34
+        var right: [(ComputedSlice, CGFloat)] = []
+        var left:  [(ComputedSlice, CGFloat)] = []
+        for c in computed {
+            let y = center.y + (r + 18) * CGFloat(sin(c.mid))
+            if cos(c.mid) >= 0 { right.append((c, y)) } else { left.append((c, y)) }
+        }
+
+        func spread(_ items: [(ComputedSlice, CGFloat)]) -> [(ComputedSlice, CGFloat)] {
+            let sorted = items.sorted { $0.1 < $1.1 }
+            var out: [(ComputedSlice, CGFloat)] = []
+            var lastY = -CGFloat.greatestFiniteMagnitude
+            for (c, y) in sorted {
+                let ny = max(y, lastY + rowGap)
+                out.append((c, ny)); lastY = ny
+            }
+            // Nudge back up if the column ran past the bottom edge.
+            if let overflow = out.last.map({ $0.1 - (height - 18) }), overflow > 0 {
+                out = out.map { ($0.0, $0.1 - overflow) }
+            }
+            return out
+        }
+
+        return (spread(right).map { Placed(c: $0.0, isRight: true,  labelY: $0.1) }
+              + spread(left).map  { Placed(c: $0.0, isRight: false, labelY: $0.1) })
+    }
+
     var body: some View {
         GeometryReader { geo in
-            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-            let r = min(geo.size.width, geo.size.height) * 0.27
-            let lineEnd = r + 14
+            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height * 0.5)
+            let r = min(geo.size.width, geo.size.height) * 0.23
+            let placed = placedLabels(center: center, r: r, height: geo.size.height)
+            let labelW: CGFloat = 84
 
             ZStack {
+                // Slices
                 ForEach(computed) { c in
-                    // Slice
                     Path { p in
                         p.move(to: center)
                         p.addArc(center: center, radius: r,
@@ -2011,36 +2040,38 @@ struct LabeledPieChart: View {
                         p.closeSubpath()
                     }
                     .fill(c.slice.color)
+                }
 
-                    // Leader line: slice edge → outward → short horizontal tick
-                    let edge = point(center, r - 1, c.mid)
-                    let bend = point(center, lineEnd, c.mid)
-                    let isRight = cos(c.mid) >= 0
-                    let tip = CGPoint(x: bend.x + (isRight ? 10 : -10), y: bend.y)
+                // Leader lines + de-collided labels
+                ForEach(placed) { pl in
+                    let edge = point(center, r - 1, pl.c.mid)
+                    let elbowX = center.x + (pl.isRight ? r + 16 : -(r + 16))
+                    let labelX = pl.isRight ? elbowX + 8 : elbowX - 8
+
                     Path { p in
                         p.move(to: edge)
-                        p.addLine(to: bend)
-                        p.addLine(to: tip)
+                        p.addLine(to: CGPoint(x: elbowX, y: pl.labelY))
+                        p.addLine(to: CGPoint(x: labelX, y: pl.labelY))
                     }
-                    .stroke(c.slice.color, lineWidth: 1.3)
+                    .stroke(pl.c.slice.color, lineWidth: 1.3)
 
-                    // Label at the end of the leader line
-                    VStack(alignment: isRight ? .leading : .trailing, spacing: 0) {
-                        Text(c.slice.name)
+                    VStack(alignment: pl.isRight ? .leading : .trailing, spacing: 1) {
+                        Text(pl.c.slice.name)
                             .font(.system(size: 11, weight: .semibold))
-                            .lineLimit(1)
-                        Text("\(sym)\(compact(c.slice.value)) · \(Int(round(c.slice.value / max(total, 0.0001) * 100)))%")
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                        Text("\(sym)\(compact(pl.c.slice.value)) · \(Int(round(pl.c.slice.value / max(total, 0.0001) * 100)))%")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
+                            .lineLimit(1).minimumScaleFactor(0.8)
                     }
-                    .frame(width: 86, alignment: isRight ? .leading : .trailing)
-                    .position(x: tip.x + (isRight ? 47 : -47), y: tip.y)
+                    .frame(width: labelW, alignment: pl.isRight ? .leading : .trailing)
+                    .position(x: labelX + (pl.isRight ? labelW / 2 : -labelW / 2), y: pl.labelY)
                 }
 
                 // Donut hole with the total in the middle
                 Circle()
                     .fill(Color(.secondarySystemBackground))
-                    .frame(width: r * 1.1, height: r * 1.1)
+                    .frame(width: r * 1.15, height: r * 1.15)
                 VStack(spacing: 1) {
                     Text("Total")
                         .font(.system(size: 10))
@@ -2048,6 +2079,7 @@ struct LabeledPieChart: View {
                     Text("\(sym)\(compact(total))")
                         .font(.system(size: 15, weight: .bold))
                 }
+                .position(center)
             }
         }
     }
