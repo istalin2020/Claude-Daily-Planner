@@ -9,6 +9,7 @@ struct HealthFitnessView: View {
     @State private var isSyncing = false
     @State private var showHKUnavailable = false
     @State private var showSettingsAlert = false
+    @State private var showTargetsSheet = false
 
     var entry: DailyEntry { vm.currentEntry }
     var fitness: FitnessEntry { entry.fitness }
@@ -69,23 +70,23 @@ struct HealthFitnessView: View {
                 }
                 .padding(.top, 16)
 
-                // Daily Targets
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Daily Targets")
-                        .font(.system(size: 15, weight: .bold))
-                        .padding(.horizontal, 16).padding(.bottom, 8)
-
-                    VStack(spacing: 1) {
-                        TargetStepperRow(icon: "figure.run",     title: "Workout Time",  unit: "min",   step: 5,    range: 5...300,   color: .orange,   value: $vm.settings.workoutTarget)
-                        TargetStepperRow(icon: "figure.walk",    title: "Walking Time",  unit: "min",   step: 5,    range: 5...300,   color: .green,    value: $vm.settings.walkingTarget)
-                        TargetStepperRow(icon: "shoeprints.fill",title: "Steps",         unit: "steps", step: 500,  range: 500...50000, color: .blue,   value: $vm.settings.stepsTarget)
-                        TargetStepperRow(icon: "flame.fill",     title: "Calories",      unit: "kcal",  step: 50,   range: 50...5000, color: .red,      value: $vm.settings.caloriesTarget)
+                // Daily Targets — set via a popup instead of inline steppers
+                Button {
+                    showTargetsSheet = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "target")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Set Daily Target")
+                            .font(.system(size: 15, weight: .semibold))
                     }
-                    .background(Color(.systemBackground))
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
-                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(AppSection.healthFitness.color.opacity(0.12))
+                    .foregroundColor(AppSection.healthFitness.color)
+                    .cornerRadius(14)
                 }
+                .padding(.horizontal, 16)
                 .padding(.top, 20)
 
                 // From Apple Health — Workouts
@@ -156,20 +157,55 @@ struct HealthFitnessView: View {
                 vm.addFitnessActivity(activity)
             }
         }
+        .sheet(isPresented: $showTargetsSheet) {
+            NavigationView {
+                VStack(spacing: 16) {
+                    VStack(spacing: 1) {
+                        TargetStepperRow(icon: "figure.run",     title: "Workout Time",  unit: "min",   step: 5,    range: 5...300,   color: .orange,   value: $vm.settings.workoutTarget)
+                        TargetStepperRow(icon: "figure.walk",    title: "Walking Time",  unit: "min",   step: 5,    range: 5...300,   color: .green,    value: $vm.settings.walkingTarget)
+                        TargetStepperRow(icon: "shoeprints.fill",title: "Steps",         unit: "steps", step: 500,  range: 500...50000, color: .blue,   value: $vm.settings.stepsTarget)
+                        TargetStepperRow(icon: "flame.fill",     title: "Calories",      unit: "kcal",  step: 50,   range: 50...5000, color: .red,      value: $vm.settings.caloriesTarget)
+                    }
+                    .background(Color(.systemBackground))
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                    Spacer()
+                }
+                .navigationTitle("Daily Targets")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { showTargetsSheet = false }
+                            .fontWeight(.semibold)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
         .alert("HealthKit Not Available", isPresented: $showHKUnavailable) {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Apple Health is not available on this device or simulator.")
         }
         .alert("Health Access Required", isPresented: $showSettingsAlert) {
-            Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
+            Button("Open Health App") {
+                // iOS offers no public deep link to Settings → Privacy &
+                // Security → Health → <app>, so open the Health app where
+                // the same permissions live (Profile → Privacy → Apps).
+                if let url = URL(string: "x-apple-health://") {
+                    UIApplication.shared.open(url, options: [:]) { success in
+                        if !success, let settings = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(settings)
+                        }
+                    }
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Please go to Settings → Privacy & Security → Health → Daily Planner and enable all health data categories.")
+            Text("In the Health app, tap your profile picture → Privacy → Apps → Daily Planner and turn on all categories.\n\n(Alternatively: Settings → Privacy & Security → Health → Daily Planner.)")
         }
         .onAppear { autoSync() }
         .onChange(of: vm.selectedDate) { _, _ in autoSync() }
