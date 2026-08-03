@@ -1698,32 +1698,47 @@ class PlannerViewModel: ObservableObject {
 
     @objc private func cloudFilesChanged(_ notification: Notification) {
         metadataQuery?.disableUpdates()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+
+        // Snapshot the current in-memory state on the main thread, then do ALL
+        // the heavy work (flush pending writes, decode JSON, merge) on the
+        // serial save queue in the background. Only the final assignment hops
+        // back to the main thread. This keeps the UI responsive — previously
+        // this ran on the main thread and froze taps for a second or more when
+        // iCloud delivered changes (e.g. the first foreground after days away).
+        let before   = entries
+        let activeURL = activeEntriesURL
+        let localURL  = entriesURL
+
+        saveQueue.async { [weak self] in
             guard let self else { return }
-            // Snapshot current in-memory state BEFORE touching disk.
-            // This captures any data (appointments, schedule blocks, meals, etc.)
-            // the user has entered since the last completed save.
-            let before = self.entries
-            // Flush any in-flight async saveData() writes so loadData() always
-            // reads the freshest possible on-disk state.  saveQueue is serial so
-            // a no-op sync{} call drains every pending block before continuing.
-            self.saveQueue.sync { }
-            self.loadData()
-            var merged = self.entries
+
+            // Decode the freshest on-disk snapshot (cloud file when available,
+            // else the local mirror). Running after any queued writes have
+            // flushed guarantees we read the latest data.
+            var disk: [String: DailyEntry] = [:]
+            if let data = try? Data(contentsOf: activeURL),
+               let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
+                disk = decoded
+            } else if let data = try? Data(contentsOf: localURL),
+                      let decoded = try? JSONDecoder().decode([String: DailyEntry].self, from: data) {
+                disk = decoded
+            }
+
+            // Merge disk with the in-memory snapshot so anything entered on
+            // this device (and not yet flushed) is never lost.
+            var merged = disk
             for (key, beforeEntry) in before {
-                if merged[key] == nil {
-                    // Date entry exists in memory but not on disk yet — keep it.
-                    merged[key] = beforeEntry
+                if let diskEntry = merged[key] {
+                    merged[key] = Self.mergeEntries(disk: diskEntry, memory: beforeEntry)
                 } else {
-                    // Date entry exists in both — merge so that anything the
-                    // user entered on this device (appointments, schedule blocks,
-                    // meals, tasks, etc.) is never overwritten by a stale
-                    // cloud/disk snapshot.
-                    merged[key] = Self.mergeEntries(disk: merged[key]!, memory: beforeEntry)
+                    merged[key] = beforeEntry
                 }
             }
-            self.entries = merged
-            self.metadataQuery?.enableUpdates()
+
+            DispatchQueue.main.async {
+                self.entries = merged
+                self.metadataQuery?.enableUpdates()
+            }
         }
     }
 
