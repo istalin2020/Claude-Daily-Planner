@@ -81,19 +81,63 @@ final class CalorieEstimator {
         DBEntry(keywords: ["carrot"],      calories: 52,  portion: "1 medium",   questions: nil),
         DBEntry(keywords: ["spinach"],     calories: 7,   portion: "1 cup raw",  questions: nil),
         DBEntry(keywords: ["cucumber"],    calories: 16,  portion: "½ cup",      questions: nil),
-        DBEntry(keywords: ["tomato"],      calories: 22,  portion: "1 medium",   questions: nil),
-        DBEntry(keywords: ["potato"],      calories: 163, portion: "1 medium",   questions: [
+        DBEntry(keywords: ["tomato"], calories: 22, portion: "1 medium", questions: [
+            ClarifyQuestion(prompt: "How much / how prepared?", options: [
+                ClarifyOption(label: "1 medium raw",          calories: 22),
+                ClarifyOption(label: "2 medium raw",          calories: 44),
+                ClarifyOption(label: "1 cup chopped",         calories: 32),
+                ClarifyOption(label: "Cooked in curry / gravy", calories: 90),
+                ClarifyOption(label: "Tomato puree – ½ cup",  calories: 48)
+            ])
+        ]),
+        DBEntry(keywords: ["onion"], calories: 44, portion: "1 medium", questions: [
+            ClarifyQuestion(prompt: "How much / how prepared?", options: [
+                ClarifyOption(label: "1 medium raw",         calories: 44),
+                ClarifyOption(label: "1 cup chopped raw",    calories: 64),
+                ClarifyOption(label: "Sautéed in oil",       calories: 140),
+                ClarifyOption(label: "Deep fried / birista", calories: 220),
+                ClarifyOption(label: "Small / half onion",   calories: 22)
+            ])
+        ]),
+        DBEntry(keywords: ["potato"], calories: 163, portion: "1 medium", questions: [
             ClarifyQuestion(prompt: "How was it prepared?", options: [
-                ClarifyOption(label: "Boiled / steamed",  calories: 87),
-                ClarifyOption(label: "Baked",             calories: 163),
-                ClarifyOption(label: "Mashed (with butter)", calories: 220),
-                ClarifyOption(label: "Roasted",           calories: 180)
+                ClarifyOption(label: "Boiled / steamed",       calories: 87),
+                ClarifyOption(label: "Baked",                  calories: 163),
+                ClarifyOption(label: "Mashed (with butter)",   calories: 220),
+                ClarifyOption(label: "Roasted",                calories: 180),
+                ClarifyOption(label: "Potato curry / sabzi",   calories: 250),
+                ClarifyOption(label: "Deep fried / chips",     calories: 320)
             ])
         ]),
         DBEntry(keywords: ["sweet potato"], calories: 103, portion: "1 medium", questions: nil),
         DBEntry(keywords: ["corn"],         calories: 132, portion: "1 ear",     questions: nil),
         DBEntry(keywords: ["pea"],          calories: 62,  portion: "½ cup",     questions: nil),
         DBEntry(keywords: ["mushroom"],     calories: 15,  portion: "½ cup",     questions: nil),
+
+        // ── COOKING OILS, FATS & GHEE ────────────────────────────────────────
+        DBEntry(keywords: ["cooking oil", "vegetable oil", "oil"], calories: 120, portion: "1 tbsp", questions: [
+            ClarifyQuestion(prompt: "How much oil?", options: [
+                ClarifyOption(label: "1 tsp – 5 ml",     calories: 40),
+                ClarifyOption(label: "1 tbsp – 15 ml",   calories: 120),
+                ClarifyOption(label: "2 tbsp – 30 ml",   calories: 240),
+                ClarifyOption(label: "¼ cup – 60 ml",    calories: 480)
+            ])
+        ]),
+        DBEntry(keywords: ["sunflower oil"],  calories: 120, portion: "1 tbsp", questions: nil),
+        DBEntry(keywords: ["coconut oil"],    calories: 117, portion: "1 tbsp", questions: nil),
+        DBEntry(keywords: ["sesame oil", "gingelly oil", "til oil"], calories: 120, portion: "1 tbsp", questions: nil),
+        DBEntry(keywords: ["mustard oil"],    calories: 124, portion: "1 tbsp", questions: nil),
+        DBEntry(keywords: ["groundnut oil", "peanut oil"], calories: 119, portion: "1 tbsp", questions: nil),
+        DBEntry(keywords: ["canola oil", "rapeseed oil"], calories: 124, portion: "1 tbsp", questions: nil),
+        DBEntry(keywords: ["rice bran oil"],  calories: 120, portion: "1 tbsp", questions: nil),
+        DBEntry(keywords: ["palm oil"],       calories: 120, portion: "1 tbsp", questions: nil),
+        DBEntry(keywords: ["ghee", "clarified butter"], calories: 112, portion: "1 tbsp", questions: [
+            ClarifyQuestion(prompt: "How much ghee?", options: [
+                ClarifyOption(label: "1 tsp",    calories: 37),
+                ClarifyOption(label: "1 tbsp",   calories: 112),
+                ClarifyOption(label: "2 tbsp",   calories: 224)
+            ])
+        ]),
 
         // ── GRAINS & CARBS ───────────────────────────────────────────────────
         DBEntry(keywords: ["oatmeal", "oat", "porridge"], calories: 150, portion: "1 cup cooked", questions: [
@@ -704,7 +748,19 @@ final class CalorieEstimator {
             ])
         ]),
 
-        DBEntry(keywords: ["roti", "chapati", "chapatti", "phulka"], calories: 100, portion: "1 roti", questions: [
+        DBEntry(keywords: ["appalam", "papad", "papadum", "pappadam", "poppadom"],
+                calories: 50, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How is it cooked & how many?", options: [
+                ClarifyOption(label: "1 roasted",       calories: 35),
+                ClarifyOption(label: "2 roasted",       calories: 70),
+                ClarifyOption(label: "1 deep fried",    calories: 70),
+                ClarifyOption(label: "2 deep fried",    calories: 140),
+                ClarifyOption(label: "3 deep fried",    calories: 210)
+            ])
+        ]),
+
+        DBEntry(keywords: ["roti", "chapati", "chapatti", "chappathi", "chapathi",
+                           "phulka", "rotti"], calories: 100, portion: "1 roti", questions: [
             ClarifyQuestion(prompt: "How many rotis?", options: [
                 ClarifyOption(label: "1 roti",   calories: 100),
                 ClarifyOption(label: "2 rotis",  calories: 200),

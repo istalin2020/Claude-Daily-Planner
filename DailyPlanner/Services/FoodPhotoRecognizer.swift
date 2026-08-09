@@ -143,8 +143,16 @@ enum FoodPhotoRecognizer {
         "peanut": "peanuts", "almond": "almonds", "cashew": "cashews",
         "walnut": "walnuts", "pistachio": "pistachios",
 
+        // Oils & fats
+        "cooking oil": "cooking oil", "vegetable oil": "cooking oil",
+        "sunflower oil": "sunflower oil", "coconut oil": "coconut oil",
+        "sesame oil": "sesame oil", "mustard oil": "mustard oil",
+        "ghee": "ghee", "clarified butter": "ghee", "butter": "butter",
+
         // Indian
         "naan": "naan", "chapati": "roti", "roti": "roti",
+        "papad": "appalam", "papadum": "appalam", "poppadom": "appalam",
+        "appalam": "appalam", "flatbread": "roti", "tortilla": "roti",
         "paratha": "paratha", "dosa": "dosa", "idli": "idli",
         "samosa": "samosa", "pakora": "pakora", "biryani": "biryani",
         "curry": "curry", "dal": "dal", "paneer": "paneer",
