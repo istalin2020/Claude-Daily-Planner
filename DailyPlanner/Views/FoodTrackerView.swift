@@ -648,6 +648,8 @@ struct PhotoMealSheet: View {
     @State private var result: EstimationResult? = nil
     @State private var chosenCalories: Int? = nil
     @State private var manualCalories = ""
+    @State private var isDetecting = true
+    @State private var detection: FoodDetection? = nil
     @FocusState private var nameFocused: Bool
 
     private var canSave: Bool {
@@ -676,7 +678,57 @@ struct PhotoMealSheet: View {
                         .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                    Text("What's in the photo?")
+                    // ── Detection status ──────────────────────────────
+                    if isDetecting {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Identifying your food…")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                    } else if let d = detection {
+                        HStack(spacing: 10) {
+                            Image(systemName: "sparkles")
+                                .foregroundColor(.orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Detected: \(d.foodName.capitalized)")
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("\(Int(d.confidence * 100))% match · tap below to change")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(Color.orange.opacity(0.10))
+                        .cornerRadius(12)
+
+                        // Other possibilities the classifier saw
+                        if !d.alternatives.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(d.alternatives, id: \.self) { alt in
+                                        Button {
+                                            foodName = alt
+                                            runEstimate()
+                                        } label: {
+                                            Text(alt.capitalized)
+                                                .font(.system(size: 13, weight: .medium))
+                                                .padding(.horizontal, 12).padding(.vertical, 7)
+                                                .background(Color(.secondarySystemBackground))
+                                                .foregroundColor(.primary)
+                                                .cornerRadius(10)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Text("Couldn't identify it automatically — type the food name below.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Text(detection == nil ? "What's in the photo?" : "Food name")
                         .font(.system(size: 17, weight: .bold))
 
                     HStack(spacing: 8) {
@@ -700,7 +752,7 @@ struct PhotoMealSheet: View {
                         }
                     }
 
-                    Text("Name the dish, then answer the quick questions to pin down the calories.")
+                    Text("Recognized on your device — nothing is uploaded. Adjust the name or portion if it's not quite right.")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -787,7 +839,23 @@ struct PhotoMealSheet: View {
                     .disabled(!canSave)
                 }
             }
-            .onAppear { nameFocused = true }
+            .onAppear { runDetection() }
+        }
+    }
+
+    /// Classifies the photo on device, then immediately estimates calories
+    /// for whatever was recognized.
+    private func runDetection() {
+        isDetecting = true
+        FoodPhotoRecognizer.detectFood(in: photo) { found in
+            isDetecting = false
+            detection = found
+            if let found = found {
+                foodName = found.foodName
+                runEstimate()
+            } else {
+                nameFocused = true
+            }
         }
     }
 

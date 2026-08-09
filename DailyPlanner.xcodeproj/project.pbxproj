@@ -52,6 +52,7 @@
 		AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001C /* LiquidGlassTheme.swift */; };
 		AA700000000000000000001D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001D /* KeychainHelper.swift */; };
 		AA700000000000000000001E /* GmailSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001E /* GmailSyncService.swift */; };
+		AA780000000000000000001E /* FoodPhotoRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000001E /* FoodPhotoRecognizer.swift */; };
 		AA700000000000000000001F /* GmailSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001F /* GmailSyncView.swift */; };
 		AA760000000000000000001F /* HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000001F /* HomeDashboardView.swift */; };
 		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
@@ -107,6 +108,7 @@
 		AA710000000000000000001C /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
 		AA710000000000000000001D /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		AA710000000000000000001E /* GmailSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncService.swift; sourceTree = "<group>"; };
+		AA790000000000000000001E /* FoodPhotoRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodPhotoRecognizer.swift; sourceTree = "<group>"; };
 		AA710000000000000000001F /* GmailSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncView.swift; sourceTree = "<group>"; };
 		AA770000000000000000001F /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardView.swift; sourceTree = "<group>"; };
 		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
@@ -201,6 +203,7 @@
 				AA710000000000000000001B /* CurrencyConverter.swift */,
 				AA710000000000000000001D /* KeychainHelper.swift */,
 				AA710000000000000000001E /* GmailSyncService.swift */,
+				AA790000000000000000001E /* FoodPhotoRecognizer.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -460,6 +463,7 @@
 				AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */,
 				AA700000000000000000001D /* KeychainHelper.swift in Sources */,
 				AA700000000000000000001E /* GmailSyncService.swift in Sources */,
+				AA780000000000000000001E /* FoodPhotoRecognizer.swift in Sources */,
 				AA700000000000000000001F /* GmailSyncView.swift in Sources */,
 				AA760000000000000000001F /* HomeDashboardView.swift in Sources */,
 			);
