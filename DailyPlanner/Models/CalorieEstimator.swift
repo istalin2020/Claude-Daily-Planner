@@ -356,12 +356,78 @@ final class CalorieEstimator {
             ])
         ]),
 
+        // ── FRUIT JUICES (specific fruits first, generic fallback after) ────
+        DBEntry(keywords: ["pomegranate juice", "pomegranate"], calories: 134, portion: "1 cup (240 ml)", questions: [
+            ClarifyQuestion(prompt: "What size?", options: [
+                ClarifyOption(label: "Small glass – 150 ml",  calories: 84),
+                ClarifyOption(label: "1 cup – 240 ml",        calories: 134),
+                ClarifyOption(label: "Large glass – 350 ml",  calories: 195),
+                ClarifyOption(label: "Fresh, no sugar added", calories: 120)
+            ])
+        ]),
+
+        DBEntry(keywords: ["orange juice"], calories: 112, portion: "1 cup (240 ml)", questions: [
+            ClarifyQuestion(prompt: "What size?", options: [
+                ClarifyOption(label: "Small glass – 150 ml", calories: 70),
+                ClarifyOption(label: "1 cup – 240 ml",       calories: 112),
+                ClarifyOption(label: "Large glass – 350 ml", calories: 163),
+                ClarifyOption(label: "Freshly squeezed",     calories: 105)
+            ])
+        ]),
+
+        DBEntry(keywords: ["apple juice"], calories: 114, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "What size?", options: [
+                ClarifyOption(label: "Small glass – 150 ml", calories: 71),
+                ClarifyOption(label: "1 cup – 240 ml",       calories: 114),
+                ClarifyOption(label: "Large glass – 350 ml", calories: 166),
+                ClarifyOption(label: "Cloudy / fresh pressed", calories: 110)
+            ])
+        ]),
+
+        DBEntry(keywords: ["mango juice", "mango shake", "mango lassi"], calories: 150, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "What type?", options: [
+                ClarifyOption(label: "Mango juice – 1 cup",      calories: 150),
+                ClarifyOption(label: "Mango shake (with milk)",  calories: 260),
+                ClarifyOption(label: "Mango lassi (with yogurt)", calories: 300),
+                ClarifyOption(label: "Fresh mango pulp, no sugar", calories: 130)
+            ])
+        ]),
+
+        DBEntry(keywords: ["grape juice"], calories: 152, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["pineapple juice"], calories: 133, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["cranberry juice"], calories: 116, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["grapefruit juice"], calories: 96, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["watermelon juice"], calories: 71, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["guava juice"], calories: 120, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["papaya juice"], calories: 108, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["peach juice", "apricot juice"], calories: 125, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["pear juice"], calories: 130, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["banana shake", "banana smoothie"], calories: 240, portion: "1 glass", questions: []),
+        DBEntry(keywords: ["strawberry juice", "berry juice", "mixed berry"], calories: 110, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["lemon juice", "lemonade", "limeade", "lime juice"], calories: 99, portion: "1 cup", questions: [
+            ClarifyQuestion(prompt: "How is it made?", options: [
+                ClarifyOption(label: "Fresh lime water, no sugar", calories: 10),
+                ClarifyOption(label: "Lemonade with sugar",        calories: 99),
+                ClarifyOption(label: "Sweetened bottled",          calories: 130),
+                ClarifyOption(label: "Salted lime soda",           calories: 40)
+            ])
+        ]),
+        DBEntry(keywords: ["sugarcane juice"], calories: 180, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["coconut water", "tender coconut"], calories: 46, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["carrot juice"], calories: 94, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["beetroot juice", "beet juice"], calories: 70, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["amla juice", "gooseberry juice"], calories: 40, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["tomato juice"], calories: 41, portion: "1 cup", questions: []),
+
         DBEntry(keywords: ["juice", "smoothie"], calories: 120, portion: "1 cup", questions: [
             ClarifyQuestion(prompt: "What type?", options: [
                 ClarifyOption(label: "Orange / apple juice",        calories: 112),
+                ClarifyOption(label: "Pomegranate juice",           calories: 134),
+                ClarifyOption(label: "Mango / mixed fruit juice",   calories: 150),
                 ClarifyOption(label: "Green vegetable smoothie",    calories: 150),
                 ClarifyOption(label: "Fruit smoothie (with yogurt)", calories: 250),
-                ClarifyOption(label: "Vegetable juice",             calories: 50)
+                ClarifyOption(label: "Vegetable juice",             calories: 50),
+                ClarifyOption(label: "Fresh lime / coconut water",  calories: 46)
             ])
         ]),
 
@@ -1106,6 +1172,111 @@ final class CalorieEstimator {
                 ClarifyOption(label: "Small – 200 ml",         calories: 160),
                 ClarifyOption(label: "Regular – 250 ml",       calories: 200),
                 ClarifyOption(label: "Large with cream",        calories: 320)
+            ])
+        ]),
+
+        // ── MEDITERRANEAN / MIDDLE-EASTERN ──────────────────────────────────
+        DBEntry(keywords: ["hummus", "houmous"], calories: 166, portion: "100 g (~4 tbsp)", questions: [
+            ClarifyQuestion(prompt: "How much?", options: [
+                ClarifyOption(label: "2 tbsp dip",            calories: 80),
+                ClarifyOption(label: "Small bowl – 100 g",    calories: 166),
+                ClarifyOption(label: "Large bowl – 200 g",    calories: 330),
+                ClarifyOption(label: "With pita bread",       calories: 330)
+            ])
+        ]),
+
+        DBEntry(keywords: ["falafel"], calories: 333, portion: "5 pieces", questions: [
+            ClarifyQuestion(prompt: "How many / how served?", options: [
+                ClarifyOption(label: "3 pieces",              calories: 200),
+                ClarifyOption(label: "5 pieces",              calories: 333),
+                ClarifyOption(label: "Falafel wrap / sandwich", calories: 520),
+                ClarifyOption(label: "Falafel plate with salad", calories: 600)
+            ])
+        ]),
+
+        DBEntry(keywords: ["shawarma", "shawerma", "gyro", "doner"], calories: 480, portion: "1 wrap", questions: [
+            ClarifyQuestion(prompt: "What type?", options: [
+                ClarifyOption(label: "Chicken shawarma wrap", calories: 480),
+                ClarifyOption(label: "Beef / lamb shawarma wrap", calories: 600),
+                ClarifyOption(label: "Shawarma plate with rice", calories: 780),
+                ClarifyOption(label: "Small / half wrap",     calories: 280)
+            ])
+        ]),
+
+        DBEntry(keywords: ["tabbouleh", "tabouli"], calories: 120, portion: "1 cup", questions: []),
+        DBEntry(keywords: ["fattoush"], calories: 180, portion: "1 bowl", questions: []),
+        DBEntry(keywords: ["greek salad", "horiatiki"], calories: 210, portion: "1 bowl", questions: [
+            ClarifyQuestion(prompt: "Dressing & feta?", options: [
+                ClarifyOption(label: "Light, little oil",     calories: 130),
+                ClarifyOption(label: "Regular with feta",     calories: 210),
+                ClarifyOption(label: "Generous olive oil & feta", calories: 330)
+            ])
+        ]),
+
+        DBEntry(keywords: ["baba ganoush", "baba ghanoush", "mutabal"], calories: 150, portion: "100 g", questions: []),
+        DBEntry(keywords: ["moutabel", "muhammara"], calories: 190, portion: "100 g", questions: []),
+        DBEntry(keywords: ["labneh"], calories: 150, portion: "100 g", questions: []),
+        DBEntry(keywords: ["halloumi"], calories: 320, portion: "100 g grilled", questions: []),
+        DBEntry(keywords: ["feta"], calories: 264, portion: "100 g", questions: []),
+        DBEntry(keywords: ["tzatziki"], calories: 120, portion: "100 g", questions: []),
+        DBEntry(keywords: ["pita", "pita bread", "khubz", "arabic bread"], calories: 165, portion: "1 medium loaf", questions: [
+            ClarifyQuestion(prompt: "How many?", options: [
+                ClarifyOption(label: "Half loaf",       calories: 85),
+                ClarifyOption(label: "1 loaf",          calories: 165),
+                ClarifyOption(label: "2 loaves",        calories: 330),
+                ClarifyOption(label: "Whole wheat loaf", calories: 150)
+            ])
+        ]),
+
+        DBEntry(keywords: ["kebab", "kabab", "shish tawook", "shish taouk", "kofta"], calories: 300, portion: "1 skewer", questions: [
+            ClarifyQuestion(prompt: "What type?", options: [
+                ClarifyOption(label: "Chicken shish tawook – 1 skewer", calories: 260),
+                ClarifyOption(label: "Lamb kofta – 1 skewer",  calories: 320),
+                ClarifyOption(label: "Mixed grill platter",    calories: 850),
+                ClarifyOption(label: "2 skewers with rice",    calories: 700)
+            ])
+        ]),
+
+        DBEntry(keywords: ["mandi", "kabsa", "biryani rice", "machboos"], calories: 650, portion: "1 plate", questions: [
+            ClarifyQuestion(prompt: "How much?", options: [
+                ClarifyOption(label: "Small plate",            calories: 450),
+                ClarifyOption(label: "Regular plate",          calories: 650),
+                ClarifyOption(label: "Large / sharing portion", calories: 950)
+            ])
+        ]),
+
+        DBEntry(keywords: ["dolma", "stuffed grape leaves", "warak enab"], calories: 180, portion: "5 pieces", questions: []),
+        DBEntry(keywords: ["moussaka"], calories: 380, portion: "1 serving", questions: []),
+        DBEntry(keywords: ["souvlaki"], calories: 400, portion: "1 skewer wrap", questions: []),
+        DBEntry(keywords: ["spanakopita"], calories: 300, portion: "1 slice", questions: []),
+        DBEntry(keywords: ["manakish", "manaqish", "zaatar bread"], calories: 350, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "What topping?", options: [
+                ClarifyOption(label: "Zaatar",         calories: 300),
+                ClarifyOption(label: "Cheese",         calories: 420),
+                ClarifyOption(label: "Meat (lahm bi ajin)", calories: 480)
+            ])
+        ]),
+        DBEntry(keywords: ["fatteh", "fatta"], calories: 450, portion: "1 bowl", questions: []),
+        DBEntry(keywords: ["shakshuka"], calories: 280, portion: "1 pan (2 eggs)", questions: []),
+        DBEntry(keywords: ["foul", "ful medames", "fava beans"], calories: 220, portion: "1 bowl", questions: []),
+        DBEntry(keywords: ["harees", "jareesh"], calories: 300, portion: "1 bowl", questions: []),
+        DBEntry(keywords: ["baklava", "baklawa"], calories: 245, portion: "1 piece", questions: [
+            ClarifyQuestion(prompt: "How many pieces?", options: [
+                ClarifyOption(label: "1 piece",   calories: 245),
+                ClarifyOption(label: "2 pieces",  calories: 490),
+                ClarifyOption(label: "3 pieces",  calories: 735)
+            ])
+        ]),
+        DBEntry(keywords: ["kunafa", "knafeh", "basbousa"], calories: 400, portion: "1 slice", questions: []),
+        DBEntry(keywords: ["olives"], calories: 115, portion: "10 olives", questions: []),
+        DBEntry(keywords: ["olive oil"], calories: 119, portion: "1 tbsp", questions: []),
+        DBEntry(keywords: ["couscous"], calories: 176, portion: "1 cup cooked", questions: []),
+        DBEntry(keywords: ["grilled fish", "sea bass", "hammour", "grilled hamour"], calories: 230, portion: "1 fillet", questions: [
+            ClarifyQuestion(prompt: "How is it cooked?", options: [
+                ClarifyOption(label: "Grilled, little oil", calories: 230),
+                ClarifyOption(label: "Pan-fried",           calories: 330),
+                ClarifyOption(label: "Deep fried",          calories: 450),
+                ClarifyOption(label: "Baked with vegetables", calories: 280)
             ])
         ]),
     ]

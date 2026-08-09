@@ -8,6 +8,8 @@ struct FoodTrackerView: View {
     @State private var selectedMeal  = "breakfast"
     @State private var editingItem: MealItem? = nil
     @State private var editingMealKey: String = ""
+    @State private var showCamera = false
+    @State private var capturedPhoto: CapturedFoodPhoto? = nil
 
     var entry: DailyEntry { vm.currentEntry }
 
@@ -32,6 +34,9 @@ struct FoodTrackerView: View {
                     } onEdit: { item in
                         editingItem = item
                         editingMealKey = meal.key
+                    } onCamera: {
+                        selectedMeal = meal.key
+                        showCamera = true
                     }
                     .padding(.horizontal, 16).padding(.top, 10)
                 }
@@ -49,6 +54,18 @@ struct FoodTrackerView: View {
             let mealName = mealSections.first(where: { $0.key == editingMealKey })?.name ?? "Meal"
             EditMealItemSheet(item: item, mealName: mealName) { updatedItem in
                 vm.updateMealItem(item, with: updatedItem, in: editingMealKey)
+            }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            FoodCameraPicker { image in
+                capturedPhoto = CapturedFoodPhoto(image: image)
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(item: $capturedPhoto) { shot in
+            let mealName = mealSections.first(where: { $0.key == selectedMeal })?.name ?? "Meal"
+            PhotoMealSheet(photo: shot.image, mealName: mealName) { item in
+                vm.addMealItem(item, to: selectedMeal)
             }
         }
     }
@@ -74,43 +91,60 @@ struct FoodTrackerView: View {
 
 // MARK: - Calorie Banner
 
+/// A read-only summary strip. Styled as a tinted capsule with a caption
+/// label and a big number so it clearly reads as an output, never as a
+/// text field waiting for input.
 private struct CalorieBanner: View {
     let total: Int
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "flame.fill")
-                .font(.system(size: 28))
-                .foregroundColor(.orange)
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .stroke(Color.orange.opacity(0.2), lineWidth: 5)
+                Circle()
+                    .trim(from: 0, to: min(CGFloat(total) / 2000.0, 1.0))
+                    .stroke(Color.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 15))
+                    .foregroundColor(.orange)
+            }
+            .frame(width: 44, height: 44)
+            .animation(.easeOut, value: total)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Daily Calories")
-                    .font(.caption).foregroundColor(.secondary)
-                Text(total > 0 ? "\(total) cal" : "Add foods to calculate")
-                    .font(.title3).fontWeight(.bold)
-                    .foregroundColor(total > 0 ? .primary : .secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("TODAY'S TOTAL")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .tracking(0.6)
+                HStack(alignment: .lastTextBaseline, spacing: 3) {
+                    Text("\(total)")
+                        .font(.system(size: 24, weight: .heavy))
+                        .foregroundColor(.primary)
+                    Text("cal")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
             }
 
             Spacer()
 
-            if total > 0 {
-                // Simple donut-style ring for visual feedback
-                ZStack {
-                    Circle()
-                        .stroke(Color.orange.opacity(0.15), lineWidth: 6)
-                    Circle()
-                        .trim(from: 0, to: min(CGFloat(total) / 2000.0, 1.0))
-                        .stroke(Color.orange, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                }
-                .frame(width: 44, height: 44)
-                .animation(.easeOut, value: total)
-            }
+            Text("auto-calculated")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Capsule().fill(Color.secondary.opacity(0.12)))
         }
-        .padding(14)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            Capsule().fill(Color.orange.opacity(0.10))
+        )
+        .overlay(
+            Capsule().strokeBorder(Color.orange.opacity(0.25), lineWidth: 1)
+        )
+        .allowsHitTesting(false)   // purely informational
     }
 }
 
@@ -133,6 +167,7 @@ struct MealSection: View {
     let onAdd   : () -> Void
     let onDelete: (MealItem) -> Void
     let onEdit  : (MealItem) -> Void
+    var onCamera: (() -> Void)? = nil
 
     private var sectionCalories: Int { items.reduce(0) { $0 + $1.calories } }
 
@@ -154,10 +189,23 @@ struct MealSection: View {
                         .foregroundColor(meal.color)
                 }
                 if canEdit {
-                    Button(action: onAdd) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(meal.color)
-                            .font(.system(size: 22))
+                    // Add manually, or snap a photo of the food
+                    VStack(spacing: 6) {
+                        Button(action: onAdd) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(meal.color)
+                                .font(.system(size: 22))
+                        }
+                        if let onCamera = onCamera {
+                            Button(action: onCamera) {
+                                Image(systemName: "camera.fill")
+                                    .foregroundColor(meal.color)
+                                    .font(.system(size: 16))
+                                    .padding(4)
+                                    .background(meal.color.opacity(0.14))
+                                    .clipShape(Circle())
+                            }
+                        }
                     }
                     .padding(.leading, 4)
                 }
@@ -541,5 +589,213 @@ struct EditMealItemSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Captured photo wrapper
+/// UIImage isn't Identifiable, so wrap it for `.sheet(item:)`.
+struct CapturedFoodPhoto: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+// MARK: - Camera Picker
+/// Thin UIKit bridge that opens the camera and hands back the captured photo.
+struct FoodCameraPicker: UIViewControllerRepresentable {
+    var onCapture: (UIImage) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: FoodCameraPicker
+        init(_ parent: FoodCameraPicker) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.onCapture(image)
+            }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+}
+
+// MARK: - Photo Meal Sheet
+/// Shown after a food photo is taken. The photo is a visual reference; the
+/// user names the dish (or picks a suggestion) and the calorie estimator's
+/// follow-up questions pin down the calories.
+struct PhotoMealSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let photo: UIImage
+    let mealName: String
+    let onSave: (MealItem) -> Void
+
+    @State private var foodName = ""
+    @State private var result: EstimationResult? = nil
+    @State private var chosenCalories: Int? = nil
+    @State private var manualCalories = ""
+    @FocusState private var nameFocused: Bool
+
+    private var canSave: Bool {
+        !foodName.trimmingCharacters(in: .whitespaces).isEmpty && resolvedCalories > 0
+    }
+
+    private var knownPortion: String {
+        if case .known(_, let portion) = result { return portion }
+        return ""
+    }
+
+    private var resolvedCalories: Int {
+        if let chosen = chosenCalories { return chosen }
+        if case .known(let cal, _) = result { return cal }
+        return Int(manualCalories) ?? 0
+    }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 200)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    Text("What's in the photo?")
+                        .font(.system(size: 17, weight: .bold))
+
+                    HStack(spacing: 8) {
+                        TextField("e.g. Grilled chicken salad", text: $foodName)
+                            .focused($nameFocused)
+                            .submitLabel(.search)
+                            .onSubmit { runEstimate() }
+                            .padding(.horizontal, 12).padding(.vertical, 11)
+                            .background(Color(.systemBackground))
+                            .cornerRadius(12)
+                            .overlay(RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(Color.orange.opacity(0.45), lineWidth: 1.3))
+
+                        Button(action: runEstimate) {
+                            Image(systemName: "magnifyingglass.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundColor(.white)
+                                .padding(9)
+                                .background(Color.orange)
+                                .cornerRadius(12)
+                        }
+                    }
+
+                    Text("Name the dish, then answer the quick questions to pin down the calories.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    // Follow-up questions / result from the estimator
+                    switch result {
+                    case .known(let cal, let portion):
+                        HStack(spacing: 8) {
+                            Image(systemName: "flame.fill").foregroundColor(.orange)
+                            Text("\(cal) cal")
+                                .font(.system(size: 18, weight: .bold))
+                            if !portion.isEmpty {
+                                Text("· \(portion)")
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.top, 4)
+
+                    case .needsClarification(let questions):
+                        ForEach(questions) { q in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(q.prompt)
+                                    .font(.system(size: 15, weight: .semibold))
+                                ForEach(q.options) { opt in
+                                    Button {
+                                        chosenCalories = opt.calories
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: chosenCalories == opt.calories
+                                                  ? "largecircle.fill.circle" : "circle")
+                                                .foregroundColor(chosenCalories == opt.calories ? .orange : .secondary)
+                                            Text(opt.label)
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                            Text("\(opt.calories) cal")
+                                                .font(.caption).foregroundColor(.secondary)
+                                        }
+                                        .padding(12)
+                                        .background(Color(.secondarySystemBackground))
+                                        .cornerRadius(12)
+                                    }
+                                }
+                            }
+                            .padding(.top, 4)
+                        }
+
+                    case .unknown:
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("We don't know this one yet — enter the calories:")
+                                .font(.system(size: 14, weight: .semibold))
+                            HStack {
+                                TextField("e.g. 250", text: $manualCalories)
+                                    .keyboardType(.numberPad)
+                                    .padding(.horizontal, 12).padding(.vertical, 10)
+                                    .background(Color(.secondarySystemBackground))
+                                    .cornerRadius(10)
+                                Text("cal").foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.top, 4)
+
+                    case .none:
+                        EmptyView()
+                    }
+
+                    Spacer(minLength: 20)
+                }
+                .padding(16)
+            }
+            .navigationTitle("Add to \(mealName)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        let name = foodName.trimmingCharacters(in: .whitespaces)
+                        onSave(MealItem(name: name,
+                                        calories: resolvedCalories,
+                                        portion: knownPortion))
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(!canSave)
+                }
+            }
+            .onAppear { nameFocused = true }
+        }
+    }
+
+    private func runEstimate() {
+        let name = foodName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        chosenCalories = nil
+        nameFocused = false
+        result = CalorieEstimator.shared.estimate(for: name)
     }
 }

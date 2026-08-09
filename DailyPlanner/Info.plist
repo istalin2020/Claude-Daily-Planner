@@ -49,7 +49,9 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Camera access is not required for Daily Planner.</string>
+	<string>Daily Planner uses the camera so you can photograph your meals while logging food and calories.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Daily Planner lets you pick a photo of your meal when logging food and calories.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Daily Planner reads your steps, calories, exercise time, workouts, and sleep data from Apple Health to display your daily fitness and sleep summary.</string>
 	<key>NSHealthUpdateUsageDescription</key>
