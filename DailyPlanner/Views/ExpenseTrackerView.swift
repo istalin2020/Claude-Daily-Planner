@@ -177,9 +177,15 @@ struct ExpenseTrackerView: View {
 
                     // Self-labeled pie: every slice carries its own callout
                     // line with the category name, amount, and share.
+                    // Height grows with the number of categories so every
+                    // label has room (labels stack down each side).
+                    let sliceCount = categories.count
+                    let perSide = Int(ceil(Double(sliceCount) / 2.0))
+                    let chartHeight = max(340, CGFloat(perSide) * 62 + 90)
+
                     LabeledPieChart(slices: pieSlices(from: categories),
                                     total: total, sym: sym)
-                        .frame(height: 360)
+                        .frame(height: chartHeight)
                 }
                 .padding(16)
                 .background(Color(.secondarySystemBackground))
@@ -188,17 +194,12 @@ struct ExpenseTrackerView: View {
         }
     }
 
-    /// Top slices stay individual; the tail is grouped into "Others" so the
-    /// in-chart labels never overlap.
+    /// Every spending category gets its own slice and label — nothing is
+    /// grouped away, so the chart matches the list above exactly.
     private func pieSlices(from categories: [(PlannerViewModel.DisplayCategory, Double)]) -> [LabeledPieChart.Slice] {
-        var slices = categories.prefix(6).map {
+        categories.map {
             LabeledPieChart.Slice(name: $0.0.name, value: $0.1, color: $0.0.color)
         }
-        let rest = categories.dropFirst(6).reduce(0.0) { $0 + $1.1 }
-        if rest > 0 {
-            slices.append(LabeledPieChart.Slice(name: "Others", value: rest, color: .gray))
-        }
-        return slices
     }
 
     private func budgetAlerts() -> [BudgetAlert] {
@@ -2009,7 +2010,7 @@ struct LabeledPieChart: View {
     /// Places labels so they never overlap: desired Y from each slice's mid
     /// angle, then within each side sorted and spread apart by a min row gap.
     private func placedLabels(center: CGPoint, r: CGFloat, height: CGFloat) -> [Placed] {
-        let rowGap: CGFloat = 34
+        let rowGap: CGFloat = 30
         var right: [(ComputedSlice, CGFloat)] = []
         var left:  [(ComputedSlice, CGFloat)] = []
         for c in computed {
@@ -2025,9 +2026,13 @@ struct LabeledPieChart: View {
                 let ny = max(y, lastY + rowGap)
                 out.append((c, ny)); lastY = ny
             }
-            // Nudge back up if the column ran past the bottom edge.
+            // Nudge back up if the column ran past the bottom edge, then
+            // clamp to the top so nothing is cut off either end.
             if let overflow = out.last.map({ $0.1 - (height - 18) }), overflow > 0 {
                 out = out.map { ($0.0, $0.1 - overflow) }
+            }
+            if let deficit = out.first.map({ 18 - $0.1 }), deficit > 0 {
+                out = out.map { ($0.0, $0.1 + deficit) }
             }
             return out
         }
@@ -2039,7 +2044,9 @@ struct LabeledPieChart: View {
     var body: some View {
         GeometryReader { geo in
             let center = CGPoint(x: geo.size.width / 2, y: geo.size.height * 0.5)
-            let r = min(geo.size.width, geo.size.height) * 0.23
+            // Cap the radius so a tall chart (many categories) keeps the
+            // donut a sensible size and leaves room for the side labels.
+            let r = min(min(geo.size.width, geo.size.height) * 0.23, 82)
             let placed = placedLabels(center: center, r: r, height: geo.size.height)
             let labelW: CGFloat = 84
 
