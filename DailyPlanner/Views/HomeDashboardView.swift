@@ -269,92 +269,139 @@ struct GroupHubView: View {
     @EnvironmentObject var vm: PlannerViewModel
     let group: HomeTileGroup
 
+    private let columns = [GridItem(.flexible(), spacing: 12),
+                           GridItem(.flexible(), spacing: 12)]
+
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(group.sections) { section in
-                    GroupHubCard(section: section, summary: summary(for: section))
-                        .padding(.horizontal, 16)
+                    GroupHubTile(section: section)
                 }
-                Spacer(minLength: 30)
             }
+            .padding(.horizontal, 16)
             .padding(.top, 12)
-        }
-    }
-
-    /// A live one-line status for each section, shown under its name.
-    private func summary(for section: AppSection) -> String {
-        let e = vm.currentEntry
-        switch section {
-        case .healthFitness:
-            return "\(e.fitness.displaySteps) steps · \(e.fitness.displayCalories) cal"
-        case .waterTracker:
-            return "\(e.waterGlasses)/\(e.waterGoal) glasses"
-        case .foodTracker:
-            return e.meals.totalCalories > 0 ? "\(e.meals.totalCalories) kcal logged" : "No meals logged"
-        case .sleepTracker:
-            return e.sleep.durationHours != nil ? "Slept \(e.sleep.durationString)" : "Not logged"
-        case .medications:
-            let active = vm.settings.medications.filter(\.isActive).count
-            return active == 0 ? "No medications" : "\(active) active"
-        case .habits:
-            let habits = vm.settings.habits
-            guard !habits.isEmpty else { return "No habits yet" }
-            let done = habits.filter { vm.isHabitCompleted($0, for: vm.selectedDate) }.count
-            return "\(done)/\(habits.count) done today"
-        case .dailySchedule:
-            let pending = e.dailySchedule.filter { !$0.isCompleted }.count
-            return pending == 0 ? "All clear" : "\(pending) blocks pending"
-        case .appointments:
-            let upcoming = e.appointments.filter { !$0.isCompleted }.count
-            return upcoming == 0 ? "No appointments" : "\(upcoming) upcoming"
-        case .notes:
-            return e.notes.isEmpty ? "No notes yet" : String(e.notes.prefix(40))
-        case .rateYourDay:
-            return e.rating.mood > 0 ? "Rated \(e.rating.mood)/5" : "Not rated yet"
-        default:
-            return ""
+            .padding(.bottom, 30)
         }
     }
 }
 
-struct GroupHubCard: View {
+/// A colorful metric tile: gradient background, faint watermark icon, the
+/// section name, and its key measure shown big so the user reads it at a
+/// glance. Two per row.
+struct GroupHubTile: View {
     @EnvironmentObject var vm: PlannerViewModel
     let section: AppSection
-    let summary: String
+
+    /// (big number/value, small unit, secondary detail) for this section today.
+    private var metric: (value: String, unit: String, detail: String) {
+        let e = vm.currentEntry
+        switch section {
+        case .healthFitness:
+            return ("\(e.fitness.displaySteps)", "steps", "\(e.fitness.displayCalories) cal burned")
+        case .waterTracker:
+            return ("\(e.waterGlasses)", "of \(e.waterGoal) glasses", waterDetail(e))
+        case .foodTracker:
+            return e.meals.totalCalories > 0
+                ? ("\(e.meals.totalCalories)", "kcal", "logged today")
+                : ("0", "kcal", "No meals yet")
+        case .sleepTracker:
+            return e.sleep.durationHours != nil
+                ? (e.sleep.durationString, "slept", sleepDetail(e))
+                : ("—", "sleep", "Not logged")
+        case .medications:
+            let active = vm.settings.medications.filter(\.isActive).count
+            let taken  = vm.todayMedicationLogs.count
+            return ("\(active)", active == 1 ? "medication" : "medications",
+                    active == 0 ? "None active" : "\(taken) taken today")
+        case .habits:
+            let habits = vm.settings.habits
+            let done = habits.filter { vm.isHabitCompleted($0, for: vm.selectedDate) }.count
+            return habits.isEmpty ? ("0", "habits", "None yet")
+                                  : ("\(done)/\(habits.count)", "done", "habits today")
+        default:
+            return ("", "", "")
+        }
+    }
+
+    private func waterDetail(_ e: DailyEntry) -> String {
+        guard e.waterGoal > 0 else { return "" }
+        let pct = Int(min(1, Double(e.waterGlasses) / Double(e.waterGoal)) * 100)
+        return "\(pct)% of goal"
+    }
+
+    private func sleepDetail(_ e: DailyEntry) -> String {
+        e.sleep.quality > 0 ? "Quality \(e.sleep.quality)/5" : "Last night"
+    }
 
     var body: some View {
+        let m = metric
         Button {
             withAnimation(.easeInOut(duration: 0.25)) {
                 vm.selectedSection = section
             }
         } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(section.color)
-                        .frame(width: 40, height: 40)
-                    Image(systemName: section.icon)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                VStack(alignment: .leading, spacing: 3) {
+            ZStack {
+                // Gradient canvas
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(LinearGradient(colors: [section.color, section.color.opacity(0.72)],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+
+                // Faint watermark icon
+                Image(systemName: section.icon)
+                    .font(.system(size: 92, weight: .bold))
+                    .foregroundColor(.white.opacity(0.12))
+                    .offset(x: 40, y: 34)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        ZStack {
+                            Circle().fill(.white.opacity(0.25)).frame(width: 38, height: 38)
+                            Image(systemName: section.icon)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+
+                    Spacer(minLength: 8)
+
+                    // Big key measure
+                    HStack(alignment: .lastTextBaseline, spacing: 4) {
+                        Text(m.value)
+                            .font(.system(size: 30, weight: .heavy))
+                            .foregroundColor(.white)
+                            .lineLimit(1).minimumScaleFactor(0.5)
+                        Text(m.unit)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.85))
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                    }
+
+                    Text(m.detail)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.75))
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .padding(.top, 1)
+
                     Text(section.rawValue)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.primary)
-                    Text(summary)
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .padding(.top, 6)
                 }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.5))
+                .padding(14)
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .glassCard()
+            .frame(height: 150)
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+            )
+            .shadow(color: section.color.opacity(0.35), radius: 8, y: 4)
         }
         .buttonStyle(TilePressStyle())
     }
