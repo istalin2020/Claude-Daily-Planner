@@ -269,12 +269,9 @@ struct GroupHubView: View {
     @EnvironmentObject var vm: PlannerViewModel
     let group: HomeTileGroup
 
-    private let columns = [GridItem(.flexible(), spacing: 12),
-                           GridItem(.flexible(), spacing: 12)]
-
     var body: some View {
         ScrollView(showsIndicators: false) {
-            LazyVGrid(columns: columns, spacing: 12) {
+            VStack(spacing: 10) {
                 ForEach(group.sections) { section in
                     GroupHubTile(section: section)
                 }
@@ -308,7 +305,7 @@ struct GroupHubTile: View {
         case .sleepTracker:
             return e.sleep.durationHours != nil
                 ? (e.sleep.durationString, "slept", sleepDetail(e))
-                : ("—", "sleep", "Not logged")
+                : ("Not logged", "", "tap to add")
         case .medications:
             let active = vm.settings.medications.filter(\.isActive).count
             let taken  = vm.todayMedicationLogs.count
@@ -343,65 +340,63 @@ struct GroupHubTile: View {
         } label: {
             ZStack {
                 // Gradient canvas
-                RoundedRectangle(cornerRadius: 22)
+                RoundedRectangle(cornerRadius: 20)
                     .fill(LinearGradient(colors: [section.color, section.color.opacity(0.72)],
                                          startPoint: .topLeading, endPoint: .bottomTrailing))
 
                 // Faint watermark icon
                 Image(systemName: section.icon)
-                    .font(.system(size: 92, weight: .bold))
+                    .font(.system(size: 78, weight: .bold))
                     .foregroundColor(.white.opacity(0.12))
-                    .offset(x: 40, y: 34)
+                    .offset(x: 120, y: 18)
 
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        ZStack {
-                            Circle().fill(.white.opacity(0.25)).frame(width: 38, height: 38)
-                            Image(systemName: section.icon)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-
-                    Spacer(minLength: 8)
-
-                    // Big key measure
-                    HStack(alignment: .lastTextBaseline, spacing: 4) {
-                        Text(m.value)
-                            .font(.system(size: 30, weight: .heavy))
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle().fill(.white.opacity(0.25)).frame(width: 44, height: 44)
+                        Image(systemName: section.icon)
+                            .font(.system(size: 19, weight: .semibold))
                             .foregroundColor(.white)
-                            .lineLimit(1).minimumScaleFactor(0.5)
-                        Text(m.unit)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.85))
-                            .lineLimit(1).minimumScaleFactor(0.6)
                     }
 
-                    Text(m.detail)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.75))
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                        .padding(.top, 1)
+                    // Big title, smaller live summary underneath
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(section.rawValue)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(1).minimumScaleFactor(0.7)
 
-                    Text(section.rawValue)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.white)
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                        .padding(.top, 6)
+                        HStack(alignment: .lastTextBaseline, spacing: 4) {
+                            Text(m.value)
+                                .font(.system(size: 15, weight: .heavy))
+                                .foregroundColor(.white)
+                            Text(m.unit)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.9))
+                            if !m.detail.isEmpty {
+                                Text("· \(m.detail)")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+                        }
+                        .lineLimit(1).minimumScaleFactor(0.75)
+                    }
+
+                    Spacer(minLength: 4)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white.opacity(0.7))
                 }
-                .padding(14)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
-            .frame(height: 150)
-            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .frame(height: 84)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
             .overlay(
-                RoundedRectangle(cornerRadius: 22)
+                RoundedRectangle(cornerRadius: 20)
                     .strokeBorder(.white.opacity(0.18), lineWidth: 1)
             )
-            .shadow(color: section.color.opacity(0.35), radius: 8, y: 4)
+            .shadow(color: section.color.opacity(0.28), radius: 6, y: 3)
         }
         .buttonStyle(TilePressStyle())
     }

@@ -704,6 +704,7 @@ struct Medication: Identifiable, Codable {
 
 // MARK: - Theme Color
 enum ThemeColor: String, Codable, CaseIterable, Identifiable {
+    case turquoise = "Turquoise"
     case purple = "Purple"
     case blue   = "Blue"
     case green  = "Green"
@@ -717,6 +718,7 @@ enum ThemeColor: String, Codable, CaseIterable, Identifiable {
 
     var primary: Color {
         switch self {
+        case .turquoise: return Color(red: 0.10, green: 0.72, blue: 0.78)
         case .purple: return Color(red: 0.45, green: 0.25, blue: 0.85)
         case .blue:   return Color(red: 0.15, green: 0.45, blue: 0.95)
         case .green:  return Color(red: 0.10, green: 0.65, blue: 0.35)
@@ -730,6 +732,7 @@ enum ThemeColor: String, Codable, CaseIterable, Identifiable {
 
     var secondary: Color {
         switch self {
+        case .turquoise: return Color(red: 0.20, green: 0.85, blue: 0.88)
         case .purple: return Color(red: 0.55, green: 0.25, blue: 0.90)
         case .blue:   return Color(red: 0.25, green: 0.60, blue: 1.00)
         case .green:  return Color(red: 0.20, green: 0.80, blue: 0.45)
@@ -741,18 +744,7 @@ enum ThemeColor: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    var icon: String {
-        switch self {
-        case .purple: return "circle.fill"
-        case .blue:   return "circle.fill"
-        case .green:  return "circle.fill"
-        case .orange: return "circle.fill"
-        case .red:    return "circle.fill"
-        case .teal:   return "circle.fill"
-        case .pink:   return "circle.fill"
-        case .indigo: return "circle.fill"
-        }
-    }
+    var icon: String { "circle.fill" }
 }
 
 // MARK: - Reminder Offset
@@ -1024,7 +1016,7 @@ struct AppSettings: Codable {
     var categoryBudgets: [String: Double] = [:]
 
     // MARK: - Theme
-    var themeColor: ThemeColor = .purple
+    var themeColor: ThemeColor = .turquoise
     var isLiquidGlass: Bool = false
 
     // MARK: - Medications
@@ -1081,7 +1073,7 @@ struct AppSettings: Codable {
          habits: [Habit] = [],
          habitLogs: [String: HabitLog] = [:],
          categoryBudgets: [String: Double] = [:],
-         themeColor: ThemeColor = .purple,
+         themeColor: ThemeColor = .turquoise,
          isLiquidGlass: Bool = false,
          medications: [Medication] = [],
          customExpenseCategories: [String] = [],
@@ -1143,7 +1135,7 @@ struct AppSettings: Codable {
         habits               = try c.decodeIfPresent([Habit].self,                    forKey: .habits)               ?? []
         habitLogs            = try c.decodeIfPresent([String: HabitLog].self,         forKey: .habitLogs)            ?? [:]
         categoryBudgets      = try c.decodeIfPresent([String: Double].self,           forKey: .categoryBudgets)      ?? [:]
-        themeColor                = try c.decodeIfPresent(ThemeColor.self,             forKey: .themeColor)                ?? .purple
+        themeColor                = try c.decodeIfPresent(ThemeColor.self,             forKey: .themeColor)                ?? .turquoise
         isLiquidGlass             = try c.decodeIfPresent(Bool.self,                  forKey: .isLiquidGlass)             ?? false
         medications               = try c.decodeIfPresent([Medication].self,           forKey: .medications)               ?? []
         customExpenseCategories   = try c.decodeIfPresent([String].self,              forKey: .customExpenseCategories)    ?? []
