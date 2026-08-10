@@ -316,8 +316,53 @@ struct GroupHubTile: View {
             let done = habits.filter { vm.isHabitCompleted($0, for: vm.selectedDate) }.count
             return habits.isEmpty ? ("0", "habits", "None yet")
                                   : ("\(done)/\(habits.count)", "done", "habits today")
+
+        case .dailySchedule:
+            let total = e.dailySchedule.count
+            let done  = e.dailySchedule.filter(\.isCompleted).count
+            if total == 0 { return ("No blocks", "", "plan your day") }
+            return ("\(done)/\(total)", "blocks done", "\(total - done) pending")
+
+        case .appointments:
+            let total = e.appointments.count
+            let upcoming = e.appointments.filter { !$0.isCompleted }.count
+            if total == 0 { return ("None", "today", "tap to add") }
+            let next = e.appointments.first { !$0.isCompleted }
+            let detail = next.map { nextLabel(for: $0) } ?? "all done"
+            return ("\(upcoming)", upcoming == 1 ? "upcoming" : "upcoming", detail)
+
+        case .notes:
+            if e.notes.isEmpty { return ("No notes", "", "tap to write") }
+            let words = e.notes.split(whereSeparator: { $0.isWhitespace }).count
+            return ("\(words)", words == 1 ? "word" : "words", "written today")
+
+        case .rateYourDay:
+            let r = e.rating
+            let scores = [r.productivity, r.mood, r.health].filter { $0 > 0 }
+            guard !scores.isEmpty else { return ("Not rated", "", "tap to rate") }
+            let avg = Double(scores.reduce(0, +)) / Double(scores.count)
+            return (String(format: "%.1f", avg), "/ 5", dayVerdict(avg))
+
         default:
             return ("", "", "")
+        }
+    }
+
+    /// Time of the next unfinished appointment, e.g. "next 3:30 PM".
+    private func nextLabel(for appt: Appointment) -> String {
+        let fmt = DateFormatter()
+        fmt.timeStyle = .short
+        return "next \(fmt.string(from: appt.time))"
+    }
+
+    /// Friendly verdict for the day's average rating.
+    private func dayVerdict(_ avg: Double) -> String {
+        switch avg {
+        case 4.5...:      return "Amazing day 🌟"
+        case 3.5..<4.5:   return "Great day 😄"
+        case 2.5..<3.5:   return "Good day 🙂"
+        case 1.5..<2.5:   return "Tough day 😕"
+        default:          return "Rough day 😔"
         }
     }
 

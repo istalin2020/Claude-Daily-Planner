@@ -310,14 +310,56 @@ final class CalorieEstimator {
             ])
         ]),
 
-        DBEntry(keywords: ["beans", "lentils", "chickpea", "legume"], calories: 115, portion: "½ cup", questions: [
-            ClarifyQuestion(prompt: "What type and portion?", options: [
-                ClarifyOption(label: "½ cup lentils",       calories: 115),
-                ClarifyOption(label: "½ cup black beans",   calories: 114),
-                ClarifyOption(label: "½ cup chickpeas",     calories: 134),
-                ClarifyOption(label: "½ cup kidney beans",  calories: 112)
+        // ── PULSES, LEGUMES & SPROUTS ───────────────────────────────────────
+        DBEntry(keywords: ["sprouts", "sprout", "sprouted", "bean sprouts",
+                           "moong sprouts", "sprouted moong", "sprout salad"],
+                calories: 62, portion: "1 cup raw", questions: [
+            ClarifyQuestion(prompt: "How are they served?", options: [
+                ClarifyOption(label: "½ cup raw sprouts",          calories: 31),
+                ClarifyOption(label: "1 cup raw sprouts",          calories: 62),
+                ClarifyOption(label: "1 cup steamed / boiled",     calories: 70),
+                ClarifyOption(label: "Sprout salad (with veg & lemon)", calories: 110),
+                ClarifyOption(label: "Sundal / sautéed with coconut",   calories: 180),
+                ClarifyOption(label: "Sprout chaat (with chutney)",     calories: 220)
             ])
         ]),
+
+        DBEntry(keywords: ["pulses", "pulse", "beans", "lentils", "lentil",
+                           "legume", "legumes", "gram", "dhal"],
+                calories: 115, portion: "½ cup cooked", questions: [
+            ClarifyQuestion(prompt: "Which pulse and how much?", options: [
+                ClarifyOption(label: "½ cup lentils (masoor/toor)", calories: 115),
+                ClarifyOption(label: "1 cup lentils",              calories: 230),
+                ClarifyOption(label: "½ cup chickpeas (chana)",    calories: 134),
+                ClarifyOption(label: "½ cup kidney beans (rajma)", calories: 112),
+                ClarifyOption(label: "½ cup black beans",          calories: 114),
+                ClarifyOption(label: "½ cup moong dal",            calories: 106),
+                ClarifyOption(label: "½ cup black gram (urad)",    calories: 120),
+                ClarifyOption(label: "½ cup green peas",           calories: 62),
+                ClarifyOption(label: "½ cup soybeans",             calories: 149)
+            ])
+        ]),
+
+        DBEntry(keywords: ["chickpeas", "chickpea", "chana", "kabuli chana", "garbanzo"],
+                calories: 134, portion: "½ cup cooked", questions: [
+            ClarifyQuestion(prompt: "How much / how prepared?", options: [
+                ClarifyOption(label: "½ cup boiled",       calories: 134),
+                ClarifyOption(label: "1 cup boiled",       calories: 269),
+                ClarifyOption(label: "Chana chaat",        calories: 250),
+                ClarifyOption(label: "Roasted chana – ¼ cup", calories: 130)
+            ])
+        ]),
+        DBEntry(keywords: ["moong", "mung", "green gram", "moong dal"], calories: 106, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["urad", "black gram", "urad dal"], calories: 120, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["toor dal", "arhar", "pigeon pea"], calories: 110, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["masoor", "red lentil"], calories: 115, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["kidney beans", "red beans"], calories: 112, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["black beans"], calories: 114, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["black eyed peas", "lobia", "cowpea"], calories: 100, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["soybean", "soya beans", "soy beans"], calories: 149, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["horse gram", "kollu"], calories: 115, portion: "½ cup cooked", questions: nil),
+        DBEntry(keywords: ["sundal", "kadalai sundal"], calories: 180, portion: "1 cup", questions: nil),
+        DBEntry(keywords: ["tofu"], calories: 144, portion: "100 g", questions: nil),
 
         // ── DAIRY ───────────────────────────────────────────────────────────
         DBEntry(keywords: ["milk"], calories: 149, portion: "1 cup", questions: [

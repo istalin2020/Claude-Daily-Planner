@@ -45,11 +45,11 @@ enum FoodPhotoRecognizer {
             do {
                 try handler.perform([request])
                 let observations = (request.results ?? [])
-                    .filter { $0.confidence > 0.03 }
+                    .filter { $0.confidence > 0.01 }
                     .sorted { $0.confidence > $1.confidence }
 
                 var resolved: [(name: String, raw: String, conf: Float)] = []
-                for obs in observations.prefix(40) {
+                for obs in observations.prefix(80) {
                     let label = obs.identifier.lowercased()
                         .replacingOccurrences(of: "_", with: " ")
                     if let food = resolveFood(from: label) {
@@ -139,7 +139,18 @@ enum FoodPhotoRecognizer {
         "cucumber": "cucumber", "lettuce": "salad", "spinach": "spinach",
         "onion": "onion", "garlic": "garlic", "mushroom": "mushroom",
         "avocado": "avocado", "olive": "olives", "olives": "olives",
-        "beans": "beans", "lentil": "lentils", "chickpea": "chickpeas",
+        // Pulses, legumes & sprouts
+        "beans": "beans", "bean": "beans", "green bean": "beans",
+        "kidney bean": "kidney beans", "black bean": "black beans",
+        "baked beans": "beans", "broad bean": "beans", "lima bean": "beans",
+        "lentil": "lentils", "lentils": "lentils", "dal": "dal", "daal": "dal",
+        "pulse": "pulses", "pulses": "pulses", "legume": "pulses",
+        "chickpea": "chickpeas", "chickpeas": "chickpeas", "garbanzo": "chickpeas",
+        "sprout": "sprouts", "sprouts": "sprouts", "bean sprout": "sprouts",
+        "bean sprouts": "sprouts", "sprouted": "sprouts",
+        "mung bean": "moong", "mung": "moong", "moong": "moong",
+        "soybean": "soybean", "soy": "soybean", "edamame": "soybean",
+        "tofu": "tofu", "green pea": "pea", "peas": "pea", "split pea": "pulses",
         "peanut": "peanuts", "almond": "almonds", "cashew": "cashews",
         "walnut": "walnuts", "pistachio": "pistachios",
 
@@ -175,13 +186,28 @@ enum FoodPhotoRecognizer {
         if let mapped = synonyms[label] { return mapped }
 
         // Multi-word labels: check each word (e.g. "orange juice glass").
-        for word in label.split(separator: " ").map(String.init) {
+        let words = label.split(separator: " ").map(String.init)
+        for word in words {
             if ignoredLabels.contains(word) { continue }
             if let mapped = synonyms[word] { return mapped }
         }
 
-        // Last resort: does our calorie DB recognise this label at all?
+        // Try adjacent word pairs ("bean sprouts" inside "fresh bean sprouts").
+        if words.count > 1 {
+            for i in 0..<(words.count - 1) {
+                let pair = "\(words[i]) \(words[i + 1])"
+                if let mapped = synonyms[pair] { return mapped }
+            }
+        }
+
+        // Does our calorie DB recognise the whole label?
         if case .unknown = CalorieEstimator.shared.estimate(for: label) {
+            // Finally, try individual words against the DB so a label like
+            // "sprouted mung salad" still resolves via "sprouted".
+            for word in words where word.count > 3 && !ignoredLabels.contains(word) {
+                if case .unknown = CalorieEstimator.shared.estimate(for: word) { continue }
+                return word
+            }
             return nil
         }
         return label
