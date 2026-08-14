@@ -96,11 +96,33 @@ class PlannerViewModel: ObservableObject {
         )
         setupAutoSave()
         // Re-apply notifications on launch in case they were cleared
-        if settings.notificationsEnabled {
-            NotificationManager.shared.scheduleNotifications(
-                times: settings.notificationTimes, tone: settings.notificationTone)
-        }
+        refreshDailyReminders()
         todayMedicationLogs = medicationLogsForToday()
+    }
+
+    // MARK: - Daily reminders
+
+    /// Pending (incomplete) Top Priority titles for today — the pool each
+    /// reminder draws from.
+    var pendingPriorityTitles: [String] {
+        let today = dateKey(for: Calendar.current.startOfDay(for: Date()))
+        let entry = entries[today] ?? currentEntry
+        return entry.topPriorities.filter { !$0.isCompleted }.map(\.title)
+    }
+
+    /// Re-schedules the daily reminders so each one names a random pending
+    /// Top Priority. Called on launch, when reminders/tones change, and
+    /// whenever tasks are edited so the text never goes stale.
+    func refreshDailyReminders() {
+        guard settings.notificationsEnabled else {
+            NotificationManager.shared.cancelAll()
+            return
+        }
+        NotificationManager.shared.scheduleNotifications(
+            times: settings.notificationTimes,
+            tone: settings.notificationTone,
+            pendingPriorities: pendingPriorityTitles
+        )
     }
 
     // MARK: - Date Key
@@ -1530,13 +1552,8 @@ class PlannerViewModel: ObservableObject {
     func saveSettings() {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         try? data.write(to: activeSettingsURL, options: .atomic)
-        // Sync notifications
-        if settings.notificationsEnabled {
-            NotificationManager.shared.scheduleNotifications(
-                times: settings.notificationTimes, tone: settings.notificationTone)
-        } else {
-            NotificationManager.shared.cancelAll()
-        }
+        // Sync notifications (each reminder names a pending Top Priority)
+        refreshDailyReminders()
     }
 
     func loadSettings() {
@@ -1572,6 +1589,14 @@ class PlannerViewModel: ObservableObject {
             .dropFirst()
             .debounce(for: .seconds(3), scheduler: RunLoop.main)
             .sink { [weak self] _ in self?.pushSharedListsToCloud() }
+            .store(in: &cancellables)
+
+        // Reminder text names a pending Top Priority, so re-schedule shortly
+        // after tasks change (added, completed, deleted) to keep it accurate.
+        $entries
+            .dropFirst()
+            .debounce(for: .seconds(2), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshDailyReminders() }
             .store(in: &cancellables)
 
         // Settings are small; a short debounce avoids redundant writes when

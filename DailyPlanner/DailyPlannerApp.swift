@@ -67,6 +67,9 @@ struct DailyPlannerApp: App {
             switch phase {
             case .active:
                 viewModel.checkRolloverIfNeeded()
+                // Reminders name a pending Top Priority, so top them up on
+                // every foreground (they're scheduled a week at a time).
+                viewModel.refreshDailyReminders()
                 viewModel.syncHealthKitForToday()
                 viewModel.checkMonthlyCarryForward()
                 viewModel.refreshReceivedSharedLists()

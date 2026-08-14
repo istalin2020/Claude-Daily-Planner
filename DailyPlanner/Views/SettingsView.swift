@@ -171,9 +171,7 @@ struct SettingsView: View {
                                                     .font(.system(size: 13, weight: .semibold))
                                                 Button {
                                                     vm.settings.notificationTimes.remove(at: idx)
-                                                    NotificationManager.shared.scheduleNotifications(
-                                                        times: vm.settings.notificationTimes,
-                                                        tone: vm.settings.notificationTone)
+                                                    vm.refreshDailyReminders()
                                                 } label: {
                                                     Image(systemName: "xmark.circle.fill")
                                                         .font(.system(size: 12))
@@ -238,9 +236,7 @@ struct SettingsView: View {
                         }
                         .onChange(of: vm.settings.notificationTone) { _, newTone in
                             if !vm.settings.notificationTimes.isEmpty {
-                                NotificationManager.shared.scheduleNotifications(
-                                    times: vm.settings.notificationTimes,
-                                    tone: newTone)
+                                vm.refreshDailyReminders()
                             }
                             NotificationManager.shared.playPreview(tone: newTone)
                         }
@@ -507,9 +503,7 @@ struct SettingsView: View {
                 TimePickerSheet(time: $pickerTime) {
                     guard vm.settings.notificationTimes.count < 7 else { return }
                     vm.settings.notificationTimes.append(pickerTime)
-                    NotificationManager.shared.scheduleNotifications(
-                        times: vm.settings.notificationTimes,
-                        tone: vm.settings.notificationTone)
+                    vm.refreshDailyReminders()
                 }
             }
             .sheet(isPresented: $showExport) {
@@ -548,9 +542,7 @@ struct SettingsView: View {
             if granted {
                 permissionDenied = false
                 if !vm.settings.notificationTimes.isEmpty {
-                    NotificationManager.shared.scheduleNotifications(
-                        times: vm.settings.notificationTimes,
-                        tone: vm.settings.notificationTone)
+                    vm.refreshDailyReminders()
                 }
             } else {
                 permissionDenied = true

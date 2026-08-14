@@ -33,6 +33,24 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         "Friendly nudge: your plans and goals are waiting in Daily Planner!"
     ]
 
+    /// Titles used when a reminder names a specific pending priority.
+    static let taskReminderTitles: [String] = [
+        "⭐️ Top Priority",
+        "⭐️ Still pending",
+        "⭐️ Don't forget",
+        "⭐️ Your priority today",
+        "⭐️ Quick reminder"
+    ]
+
+    /// Short nudges appended under the task name.
+    static let taskReminderNudges: [String] = [
+        "Tap to open Daily Planner and tick it off.",
+        "A few minutes now beats a whole day of waiting.",
+        "Small step, big progress — you've got this!",
+        "Knock this one out and keep the streak going.",
+        "Still on your list — ready when you are."
+    ]
+
     // MARK: - Permission
     func requestPermission(completion: @escaping (Bool) -> Void) {
         UNUserNotificationCenter.current()
@@ -96,28 +114,93 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: - Daily Reminders
     /// Cancels ONLY daily-reminder notifications (prefix "dp_reminder_"),
-    /// then schedules one repeating notification per entry in `times`.
-    func scheduleNotifications(times: [Date], tone: NotificationTone = .defaultTone) {
+    /// then schedules reminders for each entry in `times`.
+    ///
+    /// When `pendingPriorities` is non-empty, every reminder names one of the
+    /// user's pending Top Priorities, chosen at random and varied across days
+    /// so consecutive reminders rarely repeat the same task.
+    ///
+    /// iOS fixes a notification's text when it is scheduled — there is no way
+    /// to compute the body at delivery time — so concrete (non-repeating)
+    /// notifications are scheduled for the next `daysAhead` days and refreshed
+    /// whenever the task list changes or the app foregrounds. If no tasks are
+    /// pending we fall back to the classic repeating motivational reminders.
+    func scheduleNotifications(times: [Date],
+                               tone: NotificationTone = .defaultTone,
+                               pendingPriorities: [String] = []) {
         cancelByPrefix("dp_reminder_")
         guard !times.isEmpty else { return }
 
         let cal = Calendar.current
-        for (idx, time) in times.enumerated() {
-            let content = UNMutableNotificationContent()
-            content.title = "Daily Planner"
-            content.body  = Self.reminderMessages[idx % Self.reminderMessages.count]
-            content.sound = sound(for: tone)
+        let tasks = pendingPriorities
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
 
-            var comps = cal.dateComponents([.hour, .minute], from: time)
-            comps.second = 0
-            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        // ── No pending tasks: keep the simple repeating reminders ──────────
+        guard !tasks.isEmpty else {
+            for (idx, time) in times.enumerated() {
+                let content = UNMutableNotificationContent()
+                content.title = "Daily Planner"
+                content.body  = Self.reminderMessages[idx % Self.reminderMessages.count]
+                content.sound = sound(for: tone)
 
-            let request = UNNotificationRequest(
-                identifier: "dp_reminder_\(idx)",
-                content: content,
-                trigger: trigger
-            )
-            UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+                var comps = cal.dateComponents([.hour, .minute], from: time)
+                comps.second = 0
+                let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+                let request = UNNotificationRequest(identifier: "dp_reminder_\(idx)",
+                                                    content: content,
+                                                    trigger: trigger)
+                UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+            }
+            return
+        }
+
+        // ── Pending tasks: name one in each reminder ───────────────────────
+        // Shuffle once, then walk the list so every task gets surfaced before
+        // any repeats — random order, but fair coverage.
+        var bag = tasks.shuffled()
+        var bagIndex = 0
+        func nextTask() -> String {
+            if bagIndex >= bag.count {
+                bag = tasks.shuffled()
+                bagIndex = 0
+            }
+            defer { bagIndex += 1 }
+            return bag[bagIndex]
+        }
+
+        let daysAhead = 7
+        let now = Date()
+        var scheduled = 0
+
+        for dayOffset in 0..<daysAhead {
+            guard let day = cal.date(byAdding: .day, value: dayOffset, to: now) else { continue }
+
+            for (idx, time) in times.enumerated() {
+                let timeComps = cal.dateComponents([.hour, .minute], from: time)
+                var comps = cal.dateComponents([.year, .month, .day], from: day)
+                comps.hour   = timeComps.hour
+                comps.minute = timeComps.minute
+                comps.second = 0
+
+                // Skip slots already past today.
+                guard let fireDate = cal.date(from: comps), fireDate > now else { continue }
+
+                let task = nextTask()
+                let content = UNMutableNotificationContent()
+                content.title = Self.taskReminderTitles[scheduled % Self.taskReminderTitles.count]
+                content.body  = "\(task)\n\(Self.taskReminderNudges[scheduled % Self.taskReminderNudges.count])"
+                content.sound = sound(for: tone)
+
+                let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+                let request = UNNotificationRequest(
+                    identifier: "dp_reminder_d\(dayOffset)_t\(idx)",
+                    content: content,
+                    trigger: trigger
+                )
+                UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+                scheduled += 1
+            }
         }
     }
 
