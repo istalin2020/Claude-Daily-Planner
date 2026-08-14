@@ -1379,3 +1379,155 @@ final class CalorieEstimator {
         ]),
     ]
 }
+
+// MARK: - Nutrient Estimator
+//
+// Rough protein / fibre / iron figures derived from the food's name and its
+// calorie count. Values are per-food-group densities from standard nutrition
+// tables (USDA / IFCT), applied proportionally to the logged calories, so a
+// bigger portion of the same food yields proportionally more nutrients.
+//
+// These are estimates for everyday awareness, not clinical precision.
+
+struct NutrientEstimate {
+    /// Grams of protein.
+    let protein: Double
+    /// Grams of dietary fibre.
+    let fiber: Double
+    /// Milligrams of iron.
+    let iron: Double
+}
+
+enum NutrientEstimator {
+
+    /// Grams (or mg for iron) per 100 kcal for each food group.
+    private struct Density {
+        let keywords: [String]
+        let proteinPer100kcal: Double
+        let fiberPer100kcal: Double
+        let ironPer100kcal: Double
+    }
+
+    private static let groups: [Density] = [
+        // ── Pulses, legumes & sprouts — protein + fibre + iron rich ───────
+        Density(keywords: ["sprout", "lentil", "dal", "daal", "dhal", "pulse", "legume",
+                           "chana", "chickpea", "rajma", "kidney bean", "black bean",
+                           "moong", "mung", "urad", "toor", "arhar", "masoor", "lobia",
+                           "cowpea", "black eyed", "soybean", "soya", "horse gram",
+                           "kollu", "sundal", "hummus", "foul", "ful medames", "beans"],
+                proteinPer100kcal: 7.0, fiberPer100kcal: 6.5, ironPer100kcal: 2.4),
+
+        Density(keywords: ["tofu", "paneer", "edamame"],
+                proteinPer100kcal: 9.0, fiberPer100kcal: 1.0, ironPer100kcal: 1.6),
+
+        // ── Meat, fish & eggs — high protein, some iron, no fibre ────────
+        Density(keywords: ["chicken", "turkey", "mutton", "lamb", "beef", "steak",
+                           "pork", "bacon", "ham", "sausage", "kebab", "kofta",
+                           "shawarma", "tandoori", "shish", "meat"],
+                proteinPer100kcal: 11.0, fiberPer100kcal: 0, ironPer100kcal: 1.1),
+
+        Density(keywords: ["fish", "salmon", "tuna", "hammour", "sea bass", "prawn",
+                           "shrimp", "crab", "seafood", "sardine"],
+                proteinPer100kcal: 13.0, fiberPer100kcal: 0, ironPer100kcal: 0.8),
+
+        Density(keywords: ["egg", "omelette", "omelet", "shakshuka"],
+                proteinPer100kcal: 8.0, fiberPer100kcal: 0, ironPer100kcal: 1.2),
+
+        // ── Dairy ─────────────────────────────────────────────────────────
+        Density(keywords: ["milk", "yogurt", "yoghurt", "curd", "labneh", "lassi",
+                           "cheese", "feta", "halloumi", "tzatziki", "raita"],
+                proteinPer100kcal: 6.0, fiberPer100kcal: 0, ironPer100kcal: 0.1),
+
+        // ── Nuts & seeds ──────────────────────────────────────────────────
+        Density(keywords: ["peanut", "almond", "cashew", "walnut", "pistachio",
+                           "nut", "seed", "tahini"],
+                proteinPer100kcal: 3.7, fiberPer100kcal: 1.7, ironPer100kcal: 0.7),
+
+        // ── Vegetables & salads — fibre rich, low calorie ─────────────────
+        Density(keywords: ["salad", "spinach", "broccoli", "cabbage", "carrot",
+                           "cucumber", "tomato", "onion", "beetroot", "beet",
+                           "capsicum", "pepper", "lettuce", "mushroom", "okra",
+                           "brinjal", "eggplant", "gourd", "cauliflower", "greens",
+                           "sabzi", "tabbouleh", "fattoush", "baba ganoush", "olives",
+                           "vegetable", "veg"],
+                proteinPer100kcal: 4.0, fiberPer100kcal: 9.0, ironPer100kcal: 2.2),
+
+        // ── Fruits — fibre, little protein ────────────────────────────────
+        Density(keywords: ["apple", "banana", "orange", "mango", "grape", "melon",
+                           "watermelon", "papaya", "guava", "pear", "peach", "plum",
+                           "pineapple", "pomegranate", "berry", "strawberry",
+                           "blueberry", "kiwi", "avocado", "dates", "fruit"],
+                proteinPer100kcal: 1.2, fiberPer100kcal: 4.5, ironPer100kcal: 0.4),
+
+        // ── Juices — minimal fibre once strained ──────────────────────────
+        Density(keywords: ["juice", "smoothie", "coconut water", "lemonade"],
+                proteinPer100kcal: 0.8, fiberPer100kcal: 0.6, ironPer100kcal: 0.3),
+
+        // ── Whole grains & Indian breads ──────────────────────────────────
+        Density(keywords: ["roti", "chapati", "chapathi", "chappathi", "phulka",
+                           "whole wheat", "brown bread", "oat", "porridge", "muesli",
+                           "quinoa", "brown rice", "millet", "ragi", "bajra", "jowar",
+                           "couscous", "barley", "dalia", "upma", "poha"],
+                proteinPer100kcal: 3.4, fiberPer100kcal: 3.2, ironPer100kcal: 1.0),
+
+        // ── Refined grains, rice & white breads ───────────────────────────
+        Density(keywords: ["rice", "biryani", "pulao", "kabsa", "mandi", "machboos",
+                           "naan", "paratha", "bread", "toast", "bagel", "pita",
+                           "khubz", "pasta", "noodle", "spaghetti", "dosa", "idli",
+                           "appalam", "papad", "tortilla", "wrap", "sandwich",
+                           "burger", "pizza", "manakish"],
+                proteinPer100kcal: 2.6, fiberPer100kcal: 1.1, ironPer100kcal: 0.7),
+
+        // ── Fried snacks ──────────────────────────────────────────────────
+        Density(keywords: ["samosa", "pakora", "vada", "bhaji", "fries", "chips",
+                           "fried", "cutlet", "spring roll", "falafel", "nugget"],
+                proteinPer100kcal: 2.2, fiberPer100kcal: 1.4, ironPer100kcal: 0.6),
+
+        // ── Sweets & desserts ─────────────────────────────────────────────
+        Density(keywords: ["cake", "cookie", "biscuit", "brownie", "chocolate",
+                           "ice cream", "kunafa", "baklava", "gulab jamun", "jalebi",
+                           "laddu", "halwa", "basbousa", "dessert", "pastry",
+                           "donut", "doughnut", "muffin", "candy", "sweet"],
+                proteinPer100kcal: 1.5, fiberPer100kcal: 0.8, ironPer100kcal: 0.5),
+
+        // ── Oils, butter & ghee — pure fat, no micronutrients ─────────────
+        Density(keywords: ["oil", "ghee", "butter", "mayonnaise", "margarine"],
+                proteinPer100kcal: 0, fiberPer100kcal: 0, ironPer100kcal: 0),
+
+        // ── Hot & soft drinks ─────────────────────────────────────────────
+        Density(keywords: ["coffee", "tea", "soda", "cola", "beer", "wine", "shake"],
+                proteinPer100kcal: 1.0, fiberPer100kcal: 0, ironPer100kcal: 0.1),
+
+        // ── Soups & curries ───────────────────────────────────────────────
+        Density(keywords: ["soup", "curry", "gravy", "stew", "sambar", "rasam",
+                           "moussaka", "fatteh", "harees"],
+                proteinPer100kcal: 5.0, fiberPer100kcal: 3.0, ironPer100kcal: 1.3),
+    ]
+
+    /// Fallback density for anything we can't classify — a mixed-meal average.
+    private static let fallback = Density(keywords: [], proteinPer100kcal: 3.5,
+                                         fiberPer100kcal: 2.0, ironPer100kcal: 0.9)
+
+    /// Estimates protein / fibre / iron for a food from its name and calories.
+    static func estimate(name: String, calories: Int) -> NutrientEstimate {
+        guard calories > 0 else { return NutrientEstimate(protein: 0, fiber: 0, iron: 0) }
+        let lower = name.lowercased()
+
+        // Longest keyword match wins so "sweet potato" beats "potato" and
+        // "coconut oil" beats "coconut".
+        var best: (Density, Int)? = nil
+        for group in groups {
+            for kw in group.keywords where lower.contains(kw) {
+                if best == nil || kw.count > best!.1 { best = (group, kw.count) }
+            }
+        }
+        let d = best?.0 ?? fallback
+        let per100 = Double(calories) / 100.0
+
+        return NutrientEstimate(
+            protein: (d.proteinPer100kcal * per100 * 10).rounded() / 10,
+            fiber:   (d.fiberPer100kcal   * per100 * 10).rounded() / 10,
+            iron:    (d.ironPer100kcal    * per100 * 10).rounded() / 10
+        )
+    }
+}

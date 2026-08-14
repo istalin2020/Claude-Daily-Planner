@@ -16,9 +16,16 @@ struct FoodTrackerView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // ── Calorie banner (auto-calculated) ────────────────────────
+                // ── Calorie banner + nutrients (auto-calculated) ────────────
                 CalorieBanner(total: entry.meals.totalCalories)
                     .padding(.horizontal, 16).padding(.top, 8)
+
+                if entry.meals.totalCalories > 0 {
+                    NutrientSummaryRow(protein: entry.meals.totalProtein,
+                                       fiber:   entry.meals.totalFiber,
+                                       iron:    entry.meals.totalIron)
+                        .padding(.horizontal, 16).padding(.top, 8)
+                }
 
                 // ── Meal sections ────────────────────────────────────────────
                 ForEach(mealSections, id: \.key) { meal in
@@ -148,6 +155,73 @@ private struct CalorieBanner: View {
     }
 }
 
+// MARK: - Nutrient Summary Row
+
+/// Read-only strip showing the day's estimated protein, fibre and iron,
+/// derived from the foods logged above.
+private struct NutrientSummaryRow: View {
+    let protein: Double
+    let fiber: Double
+    let iron: Double
+
+    var body: some View {
+        HStack(spacing: 8) {
+            NutrientPill(icon: "bolt.heart.fill", label: "Protein",
+                         value: format(protein), unit: "g",
+                         color: Color(red: 0.85, green: 0.30, blue: 0.45))
+            NutrientPill(icon: "leaf.fill", label: "Fiber",
+                         value: format(fiber), unit: "g",
+                         color: Color(red: 0.15, green: 0.65, blue: 0.40))
+            NutrientPill(icon: "drop.triangle.fill", label: "Iron",
+                         value: format(iron), unit: "mg",
+                         color: Color(red: 0.35, green: 0.45, blue: 0.85))
+        }
+        .allowsHitTesting(false)   // purely informational
+    }
+
+    private func format(_ v: Double) -> String {
+        v >= 100 ? String(format: "%.0f", v) : String(format: "%.1f", v)
+    }
+}
+
+private struct NutrientPill: View {
+    let icon: String
+    let label: String
+    let value: String
+    let unit: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 3) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundColor(color)
+
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 17, weight: .heavy))
+                    .foregroundColor(.primary)
+                Text(unit)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 9)
+        .background(color.opacity(0.10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(color.opacity(0.22), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
 // MARK: - Meal Section Model
 
 struct MealSectionModel {
@@ -237,18 +311,26 @@ struct MealSection: View {
                                 .foregroundColor(.secondary)
                         }
                         if canEdit {
-                            // Edit button
+                            // Edit button — padded so the tap target is big
+                            // enough to hit reliably (icon alone is only 16pt).
                             Button(action: { onEdit(item) }) {
                                 Image(systemName: "pencil.circle")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(meal.color.opacity(0.7))
+                                    .font(.system(size: 18))
+                                    .foregroundColor(meal.color.opacity(0.8))
+                                    .padding(8)
+                                    .contentShape(Rectangle())
                             }
+                            .buttonStyle(PlainButtonStyle())
+
                             // Delete button
                             Button(action: { onDelete(item) }) {
-                                Image(systemName: "xmark.circle")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary.opacity(0.5))
+                                Image(systemName: "trash")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.red.opacity(0.75))
+                                    .padding(8)
+                                    .contentShape(Rectangle())
                             }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
                     .padding(.vertical, 2)

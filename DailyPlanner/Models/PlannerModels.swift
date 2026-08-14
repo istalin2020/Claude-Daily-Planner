@@ -438,14 +438,28 @@ struct MealItem: Identifiable, Codable {
     var calories: Int          // 0 = user didn't enter / not estimable
     var portion : String = ""  // human-readable portion description
 
+    // ── Key nutrients (estimated from the food name + calories) ──────────
+    /// Grams of protein.
+    var protein : Double = 0
+    /// Grams of dietary fibre.
+    var fiber   : Double = 0
+    /// Milligrams of iron.
+    var iron    : Double = 0
+
     init(id: UUID = UUID(),
          name: String,
          calories: Int,
-         portion: String = "") {
+         portion: String = "",
+         protein: Double = 0,
+         fiber: Double = 0,
+         iron: Double = 0) {
         self.id = id
         self.name = name
         self.calories = calories
         self.portion = portion
+        self.protein = protein
+        self.fiber = fiber
+        self.iron = iron
     }
 
     init(from decoder: Decoder) throws {
@@ -454,6 +468,9 @@ struct MealItem: Identifiable, Codable {
         name     = try c.decode(String.self,           forKey: .name)
         calories = try c.decodeIfPresent(Int.self,    forKey: .calories) ?? 0
         portion  = try c.decodeIfPresent(String.self, forKey: .portion)  ?? ""
+        protein  = try c.decodeIfPresent(Double.self, forKey: .protein)  ?? 0
+        fiber    = try c.decodeIfPresent(Double.self, forKey: .fiber)    ?? 0
+        iron     = try c.decodeIfPresent(Double.self, forKey: .iron)     ?? 0
     }
 }
 
@@ -463,6 +480,16 @@ struct MealEntry: Codable {
     var lunchItems    : [MealItem] = []
     var dinnerItems   : [MealItem] = []
     var snackItems    : [MealItem] = []
+
+    /// Every logged item across all four meals.
+    var allItems: [MealItem] { breakfastItems + lunchItems + dinnerItems + snackItems }
+
+    /// Total grams of protein logged today.
+    var totalProtein: Double { allItems.reduce(0) { $0 + $1.protein } }
+    /// Total grams of fibre logged today.
+    var totalFiber: Double   { allItems.reduce(0) { $0 + $1.fiber } }
+    /// Total milligrams of iron logged today.
+    var totalIron: Double    { allItems.reduce(0) { $0 + $1.iron } }
 
     /// Auto-computed from item calories; no longer stored.
     var totalCalories: Int {
@@ -1190,6 +1217,11 @@ struct DailyEntry: Codable {
     /// re-adds a deleted expense from an older snapshot.
     var deletedExpenseIDs: Set<UUID> = []
 
+    /// Persistent set of meal-item UUIDs the user has explicitly deleted.
+    /// Without this the iCloud merge (which unions meal lists) would keep
+    /// resurrecting deleted foods from an older snapshot.
+    var deletedMealItemIDs: Set<UUID> = []
+
     var rating: DayRating = DayRating()
     var sleep: SleepEntry = SleepEntry()
 
@@ -1234,6 +1266,7 @@ struct DailyEntry: Codable {
         expenses           = try c.decodeIfPresent([Expense].self,    forKey: .expenses)           ?? []
         savings            = try c.decodeIfPresent(Double.self,      forKey: .savings)            ?? 0.0
         deletedExpenseIDs  = try c.decodeIfPresent(Set<UUID>.self,   forKey: .deletedExpenseIDs)  ?? []
+        deletedMealItemIDs = try c.decodeIfPresent(Set<UUID>.self,   forKey: .deletedMealItemIDs) ?? []
         rating         = try c.decodeIfPresent(DayRating.self,       forKey: .rating)         ?? DayRating()
         sleep          = try c.decodeIfPresent(SleepEntry.self,      forKey: .sleep)          ?? SleepEntry()
     }

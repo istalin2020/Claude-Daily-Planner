@@ -519,6 +519,7 @@ class PlannerViewModel: ObservableObject {
     // MARK: - Meals
     func addMealItem(_ item: MealItem, to meal: String) {
         var e = currentEntry
+        let item = withNutrients(item)
         switch meal {
         case "breakfast": e.meals.breakfastItems.append(item)
         case "lunch":     e.meals.lunchItems.append(item)
@@ -526,6 +527,18 @@ class PlannerViewModel: ObservableObject {
         default:          e.meals.snackItems.append(item)
         }
         currentEntry = e
+    }
+
+    /// Fills in protein / fibre / iron for a meal item from its name and
+    /// calories, so every add/edit path gets nutrients without duplicating
+    /// the estimation logic in the views.
+    private func withNutrients(_ item: MealItem) -> MealItem {
+        var updated = item
+        let n = NutrientEstimator.estimate(name: item.name, calories: item.calories)
+        updated.protein = n.protein
+        updated.fiber   = n.fiber
+        updated.iron    = n.iron
+        return updated
     }
 
     func removeMealItem(_ item: MealItem, from meal: String) {
@@ -536,11 +549,15 @@ class PlannerViewModel: ObservableObject {
         case "dinner":    e.meals.dinnerItems.removeAll { $0.id == item.id }
         default:          e.meals.snackItems.removeAll { $0.id == item.id }
         }
+        // Remember the deletion so the iCloud merge (which unions meal lists)
+        // can never resurrect this food from an older snapshot.
+        e.deletedMealItemIDs.insert(item.id)
         currentEntry = e
     }
 
     func updateMealItem(_ original: MealItem, with updated: MealItem, in meal: String) {
         var e = currentEntry
+        let updated = withNutrients(updated)
         switch meal {
         case "breakfast":
             if let i = e.meals.breakfastItems.firstIndex(where: { $0.id == original.id }) {
@@ -1845,11 +1862,20 @@ class PlannerViewModel: ObservableObject {
         }
 
         // Meals — union all four meal lists so items entered before the async
-        // save completes are never dropped.
+        // save completes are never dropped, then strip anything the user
+        // explicitly deleted on either side (otherwise the union would keep
+        // resurrecting deleted foods).
+        let allDeletedMealIDs = disk.deletedMealItemIDs.union(memory.deletedMealItemIDs)
+        result.deletedMealItemIDs = allDeletedMealIDs
+
         result.meals.breakfastItems = union(result.meals.breakfastItems, memory.meals.breakfastItems)
+            .filter { !allDeletedMealIDs.contains($0.id) }
         result.meals.lunchItems     = union(result.meals.lunchItems,     memory.meals.lunchItems)
+            .filter { !allDeletedMealIDs.contains($0.id) }
         result.meals.dinnerItems    = union(result.meals.dinnerItems,    memory.meals.dinnerItems)
+            .filter { !allDeletedMealIDs.contains($0.id) }
         result.meals.snackItems     = union(result.meals.snackItems,     memory.meals.snackItems)
+            .filter { !allDeletedMealIDs.contains($0.id) }
 
         // Water — memory wins (last tap on this device is authoritative).
         result.waterGlasses = memory.waterGlasses
