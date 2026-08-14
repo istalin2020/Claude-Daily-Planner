@@ -468,6 +468,32 @@ struct SettingsView: View {
                     }
                 }
 
+                // ── DEVELOPER TESTING (DEBUG builds only) ──────────────────
+                // Compiled out of Release builds, so this never ships to the
+                // App Store and real users stay gated by their subscription.
+                #if DEBUG
+                Section {
+                    Toggle(isOn: $pro.devProOverride) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "hammer.fill")
+                                .foregroundColor(.orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Unlock All PRO Features")
+                                    .font(.system(size: 15, weight: .semibold))
+                                Text("Testing only — Debug builds")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .tint(.orange)
+                } header: {
+                    Text("Developer")
+                } footer: {
+                    Text("This switch exists only in Debug builds on your own device. It is removed automatically when the app is archived for App Store Connect, so published users are gated by their real subscription.")
+                }
+                #endif
+
                 // ── 12. ABOUT DAILY PLANNER ────────────────────────────────
                 Section("About Daily Planner") {
                     HStack {

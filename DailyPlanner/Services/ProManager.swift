@@ -28,8 +28,44 @@ class ProManager: ObservableObject {
 
     private var transactionListener: Task<Void, Error>?
 
+    // MARK: - Developer PRO override (DEBUG builds only)
+    //
+    // A switch in Settings that force-unlocks every PRO feature for testing
+    // on the developer's own device. The whole thing is wrapped in `#if DEBUG`,
+    // so it is COMPILED OUT of Release builds — the archive uploaded to App
+    // Store Connect contains no override at all and real customers are gated
+    // by their actual subscription exactly as before.
+    #if DEBUG
+    private let devOverrideKey = "dailyplanner_dev_pro_override"
+
+    /// When true, PRO is unlocked regardless of subscription status.
+    @Published var devProOverride: Bool = UserDefaults.standard.bool(forKey: "dailyplanner_dev_pro_override") {
+        didSet {
+            UserDefaults.standard.set(devProOverride, forKey: devOverrideKey)
+            // Re-apply immediately so the UI unlocks/locks on toggle.
+            if devProOverride {
+                isPro = true
+            } else {
+                isPro = UserDefaults.standard.bool(forKey: proKey)
+                Task { await verifyProStatus() }
+            }
+        }
+    }
+
+    /// True when the developer override is active — used by Settings to show
+    /// a "testing" badge. Always false in Release builds.
+    var isDevOverrideActive: Bool { devProOverride }
+    #else
+    var isDevOverrideActive: Bool { false }
+    #endif
+
     init() {
         isPro = UserDefaults.standard.bool(forKey: proKey)
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "dailyplanner_dev_pro_override") {
+            isPro = true
+        }
+        #endif
         transactionListener = startTransactionListener()
         Task {
             await loadProducts()
@@ -166,8 +202,15 @@ class ProManager: ObservableObject {
     }
 
     func setPro(_ value: Bool) {
-        isPro = value
+        // Always persist the real entitlement...
         UserDefaults.standard.set(value, forKey: proKey)
+        #if DEBUG
+        // ...but while the developer override is on, keep PRO unlocked so a
+        // routine entitlement check can't switch features off mid-test.
+        isPro = value || devProOverride
+        #else
+        isPro = value
+        #endif
     }
 
     // MARK: - Finish All Unfinished Transactions
