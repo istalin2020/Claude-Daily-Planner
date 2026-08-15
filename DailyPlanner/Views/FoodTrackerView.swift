@@ -9,6 +9,8 @@ struct FoodTrackerView: View {
     @State private var editingItem: MealItem? = nil
     @State private var editingMealKey: String = ""
     @State private var showCamera = false
+    /// Holds the shot between camera dismissal and the review sheet opening.
+    @State private var pendingPhoto: UIImage? = nil
     @State private var capturedPhoto: CapturedFoodPhoto? = nil
 
     var entry: DailyEntry { vm.currentEntry }
@@ -63,9 +65,18 @@ struct FoodTrackerView: View {
                 vm.updateMealItem(item, with: updatedItem, in: editingMealKey)
             }
         }
-        .fullScreenCover(isPresented: $showCamera) {
-            FoodCameraPicker { image in
+        // The camera is dismissed FIRST; the review sheet is only presented
+        // afterwards, from onDismiss. Presenting it while the cover was still
+        // up crashed the app.
+        .fullScreenCover(isPresented: $showCamera, onDismiss: {
+            if let image = pendingPhoto {
+                pendingPhoto = nil
                 capturedPhoto = CapturedFoodPhoto(image: image)
+            }
+        }) {
+            FoodCameraPicker { image in
+                pendingPhoto = image
+                showCamera = false
             }
             .ignoresSafeArea()
         }
@@ -682,10 +693,15 @@ struct CapturedFoodPhoto: Identifiable {
 }
 
 // MARK: - Camera Picker
-/// Thin UIKit bridge that opens the camera and hands back the captured photo.
+/// Thin UIKit bridge that opens the camera and hands the captured photo back
+/// through `onFinish` (nil when the user cancels).
+///
+/// The picker never dismisses itself and never presents anything: the parent
+/// owns the presentation state. Trying to present the review sheet from here —
+/// while this cover was still on screen — is what previously crashed the app.
 struct FoodCameraPicker: UIViewControllerRepresentable {
-    var onCapture: (UIImage) -> Void
-    @Environment(\.dismiss) private var dismiss
+    /// Called once with the photo, or nil if cancelled.
+    var onFinish: (UIImage?) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -700,18 +716,23 @@ struct FoodCameraPicker: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         let parent: FoodCameraPicker
+        /// Guards against the delegate firing twice.
+        private var finished = false
+
         init(_ parent: FoodCameraPicker) { self.parent = parent }
 
         func imagePickerController(_ picker: UIImagePickerController,
                                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            if let image = info[.originalImage] as? UIImage {
-                parent.onCapture(image)
-            }
-            parent.dismiss()
+            guard !finished else { return }
+            finished = true
+            let image = (info[.editedImage] as? UIImage) ?? (info[.originalImage] as? UIImage)
+            parent.onFinish(image)
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
+            guard !finished else { return }
+            finished = true
+            parent.onFinish(nil)
         }
     }
 }

@@ -33,7 +33,12 @@ enum FoodPhotoRecognizer {
     /// Calls back on the main thread. `nil` = nothing food-like found.
     static func detectFood(in image: UIImage,
                            completion: @escaping (FoodDetection?) -> Void) {
-        guard let cgImage = image.cgImage else {
+        // Camera photos are 12 MP+; downscale first so Vision stays fast and
+        // memory-light. Redrawing also normalises orientation and guarantees a
+        // backing CGImage (a raw camera UIImage can have a nil cgImage).
+        let prepared = downscaled(image, maxDimension: 640)
+
+        guard let cgImage = prepared.cgImage else {
             DispatchQueue.main.async { completion(nil) }
             return
         }
@@ -74,6 +79,23 @@ enum FoodPhotoRecognizer {
             } catch {
                 DispatchQueue.main.async { completion(nil) }
             }
+        }
+    }
+
+    /// Redraws the image at a smaller size with orientation baked in.
+    private static func downscaled(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let w = image.size.width, h = image.size.height
+        guard w > 0, h > 0 else { return image }
+
+        let scale = min(1, maxDimension / max(w, h))
+        let target = CGSize(width: (w * scale).rounded(), height: (h * scale).rounded())
+
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: target, format: format)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
         }
     }
 
