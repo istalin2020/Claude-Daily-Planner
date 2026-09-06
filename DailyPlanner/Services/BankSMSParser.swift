@@ -77,21 +77,42 @@ struct BankSMSParser {
 
     static func looksLikeBankSMS(_ text: String) -> Bool {
         let lower = text.lowercased()
+
+        // Reject bank mail that isn't an actual transaction — OTPs, security
+        // alerts, statements and marketing all mention money and accounts but
+        // represent nothing that should land in the expense tracker.
+        let notATransaction = [
+            "one time password", "one-time password", "otp is", "otp for",
+            "your otp", "verification code", "security code", "do not share",
+            "never share", "login attempt", "password reset", "password change",
+            "e-statement", "estatement", "statement is ready",
+            "statement is now available", "your statement for",
+            "minimum amount due", "total amount due", "payment due date",
+            "credit limit increase", "pre-approved", "pre approved",
+            "special offer", "exclusive offer", "limited time offer",
+            "cashback offer", "apply now", "terms and conditions apply",
+            "kyc", "cheque book", "chequebook", "interest certificate"
+        ]
+        if notATransaction.contains(where: { lower.contains($0) }) { return false }
+
         let allCurrencyCodes = ["rs", "inr", "₹", "omr", "aed", "sar", "usd", "$",
                                 "eur", "€", "gbp", "£", "kwd", "bhd", "qar",
                                 "sgd", "myr", "rm", "pkr", "bdt", "lkr", "npr"]
         let hasAmount = allCurrencyCodes.contains(where: { lower.contains($0) })
-        let hasAction = lower.contains("debit") || lower.contains("credit") ||
-                        lower.contains("spent") || lower.contains("received") ||
-                        lower.contains("withdrawn") || lower.contains("transferred") ||
-                        lower.contains("sent") || lower.contains("paid") ||
-                        lower.contains("refund") || lower.contains("deposit") ||
-                        lower.contains("purchase") || lower.contains("transaction")
+        // A real transaction always states what happened to the money, so an
+        // action word is required (not just an amount next to "card").
+        let actionWords = ["debit", "credit", "spent", "received", "withdrawn",
+                           "transferred", "sent", "paid", "payment", "refund",
+                           "deposit", "purchase", "transaction", "utilised",
+                           "utilized", "charged", "has been used", "settled"]
+        let hasAction = actionWords.contains(where: { lower.contains($0) })
+
         let hasAccount = lower.contains("a/c") || lower.contains("acct") ||
                          lower.contains("account") || lower.contains("card") ||
                          lower.contains("xx") || lower.contains("**") ||
                          lower.contains("balance") || lower.contains("bal")
-        return hasAmount && (hasAction || hasAccount)
+
+        return hasAmount && hasAction && hasAccount
     }
 
     // MARK: - Amount
@@ -205,12 +226,77 @@ struct BankSMSParser {
                             .trimmingCharacters(in: .whitespacesAndNewlines)
                     }
                 }
+                merchant = cleanMerchantName(merchant)
                 if merchant.count >= 2 && merchant.count <= 40 {
                     return merchant
                 }
             }
         }
         return ""
+    }
+
+    /// Turns a raw bank description into a readable shop / reason name.
+    ///
+    /// Banks prefix merchants with terminal or reference numbers and often
+    /// truncate the tail, e.g. "899795-SUHOOL AL TAMAM LLC Ghu" →
+    /// "SUHOOL AL TAMAM LLC". This strips the numeric IDs, embedded reference
+    /// codes and trailing fragments so only the meaningful name remains.
+    static func cleanMerchantName(_ raw: String) -> String {
+        var s = raw
+
+        // Order matters: strip reference codes with their labels BEFORE the
+        // bare-number rules, otherwise the number goes and the label ("Ref",
+        // "TXN:") is left stranded.
+
+        // 1. Labelled reference codes: "Ref 998877", "TXN:AB12345", "UTR 12345"
+        s = s.replacingOccurrences(
+            of: #"(?i)\b(?:ref(?:erence)?|txn|trn|rrn|utr|auth|approval|invoice|inv|id)\b\s*(?:no\.?|number)?\s*[:#\-]?\s*[A-Z0-9]{3,}"#,
+            with: "", options: .regularExpression)
+
+        // 2. Leading currency + amount: "OMR 3.300 at LULU" → "LULU"
+        s = s.replacingOccurrences(
+            of: #"(?i)^\s*(?:[A-Z]{3}|rs\.?|₹|\$)\s*[\d.,]+\s*(?:at|in|on|for|to)?\s+"#,
+            with: "", options: .regularExpression)
+
+        // 3. Leading merchant/terminal ID: "899795-NAME", "0012345 NAME"
+        s = s.replacingOccurrences(
+            of: #"^\s*\d{3,}\s*[-–—*:/|.]?\s*"#,
+            with: "", options: .regularExpression)
+
+        // 4. Trailing reference/terminal ID: "NAME-4455667"
+        s = s.replacingOccurrences(
+            of: #"\s*[-–—*:/|]?\s*\d{5,}\s*$"#,
+            with: "", options: .regularExpression)
+
+        // 5. Long bare alphanumeric codes that aren't words (e.g. "X7H29ADK1")
+        s = s.replacingOccurrences(
+            of: #"\b(?=[A-Z0-9]*\d)[A-Z0-9]{6,}\b"#,
+            with: "", options: .regularExpression)
+
+        // 6. Card masks that sometimes ride along: "4228**** ****2787"
+        s = s.replacingOccurrences(
+            of: #"[0-9X\*]{4,}[\s\-]?(?:[0-9X\*]{2,}[\s\-]?)+"#,
+            with: "", options: .regularExpression)
+
+        // 7. Tidy separators and whitespace.
+        s = s.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+        s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        s = s.trimmingCharacters(in: CharacterSet(charactersIn: " .,-–—*:;/|#"))
+
+        // 8. Drop a dangling truncated fragment left by the bank's field
+        //    width, e.g. "…HYPERMARKET o" or "…AL TAMAM LLC Ghu".
+        let words = s.split(separator: " ").map(String.init)
+        if words.count >= 3, let last = words.last {
+            let isShortLower = last.count <= 2 && last == last.lowercased()
+            let isMixedStub  = last.count == 3
+                && last.rangeOfCharacter(from: .lowercaseLetters) != nil
+                && last.rangeOfCharacter(from: .uppercaseLetters) != nil
+            if isShortLower || isMixedStub {
+                s = words.dropLast().joined(separator: " ")
+            }
+        }
+
+        return s.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Bank

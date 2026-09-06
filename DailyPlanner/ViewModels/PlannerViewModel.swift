@@ -804,7 +804,8 @@ class PlannerViewModel: ObservableObject {
 
         if p.isCredit {
             return Expense(amount: amount, category: .other, description: desc,
-                           isIncome: true, isFromSMS: true, isFromGmail: true)
+                           isIncome: true, isFromSMS: true, isFromGmail: true,
+                           gmailMessageID: candidate.id)
         } else {
             let useCustom = !customCategoryLabel.isEmpty
             return Expense(amount: amount,
@@ -812,7 +813,8 @@ class PlannerViewModel: ObservableObject {
                            customCategoryLabel: useCustom ? customCategoryLabel : "",
                            description: desc,
                            isFromSMS: true,
-                           isFromGmail: true)
+                           isFromGmail: true,
+                           gmailMessageID: candidate.id)
         }
     }
 
@@ -907,7 +909,84 @@ class PlannerViewModel: ObservableObject {
         settings.gmailLastSyncEpoch = 0
         settings.gmailProcessedMessageIDs = []
         settings.gmailProcessedOrder = []
+        settings.gmailForceResyncMonths = []
         settings.gmailPendingReview = []
+        saveSettings()
+    }
+
+    /// Removes bank-imported expenses for ONE calendar month only, leaving
+    /// every other month untouched, and releases that month's emails so it
+    /// can be re-synced cleanly.
+    /// - Returns: how many transactions were removed.
+    @discardableResult
+    func resetGmailSyncData(forMonthOf date: Date) -> Int {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: date)
+
+        var updated = entries
+        var removed = 0
+        var freedMessageIDs: Set<String> = []
+
+        for (key, entry) in updated {
+            let ec = cal.dateComponents([.year, .month], from: entry.date)
+            guard ec.year == comps.year, ec.month == comps.month else { continue }
+
+            var e = entry
+            let imported = e.expenses.filter { $0.isFromGmail || $0.isFromSMS }
+            guard !imported.isEmpty else { continue }
+
+            freedMessageIDs.formUnion(
+                imported.map(\.gmailMessageID).filter { !$0.isEmpty }
+            )
+            e.expenses.removeAll { $0.isFromGmail || $0.isFromSMS }
+            e.deletedExpenseIDs.formUnion(imported.map(\.id))
+            updated[key] = e
+            removed += imported.count
+        }
+        entries = updated
+
+        // Forget those specific emails so the month re-imports.
+        if !freedMessageIDs.isEmpty {
+            settings.gmailProcessedMessageIDs.subtract(freedMessageIDs)
+            settings.gmailProcessedOrder.removeAll { freedMessageIDs.contains($0) }
+        }
+
+        // Transactions imported before message IDs were recorded can't be
+        // matched to an email, so mark the month for a forced re-sync: the
+        // next sync of it ignores the processed-ID filter and relies on the
+        // same-day/amount duplicate guard instead.
+        settings.gmailForceResyncMonths.append(monthKey(for: date))
+        settings.gmailForceResyncMonths = Array(Set(settings.gmailForceResyncMonths))
+
+        // Drop any pending review items that belong to this month.
+        settings.gmailPendingReview.removeAll { candidate in
+            let cc = cal.dateComponents([.year, .month], from: candidate.date)
+            return cc.year == comps.year && cc.month == comps.month
+        }
+
+        saveSettings()
+        return removed
+    }
+
+    /// "yyyy-MM" key used to flag a month for forced re-sync.
+    func monthKey(for date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM"
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        return fmt.string(from: date)
+    }
+
+    /// True when this month was reset and should ignore the processed-ID
+    /// filter on its next sync.
+    func gmailNeedsForcedResync(monthOf date: Date) -> Bool {
+        settings.gmailForceResyncMonths.contains(monthKey(for: date))
+    }
+
+    /// Clears the forced-re-sync flag once the month has been synced again.
+    func clearGmailForcedResync(monthOf date: Date) {
+        let key = monthKey(for: date)
+        guard settings.gmailForceResyncMonths.contains(key) else { return }
+        settings.gmailForceResyncMonths.removeAll { $0 == key }
         saveSettings()
     }
 
@@ -941,6 +1020,7 @@ class PlannerViewModel: ObservableObject {
         settings.gmailLastSyncEpoch = 0
         settings.gmailProcessedMessageIDs = []
         settings.gmailProcessedOrder = []
+        settings.gmailForceResyncMonths = []
         settings.gmailConnectedEpoch = 0
         settings.gmailPendingReview = []
         saveSettings()

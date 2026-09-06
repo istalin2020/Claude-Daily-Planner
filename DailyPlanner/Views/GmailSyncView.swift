@@ -38,6 +38,9 @@ struct GmailSyncView: View {
     @State private var showMonthPicker = false
     @State private var selectedMonthIndex = 0
     @State private var showResetConfirm = false
+    @State private var showResetMonthPicker = false
+    @State private var resetMonthIndex = 0
+    @State private var resetResult: String? = nil
 
     /// What the user chose for each reviewed item this session, keyed by the
     /// Gmail message ID. Lets the Back button revisit an item, show the prior
@@ -72,7 +75,48 @@ struct GmailSyncView: View {
                 }
             }
             .sheet(isPresented: $showMonthPicker) { monthPickerSheet }
+            .sheet(isPresented: $showResetMonthPicker) { resetMonthPickerSheet }
         }
+    }
+
+    /// Asks which month to clear before anything is deleted.
+    private var resetMonthPickerSheet: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 4) {
+                Text("Reset which month?")
+                    .font(.headline)
+                Text("Only the month you pick is cleared.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 20)
+
+            Picker("Month", selection: $resetMonthIndex) {
+                ForEach(Array(resetMonths.enumerated()), id: \.offset) { idx, month in
+                    Text(monthLabel(month)).tag(idx)
+                }
+            }
+            .pickerStyle(.wheel)
+
+            Button {
+                showResetMonthPicker = false
+                // Let the sheet finish dismissing before the alert appears.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    showResetConfirm = true
+                }
+            } label: {
+                Text("Reset \(monthLabel(resetMonths[resetMonthIndex]))")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(Color.red).foregroundColor(.white).cornerRadius(14)
+            }
+            .padding(.horizontal, 24)
+
+            Button("Cancel") { showResetMonthPicker = false }
+                .font(.system(size: 13)).foregroundColor(.secondary)
+                .padding(.bottom, 16)
+        }
+        .presentationDetents([.medium])
     }
 
     // MARK: - Month selection
@@ -81,6 +125,15 @@ struct GmailSyncView: View {
     private static var currentMonthStart: Date {
         let cal = Calendar.current
         return cal.date(from: cal.dateComponents([.year, .month], from: Date())) ?? Date()
+    }
+
+    /// Current month plus the last 12, for choosing which month to reset.
+    private var resetMonths: [Date] {
+        let cal = Calendar.current
+        let months = (0...12).compactMap {
+            cal.date(byAdding: .month, value: -$0, to: Self.currentMonthStart)
+        }
+        return months.isEmpty ? [Self.currentMonthStart] : months
     }
 
     /// The last 12 previous months (newest first), for the wheel picker.
@@ -262,18 +315,34 @@ struct GmailSyncView: View {
                 Text("Disconnect").font(.system(size: 13, weight: .medium))
             }
 
-            Button(role: .destructive, action: { showResetConfirm = true }) {
+            Button(role: .destructive, action: {
+                resetMonthIndex = 0
+                showResetMonthPicker = true
+            }) {
                 HStack(spacing: 6) {
                     Image(systemName: "trash")
-                    Text("Reset Synced Expenses")
+                    Text("Reset a Month's Synced Expenses")
                 }
                 .font(.system(size: 13, weight: .medium))
             }
-            .alert("Reset Synced Expenses?", isPresented: $showResetConfirm) {
-                Button("Reset", role: .destructive) { vm.resetGmailSyncData() }
+            .alert("Reset \(monthLabel(resetMonths[resetMonthIndex]))?",
+                   isPresented: $showResetConfirm) {
+                Button("Reset This Month", role: .destructive) {
+                    let month = resetMonths[resetMonthIndex]
+                    let removed = vm.resetGmailSyncData(forMonthOf: month)
+                    resetResult = "Removed \(removed) imported transaction\(removed == 1 ? "" : "s") from \(monthLabel(month)). Sync that month again to re-import."
+                }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Removes ALL bank-imported expenses (Gmail sync and pasted SMS) from every month, and clears the sync history so you can sync fresh. Manually-entered expenses are kept.")
+                Text("Removes bank-imported expenses (Gmail sync and pasted SMS) from \(monthLabel(resetMonths[resetMonthIndex])) only. Other months and your manually-entered expenses are untouched.")
+            }
+            .alert("Month Reset", isPresented: Binding(
+                get: { resetResult != nil },
+                set: { if !$0 { resetResult = nil } }
+            )) {
+                Button("OK", role: .cancel) { resetResult = nil }
+            } message: {
+                Text(resetResult ?? "")
             }
         }
         .padding(16)
@@ -664,11 +733,15 @@ struct GmailSyncView: View {
 
         Task {
             do {
+                // A month the user just reset is re-read in full; the
+                // same-day/amount duplicate guard below keeps it clean.
+                let forced = vm.gmailNeedsForcedResync(monthOf: monthStart)
                 let candidates = try await gmail.fetchTransactions(
                     from: monthStart,
                     to: min(monthEnd, Date()),
-                    alreadyProcessed: vm.settings.gmailProcessedMessageIDs
+                    alreadyProcessed: forced ? [] : vm.settings.gmailProcessedMessageIDs
                 )
+                if forced { vm.clearGmailForcedResync(monthOf: monthStart) }
 
                 // EVERY transaction — credit and debit alike — goes through
                 // the review screen so the user decides whether to include it.

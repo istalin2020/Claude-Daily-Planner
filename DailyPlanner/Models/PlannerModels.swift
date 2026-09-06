@@ -391,6 +391,10 @@ struct Expense: Identifiable, Codable, Equatable {
     var isIncome: Bool = false   // income entry
     var isFromSMS: Bool = false  // auto-imported from bank SMS
     var isFromGmail: Bool = false // imported by Gmail Expense Sync (resettable)
+    /// Gmail message ID this expense was imported from (empty when not from
+    /// Gmail). Lets a per-month reset release exactly those emails so the
+    /// month can be re-synced cleanly.
+    var gmailMessageID: String = ""
 
     /// The human-readable category name to display (custom label takes priority).
     var displayCategory: String {
@@ -405,7 +409,8 @@ struct Expense: Identifiable, Codable, Equatable {
          isDeposit: Bool = false,
          isIncome: Bool = false,
          isFromSMS: Bool = false,
-         isFromGmail: Bool = false) {
+         isFromGmail: Bool = false,
+         gmailMessageID: String = "") {
         self.id = id
         self.amount = amount
         self.category = category
@@ -415,6 +420,7 @@ struct Expense: Identifiable, Codable, Equatable {
         self.isIncome = isIncome
         self.isFromSMS = isFromSMS
         self.isFromGmail = isFromGmail
+        self.gmailMessageID = gmailMessageID
     }
 
     init(from decoder: Decoder) throws {
@@ -428,6 +434,7 @@ struct Expense: Identifiable, Codable, Equatable {
         isIncome            = try c.decodeIfPresent(Bool.self,            forKey: .isIncome)            ?? false
         isFromSMS           = try c.decodeIfPresent(Bool.self,            forKey: .isFromSMS)           ?? false
         isFromGmail         = try c.decodeIfPresent(Bool.self,            forKey: .isFromGmail)         ?? false
+        gmailMessageID      = try c.decodeIfPresent(String.self,          forKey: .gmailMessageID)      ?? ""
     }
 }
 
@@ -1074,6 +1081,9 @@ struct AppSettings: Codable {
     /// has no order, and trimming it arbitrarily used to erase recent IDs
     /// and cause re-imported duplicates.
     var gmailProcessedOrder: [String] = []
+    /// Months ("yyyy-MM") the user reset, whose next sync must ignore the
+    /// processed-ID filter so pre-existing imports can be rebuilt.
+    var gmailForceResyncMonths: [String] = []
     /// Epoch-seconds of when the Gmail account was last connected/reconnected.
     /// While the Google project is in "Testing" mode, the refresh token expires
     /// ~7 days after this, so the app uses it to show a friendly reconnect nudge.
@@ -1117,6 +1127,7 @@ struct AppSettings: Codable {
          gmailLastSyncEpoch: Double = 0,
          gmailProcessedMessageIDs: Set<String> = [],
          gmailProcessedOrder: [String] = [],
+         gmailForceResyncMonths: [String] = [],
          gmailConnectedEpoch: Double = 0,
          gmailPendingReview: [GmailCandidate] = [],
          autoCarryForward: Bool = false,
@@ -1147,6 +1158,7 @@ struct AppSettings: Codable {
         self.gmailLastSyncEpoch = gmailLastSyncEpoch
         self.gmailProcessedMessageIDs = gmailProcessedMessageIDs
         self.gmailProcessedOrder = gmailProcessedOrder
+        self.gmailForceResyncMonths = gmailForceResyncMonths
         self.gmailConnectedEpoch = gmailConnectedEpoch
         self.gmailPendingReview = gmailPendingReview
         self.autoCarryForward = autoCarryForward
@@ -1181,6 +1193,7 @@ struct AppSettings: Codable {
         gmailLastSyncEpoch        = try c.decodeIfPresent(Double.self,               forKey: .gmailLastSyncEpoch)         ?? 0
         gmailProcessedMessageIDs  = try c.decodeIfPresent(Set<String>.self,          forKey: .gmailProcessedMessageIDs)   ?? []
         gmailProcessedOrder       = try c.decodeIfPresent([String].self,             forKey: .gmailProcessedOrder)        ?? []
+        gmailForceResyncMonths    = try c.decodeIfPresent([String].self,             forKey: .gmailForceResyncMonths)     ?? []
         gmailConnectedEpoch       = try c.decodeIfPresent(Double.self,               forKey: .gmailConnectedEpoch)        ?? 0
         gmailPendingReview        = try c.decodeIfPresent([GmailCandidate].self,     forKey: .gmailPendingReview)         ?? []
         autoCarryForward          = try c.decodeIfPresent(Bool.self,                 forKey: .autoCarryForward)           ?? false
