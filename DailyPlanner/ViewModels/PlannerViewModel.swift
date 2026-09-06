@@ -828,14 +828,65 @@ class PlannerViewModel: ObservableObject {
     /// Pass `advanceCursorTo: nil` to leave the cursor untouched (e.g. when the
     /// user cancels mid-review, so pending items are re-offered next sync).
     func finalizeGmailSync(handledIDs: [String], advanceCursorTo newestEpoch: Double?) {
-        settings.gmailProcessedMessageIDs.formUnion(handledIDs)
-        if settings.gmailProcessedMessageIDs.count > 1000 {
-            settings.gmailProcessedMessageIDs = Set(Array(settings.gmailProcessedMessageIDs).suffix(500))
+        // Record each new ID in BOTH the lookup set and the ordered list, so
+        // history can be pruned oldest-first. (Previously the set was trimmed
+        // with `Array(set).suffix(500)` — a Set has no order, so that threw
+        // away arbitrary, often recent, IDs and re-syncing an already-imported
+        // month duplicated every transaction whose ID had been discarded.)
+        for id in handledIDs where !settings.gmailProcessedMessageIDs.contains(id) {
+            settings.gmailProcessedMessageIDs.insert(id)
+            settings.gmailProcessedOrder.append(id)
         }
+
+        // Backfill the order list for users upgrading from the old format.
+        if settings.gmailProcessedOrder.count < settings.gmailProcessedMessageIDs.count {
+            let known = Set(settings.gmailProcessedOrder)
+            settings.gmailProcessedOrder.insert(
+                contentsOf: settings.gmailProcessedMessageIDs.subtracting(known),
+                at: 0
+            )
+        }
+
+        // Keep a deep history (years of bank alerts) and prune only the very
+        // oldest entries when it grows past the cap.
+        let historyCap = 20_000
+        if settings.gmailProcessedOrder.count > historyCap {
+            let overflow = settings.gmailProcessedOrder.count - historyCap
+            let dropped = settings.gmailProcessedOrder.prefix(overflow)
+            settings.gmailProcessedOrder.removeFirst(overflow)
+            for id in dropped { settings.gmailProcessedMessageIDs.remove(id) }
+        }
+
         if let e = newestEpoch, e > settings.gmailLastSyncEpoch {
             settings.gmailLastSyncEpoch = e
         }
         saveSettings()
+    }
+
+    /// Safety net against duplicates when a message ID can't be relied on
+    /// (history pruned, app reinstalled, Gmail re-delivering a thread).
+    /// Returns true when an equivalent bank-imported transaction already sits
+    /// on that calendar day.
+    func gmailAlreadyImported(_ candidate: GmailCandidate) -> Bool {
+        let key = dateKey(for: candidate.date)
+        guard let entry = entries[key] else { return false }
+
+        let p = candidate.parsed
+        let localCurrency = settings.currency.rawValue
+        var amount = p.amount
+        if CurrencyConverter.needsConversion(detected: p.currencyDetected, local: localCurrency),
+           let converted = CurrencyConverter.convert(amount: p.amount,
+                                                     from: p.currencyDetected,
+                                                     to: localCurrency) {
+            amount = converted
+        }
+
+        return entry.expenses.contains { existing in
+            guard existing.isFromGmail || existing.isFromSMS else { return false }
+            guard existing.isIncome == p.isCredit else { return false }
+            // Same day, same direction, same amount to the cent.
+            return abs(existing.amount - amount) < 0.005
+        }
     }
 
     /// Removes every bank-imported expense (Gmail sync and pasted SMS, all
@@ -855,6 +906,7 @@ class PlannerViewModel: ObservableObject {
         entries = updated
         settings.gmailLastSyncEpoch = 0
         settings.gmailProcessedMessageIDs = []
+        settings.gmailProcessedOrder = []
         settings.gmailPendingReview = []
         saveSettings()
     }
@@ -888,6 +940,7 @@ class PlannerViewModel: ObservableObject {
         settings.gmailConnectedEmail = ""
         settings.gmailLastSyncEpoch = 0
         settings.gmailProcessedMessageIDs = []
+        settings.gmailProcessedOrder = []
         settings.gmailConnectedEpoch = 0
         settings.gmailPendingReview = []
         saveSettings()

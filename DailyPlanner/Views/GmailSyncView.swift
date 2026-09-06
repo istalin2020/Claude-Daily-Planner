@@ -23,6 +23,8 @@ struct GmailSyncView: View {
     @State private var reviewQueue: [GmailCandidate] = []
     @State private var reviewIndex = 0
     @State private var newestEpoch: Double = 0
+    /// Already-imported transactions skipped during this sync.
+    @State private var duplicatesSkipped = 0
 
     // Per-item review state
     @State private var editDescription = ""
@@ -579,6 +581,10 @@ struct GmailSyncView: View {
                            label: "Income added", value: "\(reviewSavedIncome)")
                 summaryRow(icon: "arrow.up.circle.fill", color: .red,
                            label: "Expenses added", value: "\(reviewSavedExpenses)")
+                if duplicatesSkipped > 0 {
+                    summaryRow(icon: "checkmark.shield.fill", color: .secondary,
+                               label: "Already imported", value: "\(duplicatesSkipped)")
+                }
             }
             .padding(16)
             .background(Color(.secondarySystemBackground))
@@ -653,6 +659,7 @@ struct GmailSyncView: View {
         statusText = "Reading \(monthLabel(monthStart)) bank emails…"
         phase = .working
         decisions = [:]
+        duplicatesSkipped = 0
         newestEpoch = vm.settings.gmailLastSyncEpoch
 
         Task {
@@ -665,11 +672,21 @@ struct GmailSyncView: View {
 
                 // EVERY transaction — credit and debit alike — goes through
                 // the review screen so the user decides whether to include it.
+                // Second line of defence against duplicates: even if a message
+                // ID slipped out of the processed history, skip anything that
+                // already exists as an imported transaction on that same day
+                // with the same amount and direction.
                 var queue: [GmailCandidate] = []
+                var skippedDuplicates = 0
                 for c in candidates {
                     newestEpoch = max(newestEpoch, c.date.timeIntervalSince1970)
+                    if vm.gmailAlreadyImported(c) {
+                        skippedDuplicates += 1
+                        continue
+                    }
                     queue.append(c)
                 }
+                duplicatesSkipped = skippedDuplicates
 
                 // Advance the cursor NOW, covering every email seen in this
                 // sync — the next sync fetches only strictly newer emails.

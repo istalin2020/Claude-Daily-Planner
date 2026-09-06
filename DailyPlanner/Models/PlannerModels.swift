@@ -1069,6 +1069,11 @@ struct AppSettings: Codable {
     var gmailLastSyncEpoch: Double = 0
     /// Gmail message IDs already imported, so re-syncs never duplicate.
     var gmailProcessedMessageIDs: Set<String> = []
+    /// The same processed message IDs in the order they were imported.
+    /// Needed so that pruning old history drops the OLDEST entries — a Set
+    /// has no order, and trimming it arbitrarily used to erase recent IDs
+    /// and cause re-imported duplicates.
+    var gmailProcessedOrder: [String] = []
     /// Epoch-seconds of when the Gmail account was last connected/reconnected.
     /// While the Google project is in "Testing" mode, the refresh token expires
     /// ~7 days after this, so the app uses it to show a friendly reconnect nudge.
@@ -1111,6 +1116,7 @@ struct AppSettings: Codable {
          gmailConnectedEmail: String = "",
          gmailLastSyncEpoch: Double = 0,
          gmailProcessedMessageIDs: Set<String> = [],
+         gmailProcessedOrder: [String] = [],
          gmailConnectedEpoch: Double = 0,
          gmailPendingReview: [GmailCandidate] = [],
          autoCarryForward: Bool = false,
@@ -1140,6 +1146,7 @@ struct AppSettings: Codable {
         self.gmailConnectedEmail = gmailConnectedEmail
         self.gmailLastSyncEpoch = gmailLastSyncEpoch
         self.gmailProcessedMessageIDs = gmailProcessedMessageIDs
+        self.gmailProcessedOrder = gmailProcessedOrder
         self.gmailConnectedEpoch = gmailConnectedEpoch
         self.gmailPendingReview = gmailPendingReview
         self.autoCarryForward = autoCarryForward
@@ -1173,6 +1180,7 @@ struct AppSettings: Codable {
         gmailConnectedEmail       = try c.decodeIfPresent(String.self,               forKey: .gmailConnectedEmail)        ?? ""
         gmailLastSyncEpoch        = try c.decodeIfPresent(Double.self,               forKey: .gmailLastSyncEpoch)         ?? 0
         gmailProcessedMessageIDs  = try c.decodeIfPresent(Set<String>.self,          forKey: .gmailProcessedMessageIDs)   ?? []
+        gmailProcessedOrder       = try c.decodeIfPresent([String].self,             forKey: .gmailProcessedOrder)        ?? []
         gmailConnectedEpoch       = try c.decodeIfPresent(Double.self,               forKey: .gmailConnectedEpoch)        ?? 0
         gmailPendingReview        = try c.decodeIfPresent([GmailCandidate].self,     forKey: .gmailPendingReview)         ?? []
         autoCarryForward          = try c.decodeIfPresent(Bool.self,                 forKey: .autoCarryForward)           ?? false
