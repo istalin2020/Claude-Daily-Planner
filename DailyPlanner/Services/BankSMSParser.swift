@@ -95,24 +95,79 @@ struct BankSMSParser {
         ]
         if notATransaction.contains(where: { lower.contains($0) }) { return false }
 
-        let allCurrencyCodes = ["rs", "inr", "₹", "omr", "aed", "sar", "usd", "$",
-                                "eur", "€", "gbp", "£", "kwd", "bhd", "qar",
-                                "sgd", "myr", "rm", "pkr", "bdt", "lkr", "npr"]
-        let hasAmount = allCurrencyCodes.contains(where: { lower.contains($0) })
-        // A real transaction always states what happened to the money, so an
-        // action word is required (not just an amount next to "card").
-        let actionWords = ["debit", "credit", "spent", "received", "withdrawn",
-                           "transferred", "sent", "paid", "payment", "refund",
-                           "deposit", "purchase", "transaction", "utilised",
-                           "utilized", "charged", "has been used", "settled"]
-        let hasAction = actionWords.contains(where: { lower.contains($0) })
+        // Reject promotional mail. Loose keywords are not enough on their own:
+        // a sweepstakes email says "NO PURCHASE NECESSARY" (an action word) and
+        // "gift card" (an account word), which is exactly how marketing was
+        // slipping through as a transaction.
+        if isMarketing(lower) { return false }
 
-        let hasAccount = lower.contains("a/c") || lower.contains("acct") ||
-                         lower.contains("account") || lower.contains("card") ||
-                         lower.contains("xx") || lower.contains("**") ||
-                         lower.contains("balance") || lower.contains("bal")
+        // A genuine bank alert has STRUCTURE that marketing never has:
+        //   1. a masked account or card reference, and
+        //   2. the amount sitting right next to a transaction verb.
+        guard hasMaskedAccountReference(text) else { return false }
+        return hasAmountNearTransactionVerb(lower)
+    }
 
-        return hasAmount && hasAction && hasAccount
+    /// Newsletter / promo / sweepstakes markers.
+    private static func isMarketing(_ lower: String) -> Bool {
+        let markers = [
+            "no purchase necessary", "void where prohibited", "sweepstakes",
+            "gift card", "you could win", "chance to win", "enter to win",
+            "enter now", "view in browser", "view this email in",
+            "manage preferences", "manage your preferences", "email preferences",
+            "unsubscribe from", "newsletter", "weekly briefing", "market outlook",
+            "webinar", "free trial", "upgrade now", "subscribe to",
+            "sale ends", "shop now", "book now", "claim your", "you're invited",
+            "invitation", "referral", "refer a friend", "survey", "feedback form"
+        ]
+        return markers.contains(where: { lower.contains($0) })
+    }
+
+    /// True when the text contains a masked account or card number, e.g.
+    /// "4228**** ****2787", "Account number : xxxx0028", "A/c XX1234",
+    /// "Credit Card ending 4455".
+    private static func hasMaskedAccountReference(_ text: String) -> Bool {
+        let patterns = [
+            #"[0-9]{3,6}[X\*x]{2,}[\s\-]?[X\*x]*[0-9]{2,4}"#,
+            #"(?i)(?:a/c|acct|account|card)\s*(?:no\.?|number|ending(?:\s+(?:with|in))?)?\s*[:#]?\s*[X\*x]{2,}\s*[0-9]{2,4}"#,
+            #"(?i)(?:ending|ending\s+(?:with|in)|last\s*4\s*digits?)\s*[:#]?\s*[0-9]{4}"#,
+            #"[X\*x]{3,}[0-9]{3,4}"#
+        ]
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               regex.firstMatch(in: text, range: range) != nil {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// True when a currency amount appears within ~100 characters of a verb
+    /// describing money moving. Requiring adjacency stops a long marketing
+    /// email from qualifying just because a price and a stray verb both exist
+    /// somewhere in it.
+    private static func hasAmountNearTransactionVerb(_ lower: String) -> Bool {
+        let verbs = ["debited", "credited", "withdrawn", "spent", "utilised",
+                     "utilized", "charged", "transferred", "deposited",
+                     "refunded", "has been used", "debit", "credit"]
+
+        let currency = #"(?:rs\.?|inr|₹|omr|aed|sar|usd|\$|eur|€|gbp|£|kwd|bhd|qar|sgd|myr|pkr|bdt|lkr|npr)"#
+        let pattern = currency + #"\s*[\d,]+(?:\.\d{1,3})?"#
+
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+            return false
+        }
+        let ns = lower as NSString
+        let matches = regex.matches(in: lower, range: NSRange(location: 0, length: ns.length))
+
+        for match in matches {
+            let start = max(0, match.range.location - 100)
+            let end   = min(ns.length, match.range.location + match.range.length + 100)
+            let window = ns.substring(with: NSRange(location: start, length: end - start))
+            if verbs.contains(where: { window.contains($0) }) { return true }
+        }
+        return false
     }
 
     // MARK: - Amount

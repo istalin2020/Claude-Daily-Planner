@@ -129,7 +129,15 @@ final class GmailSyncService: NSObject, ObservableObject {
         let after  = Int(startDate.timeIntervalSince1970)
         let before = Int(endDate.timeIntervalSince1970)
 
-        let query = "after:\(after) before:\(before) (debited OR credited OR debit OR credit OR spent OR \"transaction\" OR purchase OR withdrawn) (account OR \"a/c\" OR card OR bank OR balance)"
+        // Ask Gmail for transaction-shaped mail only, and let Gmail's own
+        // classifier keep Promotions/Social/Forums out — that alone removes
+        // most newsletters and sweepstakes before we ever parse them.
+        let verbs = "(debited OR credited OR withdrawn OR spent OR utilised OR utilized OR charged OR transferred OR deposited)"
+        let refs  = "(account OR \"a/c\" OR card OR balance)"
+        let excludeCategories = "-category:promotions -category:social -category:forums"
+        let excludeNoise = "-\"no purchase necessary\" -sweepstakes -\"gift card\" -newsletter -\"view in browser\" -\"unsubscribe from\""
+
+        let query = "after:\(after) before:\(before) \(verbs) \(refs) \(excludeCategories) \(excludeNoise)"
 
         let ids = try await listMessageIDs(query: query)
         var candidates: [GmailCandidate] = []
