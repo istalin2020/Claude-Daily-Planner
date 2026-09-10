@@ -10,7 +10,9 @@
  *
  * Endpoints
  *   GET  /health   → liveness probe, no auth
- *   POST /analyze  → { image, mimeType, mealName?, answers? } → FoodAnalysis JSON
+ *   POST /analyze  → FoodAnalysis JSON. Takes either a photo (`image`) or a
+ *                    typed dish name (`dishName`); the same schema comes back
+ *                    either way, so the app renders one result screen.
  *
  * Secrets / vars (see README.md)
  *   OPENAI_API_KEY   secret, required
@@ -41,12 +43,12 @@ const FOOD_SCHEMA = {
   properties: {
     recognized: {
       type: "boolean",
-      description: "True if the photo contains identifiable food or drink.",
+      description: "True if there is identifiable food or drink to log.",
     },
     dishName: {
       type: "string",
       description:
-        "Short display name for the whole plate, e.g. 'Papaya' or 'Chicken biryani with raita'. Empty when nothing was recognized.",
+        "Short display name for the whole meal, e.g. 'Papaya' or 'Chicken biryani with raita'. Empty when nothing was recognized.",
     },
     confidence: {
       type: "number",
@@ -54,12 +56,12 @@ const FOOD_SCHEMA = {
     },
     summary: {
       type: "string",
-      description: "One friendly sentence describing what you can see. Empty when nothing was recognized.",
+      description: "One friendly sentence describing the meal. Empty when nothing was recognized.",
     },
     items: {
       type: "array",
       description:
-        "One entry per distinct food or drink on the plate. Nutrition values are for the portion visible in the photo.",
+        "One entry per distinct food or drink. Nutrition values are for the portion being logged.",
       items: {
         type: "object",
         additionalProperties: false,
@@ -68,7 +70,7 @@ const FOOD_SCHEMA = {
           name: { type: "string", description: "Food name, title case, e.g. 'Papaya'." },
           portion: {
             type: "string",
-            description: "Human-readable portion actually visible, e.g. '1 cup cubed' or '2 medium chappathi'.",
+            description: "Human-readable portion being logged, e.g. '1 cup cubed' or '2 medium chappathi'.",
           },
           calories: { type: "integer", description: "Kilocalories for this portion." },
           protein: { type: "number", description: "Grams of protein." },
@@ -82,7 +84,7 @@ const FOOD_SCHEMA = {
     questions: {
       type: "array",
       description:
-        "Ask only when the answer would meaningfully change the calorie total and the photo genuinely cannot settle it — portion size, cooking method, whether sugar or oil was added. Never more than 2. Return an empty array when the photo is clear enough.",
+        "Ask only when the answer would meaningfully change the calorie total and you genuinely cannot settle it yourself — portion size, cooking method, whether sugar or oil was added. Never more than 2. Return an empty array when you are already confident.",
       items: {
         type: "object",
         additionalProperties: false,
@@ -115,26 +117,28 @@ const FOOD_SCHEMA = {
     },
     notes: {
       type: "string",
-      description: "Optional caveat worth showing the user, e.g. 'Dressing is hard to judge from the photo.' Empty if none.",
+      description: "Optional caveat worth showing the user, e.g. 'Assumed no added sugar.' Empty if none.",
     },
   },
 };
 
-const SYSTEM_PROMPT = `You are a nutrition analyst for a personal daily-planner app. The user photographs a meal and you identify it and estimate its nutrition.
+const SYSTEM_PROMPT = `You are a nutrition analyst for a personal daily-planner app. The user logs a meal either by photographing it or by typing its name, and you identify it and estimate its nutrition.
 
 Your job:
-1. Identify every distinct food and drink in the photo. Split a mixed plate into its components — rice, dal, papad and pickle are four items, not one.
-2. Estimate the portion actually visible, using everyday units the user would recognise (1 cup, 2 medium, 1 small bowl, 150 g). Judge scale from plates, cutlery, hands and packaging in frame.
+1. Identify every distinct food and drink. Split a mixed plate or a compound dish into its components — rice, dal, papad and pickle are four items, not one.
+2. Estimate the portion, using everyday units the user would recognise (1 cup, 2 medium, 1 small bowl, 150 g).
 3. Give calories and macros for that portion. Round calories to the nearest 5.
 4. Be decisive. If it is plainly a papaya, say papaya with high confidence — do not hedge into "fruit".
 
-You are strong on Indian, Mediterranean, Middle Eastern and Western home cooking. Use the local name the user would use (chappathi, appalam, dosa, sambar, hummus, tabbouleh) rather than a generic translation.
+You are strong on Indian, Mediterranean, Middle Eastern and Western home cooking, including regional dishes. Use the name the user would use (chappathi, appalam, valaikkai bajji, dosa, sambar, hummus, tabbouleh) rather than a generic translation. If the user types a regional dish you recognise, treat their spelling as authoritative and keep it in dishName.
 
-Ask a question only when it genuinely changes the number and the photo cannot settle it — a bowl whose depth you cannot see, whether a juice has added sugar, whether something was fried or grilled. At most two questions, each with 2 to 5 concrete options. When the photo is clear, return an empty questions array and let the user just save it.
+WHEN GIVEN A PHOTO: judge scale from plates, cutlery, hands and packaging in frame. Set confidence from how clearly you can see the food. If there is no food in the photo, set recognized to false, leave dishName and items empty, and say what you see in summary.
 
-If the photo has no food in it, set recognized to false, leave dishName and items empty, and say what you see in summary.
+WHEN GIVEN ONLY A TYPED NAME: assume one typical serving as a home cook would make it, and say which serving you assumed in the portion field. You have no visual evidence, so portion is the main unknown — ask about it unless the user's text already pins it down ("2 idli", "a small bowl of curd"). Set confidence from how well you know the dish, not from image quality. Only set recognized to false if the text is not a food at all.
 
-Nutrition figures are honest estimates from visual inspection, not laboratory values. Never refuse; give your best estimate.`;
+Ask a question only when it genuinely changes the number and you cannot settle it yourself — how big the serving was, whether something was fried or grilled, whether sugar was added. At most two questions, each with 2 to 5 concrete options. When you are confident, return an empty questions array and let the user just save it.
+
+Nutrition figures are honest estimates, not laboratory values. Never refuse; give your best estimate.`;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -177,7 +181,7 @@ async function enforceRateLimit(env, deviceID) {
   if (used >= limit) {
     return fail(
       "daily_limit_reached",
-      `You've used all ${limit} photo analyses for today. They reset tomorrow.`,
+      `You've used all ${limit} food analyses for today. They reset tomorrow.`,
       429
     );
   }
@@ -187,10 +191,19 @@ async function enforceRateLimit(env, deviceID) {
   return null;
 }
 
-/** Builds the user turn: the photo, plus any answers from the first round. */
-function buildUserContent({ image, mimeType, mealName, answers, note }) {
+/**
+ * Builds the user turn: the photo or the typed dish name, plus any answers
+ * from the first round.
+ */
+function buildUserContent({ image, mimeType, dishName, mealName, answers, note }) {
   const lines = [];
-  lines.push(mealName ? `This is the user's ${mealName}.` : "Analyse this meal photo.");
+
+  if (image) {
+    lines.push(`Analyse this meal photo${mealName ? ` for the user's ${mealName}` : ""}.`);
+  } else {
+    lines.push(`The user typed this dish name${mealName ? ` for their ${mealName}` : ""}: "${dishName}"`);
+    lines.push("Identify it and estimate the nutrition for one typical serving.");
+  }
 
   if (Array.isArray(answers) && answers.length > 0) {
     lines.push("", "The user has answered your follow-up questions:");
@@ -207,13 +220,14 @@ function buildUserContent({ image, mimeType, mealName, answers, note }) {
     lines.push("", `The user adds: ${String(note).trim()}`);
   }
 
-  return [
-    { type: "text", text: lines.join("\n") },
-    {
+  const content = [{ type: "text", text: lines.join("\n") }];
+  if (image) {
+    content.push({
       type: "image_url",
       image_url: { url: `data:${mimeType};base64,${image}`, detail: "auto" },
-    },
-  ];
+    });
+  }
+  return content;
 }
 
 /**
@@ -300,8 +314,14 @@ async function handleAnalyze(request, env) {
     return fail("bad_request", "Could not read the request.", 400);
   }
 
+  // A request carries either a photo or a typed dish name — never neither.
   const image = typeof body.image === "string" ? body.image : "";
-  if (!image) return fail("bad_request", "No photo was sent.", 400);
+  const dishName =
+    typeof body.dishName === "string" ? body.dishName.trim().slice(0, 200) : "";
+
+  if (!image && !dishName) {
+    return fail("bad_request", "Nothing to analyse.", 400);
+  }
   if (image.length > MAX_IMAGE_BASE64_BYTES) {
     return fail("image_too_large", "That photo is too large — try again.", 413);
   }
@@ -309,6 +329,15 @@ async function handleAnalyze(request, env) {
   const mimeType = /^image\/(jpeg|png|webp|gif)$/.test(body.mimeType || "")
     ? body.mimeType
     : "image/jpeg";
+
+  // Failure messages differ for a photo and a typed name — "try a clearer
+  // shot" is nonsense advice when the user typed "valaikkai bajji".
+  const failedMessage = image
+    ? "Couldn't analyse that photo. Please try again."
+    : "Couldn't work that dish out. Please try again.";
+  const unreadableMessage = image
+    ? "Couldn't read the food in that photo. Try a clearer shot."
+    : "Couldn't work out that dish. Try naming it a little differently.";
 
   const limited = await enforceRateLimit(env, typeof body.deviceID === "string" ? body.deviceID : "");
   if (limited) return limited;
@@ -322,6 +351,7 @@ async function handleAnalyze(request, env) {
         content: buildUserContent({
           image,
           mimeType,
+          dishName,
           mealName: typeof body.mealName === "string" ? body.mealName : "",
           answers: body.answers,
           note: body.note,
@@ -360,7 +390,7 @@ async function handleAnalyze(request, env) {
     if (upstream.status === 429) {
       return fail("busy", "The analysis service is busy right now. Try again in a moment.", 429);
     }
-    return fail("upstream_error", "Couldn't analyse that photo. Please try again.", 502);
+    return fail("upstream_error", failedMessage, 502);
   }
 
   const completion = await upstream.json().catch(() => null);
@@ -370,7 +400,7 @@ async function handleAnalyze(request, env) {
   if (!content) {
     // Most often this is `finish_reason: "length"` — reasoning ate the budget.
     console.error("empty completion", JSON.stringify(choice || {}).slice(0, 800));
-    return fail("empty_result", "Couldn't read the food in that photo. Try a clearer shot.", 502);
+    return fail("empty_result", unreadableMessage, 502);
   }
 
   let parsed;
@@ -378,7 +408,7 @@ async function handleAnalyze(request, env) {
     parsed = JSON.parse(content);
   } catch {
     console.error("unparseable content", content.slice(0, 800));
-    return fail("empty_result", "Couldn't read the food in that photo. Try a clearer shot.", 502);
+    return fail("empty_result", unreadableMessage, 502);
   }
 
   const result = normalize(parsed);

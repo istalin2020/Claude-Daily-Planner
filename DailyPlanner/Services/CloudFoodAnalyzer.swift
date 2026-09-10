@@ -147,11 +147,6 @@ enum CloudFoodAnalyzer {
                         note: String = "",
                         completion: @escaping (Result<CloudFoodAnalysis, Error>) -> Void) {
 
-        guard isConfigured, let url = URL(string: workerBaseURL + "/analyze") else {
-            DispatchQueue.main.async { completion(.failure(CloudFoodError.notConfigured)) }
-            return
-        }
-
         guard let jpeg = downscaledJPEG(from: image) else {
             DispatchQueue.main.async {
                 completion(.failure(CloudFoodError.service("Couldn't prepare that photo.")))
@@ -159,12 +154,48 @@ enum CloudFoodAnalyzer {
             return
         }
 
-        var payload: [String: Any] = [
-            "image": jpeg.base64EncodedString(),
-            "mimeType": "image/jpeg",
-            "mealName": mealName,
-            "deviceID": deviceID,
-        ]
+        send(extra: ["image": jpeg.base64EncodedString(), "mimeType": "image/jpeg"],
+             mealName: mealName, answers: answers, note: note, completion: completion)
+    }
+
+    /// Analyses a dish the user typed, with no photo. Same result shape as the
+    /// photo path, so both feed one result screen.
+    static func analyze(dishName: String,
+                        mealName: String,
+                        answers: [CloudFoodAnswer] = [],
+                        note: String = "",
+                        completion: @escaping (Result<CloudFoodAnalysis, Error>) -> Void) {
+
+        let trimmed = dishName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            DispatchQueue.main.async {
+                completion(.failure(CloudFoodError.service("Type a dish name first.")))
+            }
+            return
+        }
+
+        send(extra: ["dishName": trimmed],
+             mealName: mealName, answers: answers, note: note, completion: completion)
+    }
+
+    // ── Shared request path ────────────────────────────────────────────────
+
+    /// `extra` carries whatever identifies the meal — the photo or the typed
+    /// name. Everything else about the request is identical either way.
+    private static func send(extra: [String: Any],
+                             mealName: String,
+                             answers: [CloudFoodAnswer],
+                             note: String,
+                             completion: @escaping (Result<CloudFoodAnalysis, Error>) -> Void) {
+
+        guard isConfigured, let url = URL(string: workerBaseURL + "/analyze") else {
+            DispatchQueue.main.async { completion(.failure(CloudFoodError.notConfigured)) }
+            return
+        }
+
+        var payload: [String: Any] = ["mealName": mealName, "deviceID": deviceID]
+        payload.merge(extra) { _, new in new }
+
         if !answers.isEmpty {
             payload["answers"] = answers.map { ["prompt": $0.prompt, "answer": $0.answer] }
         }

@@ -136,14 +136,14 @@ struct SettingsView: View {
                     Text("Copy a bank SMS message, then open the app. We'll auto-detect the transaction and offer to add it as income or expense. You can also paste SMS manually from the Expenses section.")
                 }
 
-                // ── SMART FOOD PHOTO ANALYSIS ─────────────────────────────
+                // ── SMART FOOD ANALYSIS (photo + typed dish name) ─────────
                 Section {
                     if pro.isPro {
                         Toggle(isOn: Binding(
                             get: { vm.settings.cloudFoodAnalysisEnabled },
                             set: { vm.settings.cloudFoodAnalysisEnabled = $0; vm.saveSettings() }
                         )) {
-                            Label("Smart Food Photo Analysis", systemImage: "camera.viewfinder")
+                            Label("Smart Food Analysis", systemImage: "sparkles")
                         }
                         .tint(.orange)
                         .disabled(!CloudFoodAnalyzer.isConfigured)
@@ -152,21 +152,21 @@ struct SettingsView: View {
                             showProUpgrade = true
                         } label: {
                             HStack {
-                                Label("Smart Food Photo Analysis", systemImage: "camera.viewfinder")
+                                Label("Smart Food Analysis", systemImage: "sparkles")
                                 Spacer()
                                 ProInlineBadge()
                             }
                         }
                     }
                 } header: {
-                    Text("Food Photos")
+                    Text("Food Analysis")
                 } footer: {
                     if pro.isPro && !CloudFoodAnalyzer.isConfigured {
-                        Text("Smart analysis isn't available in this build yet — food photos are recognised on your device for now.")
+                        Text("Smart analysis isn't available in this build yet — food is estimated on your device for now.")
                     } else if pro.isPro {
-                        Text("When on, a photo of your meal is sent securely for analysis and comes back with every item identified, portion sizes, calories and a full nutrition breakdown. Switch it off to keep photos entirely on your device — recognition is then more limited. Photos are used only to produce the estimate and are never stored.")
+                        Text("When on, a photo of your meal — or a dish name you type — is sent securely for analysis and comes back with every item identified, portion sizes, calories and a full nutrition breakdown. Switch it off to keep everything on your device, where estimates come from a built-in food list and are more limited. Photos and dish names are used only to produce the estimate and are never stored.")
                     } else {
-                        Text("PRO identifies everything on your plate from one photo and returns calories, protein, carbs, fat, fibre and iron. Free food photos are recognised on your device.")
+                        Text("PRO identifies everything on your plate — from a photo or just the dish name — and returns calories, protein, carbs, fat, fibre and iron. On the free plan, food is estimated on your device from a built-in list.")
                     }
                 }
 

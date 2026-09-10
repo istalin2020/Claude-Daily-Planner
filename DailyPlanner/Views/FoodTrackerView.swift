@@ -5,7 +5,15 @@ import SwiftUI
 struct FoodTrackerView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @EnvironmentObject var pro: ProManager
+    /// On-device typed entry — the free-tier "+" sheet, and where the PRO
+    /// typed sheet hands off if the service can't be reached.
     @State private var showAddSheet  = false
+    /// PRO typed entry: the dish name goes to the same analysis service the
+    /// camera uses, so typing "Valaikkai bajji" gets the full breakdown too.
+    @State private var showSmartTyped = false
+    /// Set by the PRO typed sheet just before it dismisses, so its `onDismiss`
+    /// can open the on-device sheet instead.
+    @State private var fallbackToTyped = false
     @State private var selectedMeal  = "breakfast"
     @State private var editingItem: MealItem? = nil
     @State private var editingMealKey: String = ""
@@ -51,7 +59,7 @@ struct FoodTrackerView: View {
                         canEdit: !vm.isFuture
                     ) {
                         selectedMeal = meal.key
-                        showAddSheet = true
+                        if usesSmartAnalysis { showSmartTyped = true } else { showAddSheet = true }
                     } onDelete: { item in
                         vm.removeMealItem(item, from: meal.key)
                     } onEdit: { item in
@@ -67,10 +75,25 @@ struct FoodTrackerView: View {
                 Spacer(minLength: 40)
             }
         }
+        // Free tier typed entry, and the PRO typed fallback: on-device only.
         .sheet(isPresented: $showAddSheet) {
             let mealName = mealSections.first(where: { $0.key == selectedMeal })?.name ?? "Meal"
             AddMealItemSheet(mealName: mealName) { item in
                 vm.addMealItem(item, to: selectedMeal)
+            }
+        }
+        // PRO typed entry: same analysis service as the camera.
+        .sheet(isPresented: $showSmartTyped, onDismiss: {
+            if fallbackToTyped {
+                fallbackToTyped = false
+                showAddSheet = true
+            }
+        }) {
+            let mealName = mealSections.first(where: { $0.key == selectedMeal })?.name ?? "Meal"
+            SmartMealSheet(source: .typed, mealName: mealName) { items in
+                for item in items { vm.addMealItem(item, to: selectedMeal) }
+            } onFallback: {
+                fallbackToTyped = true
             }
         }
         .sheet(item: $editingItem) { item in
@@ -107,7 +130,7 @@ struct FoodTrackerView: View {
             }
         }) { shot in
             let mealName = mealSections.first(where: { $0.key == selectedMeal })?.name ?? "Meal"
-            SmartFoodPhotoSheet(photo: shot.image, mealName: mealName) { items in
+            SmartMealSheet(source: .photo(shot.image), mealName: mealName) { items in
                 for item in items { vm.addMealItem(item, to: selectedMeal) }
             } onFallback: {
                 fallbackImage = shot.image

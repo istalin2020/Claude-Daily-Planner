@@ -1,22 +1,23 @@
 # Smart Food Analysis — setup
 
-This Worker sits between the Daily Planner app and OpenAI. PRO users photograph
-a meal; the Worker sends it to **GPT-5 nano**, which identifies every item on
-the plate and returns portions, calories and nutrition.
+This Worker sits between the Daily Planner app and OpenAI. PRO users either
+photograph a meal or type a dish name; the Worker sends it to **GPT-5 nano**,
+which identifies every item and returns portions, calories and nutrition.
 
 **The OpenAI key never goes in the app.** A key inside an iOS binary can be
 extracted in minutes and used to run up your bill. It lives here as a Cloudflare
 secret. The app instead sends an `APP_TOKEN`, which you can rotate any time
 without shipping a new build.
 
-Free users never touch this — their photos are recognised entirely on device.
+Free users never touch this — their food is estimated entirely on device.
 
 ---
 
 ## What it costs
 
 GPT-5 nano is **$0.05 per million input tokens and $0.40 per million output
-tokens**. One food photo is roughly 1,100 input and 400 output tokens.
+tokens**. One food photo is roughly 1,100 input and 400 output tokens; a typed
+dish name is cheaper still, since there is no image to read.
 
 | | |
 |---|---|
@@ -95,8 +96,12 @@ static let appToken      = "the-random-string-from-step-3"
 No trailing slash on the URL. Until these are filled in, the app silently stays
 on on-device recognition, so nothing breaks in the meantime.
 
-Build and run. Go to **Food Tracker → any meal → camera icon**, take a photo of
-some food. You should see it identified with a full nutrition breakdown.
+Build and run, then try both ways into it from **Food Tracker → any meal**:
+
+- the **camera icon** — photograph your plate
+- the **+ icon** — type a dish name such as `valaikkai bajji`
+
+Either way you should get the dish identified with a full nutrition breakdown.
 
 ---
 
@@ -140,9 +145,9 @@ npx wrangler tail
 |---|---|---|
 | "This build can't reach the analysis service" | `APP_TOKEN` in the app ≠ the Worker secret | Re-check Step 4 |
 | "Smart analysis isn't set up in this build yet" | Placeholders still in `CloudFoodAnalyzer.swift` | Step 4 |
-| "Couldn't analyse that photo" | Check `wrangler tail` — usually no OpenAI credit, or a bad key | Step 1 |
+| "Couldn't analyse that photo" / "Couldn't work that dish out" | Check `wrangler tail` — usually no OpenAI credit, or a bad key | Step 1 |
 | "The analysis service is busy" | OpenAI rate limit | Wait a moment and retry |
-| "You've used all N photo analyses for today" | The KV rate limit above | Raise `DAILY_LIMIT` |
+| "You've used all N food analyses for today" | The KV rate limit above | Raise `DAILY_LIMIT` |
 
 Rotating the OpenAI key later: `npx wrangler secret put OPENAI_API_KEY` again and
 redeploy. The app doesn't change.
@@ -151,8 +156,8 @@ redeploy. The app doesn't change.
 
 ## Before you submit to App Store Connect
 
-Photos leave the device on the PRO path, so the privacy answers need updating in
-App Store Connect → your app → **App Privacy**:
+Photos and typed dish names leave the device on the PRO path, so the privacy
+answers need updating in App Store Connect → your app → **App Privacy**:
 
 - Add data type **Photos or Videos**, used for **App Functionality**.
 - Mark it **not linked to the user's identity** and **not used for tracking** —
@@ -169,19 +174,22 @@ which keeps this straightforward.
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | `GET` | `/health` | none | Is it deployed and configured |
-| `POST` | `/analyze` | `X-App-Token` | Analyse a photo |
+| `POST` | `/analyze` | `X-App-Token` | Analyse a photo or a dish name |
 
-`POST /analyze` body:
+`POST /analyze` body — send **either** `image` **or** `dishName`:
 
 ```jsonc
 {
-  "image": "<base64 JPEG>",       // required
+  "image": "<base64 JPEG>",       // photo path
   "mimeType": "image/jpeg",
-  "mealName": "Breakfast",
+  "dishName": "Valaikkai bajji",  // typed path — use instead of image
+  "mealName": "Snacks",
   "deviceID": "<uuid>",           // anonymous, rate limiting only
   "answers": [                     // second pass only
-    { "prompt": "How much did you eat?", "answer": "Half a fruit" }
+    { "prompt": "How many did you have?", "answer": "4 pieces" }
   ],
   "note": "no sugar added"
 }
 ```
+
+Both return the same shape, so the app renders one result screen either way.

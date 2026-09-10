@@ -1,25 +1,40 @@
 import SwiftUI
 
-// MARK: - Smart Food Photo Sheet (PRO)
-/// Shown after a PRO user photographs a meal. The photo goes to the Daily
-/// Planner Worker, which identifies every item on the plate and returns
-/// portions and nutrition. When the photo can't settle something — how deep the
-/// bowl is, whether the juice had sugar — the model asks, and the user answers
-/// with a tap or types their own.
+// MARK: - Smart Meal Sheet (PRO)
+/// The PRO way to log food, whichever way the user starts:
 ///
-/// Free users get `PhotoMealSheet` instead, which does the same job entirely on
-/// device. This sheet also falls back to that path if the network is down.
-struct SmartFoodPhotoSheet: View {
+///   • `.photo`  — they snapped their plate (camera button)
+///   • `.typed`  — they typed a dish name (+ button)
+///
+/// Both go to the same analysis service and come back with the same shape, so
+/// there is one result screen: every item on the plate, portions, calories and
+/// a full nutrition breakdown, plus follow-up questions when something genuinely
+/// can't be settled without asking.
+///
+/// Free users get the on-device sheets instead (`PhotoMealSheet` /
+/// `AddMealItemSheet`), and this sheet hands off to them if the service can't
+/// be reached.
+enum SmartMealSource: Equatable {
+    case photo(UIImage)
+    case typed
+
+    var isPhoto: Bool { if case .photo = self { return true }; return false }
+
+    var image: UIImage? { if case .photo(let image) = self { return image }; return nil }
+}
+
+struct SmartMealSheet: View {
     @Environment(\.dismiss) private var dismiss
 
-    let photo: UIImage
+    let source: SmartMealSource
     let mealName: String
     let onSave: ([MealItem]) -> Void
-    /// Called when the cloud path can't run at all, so the caller can open the
+    /// Called when the cloud path can't run, so the caller can open the
     /// on-device sheet instead of leaving the user stranded.
     let onFallback: () -> Void
 
     private enum Phase: Equatable {
+        case awaitingInput     // typed source only, before the first search
         case analyzing
         case refining          // second pass, after answers
         case results
@@ -28,6 +43,11 @@ struct SmartFoodPhotoSheet: View {
 
     @State private var phase: Phase = .analyzing
     @State private var analysis: CloudFoodAnalysis? = nil
+
+    /// What the user typed, for `.typed`. Stays editable after results so they
+    /// can correct a name and search again.
+    @State private var typedName = ""
+    @FocusState private var nameFocused: Bool
 
     /// question.id → the answer the user picked or typed.
     @State private var answers: [UUID: String] = [:]
@@ -43,12 +63,15 @@ struct SmartFoodPhotoSheet: View {
     /// running would outlive the sheet and keep firing forever.
     @State private var statusTimer: Timer? = nil
 
-    private let statusLines = [
-        "Looking at your plate…",
-        "Identifying each item…",
-        "Estimating portions…",
-        "Working out the nutrition…",
-    ]
+    private var statusLines: [String] {
+        source.isPhoto
+        ? ["Looking at your plate…", "Identifying each item…",
+           "Estimating portions…", "Working out the nutrition…"]
+        : ["Looking up the dish…", "Breaking it into ingredients…",
+           "Estimating a typical serving…", "Working out the nutrition…"]
+    }
+
+    private var isBusy: Bool { phase == .analyzing || phase == .refining }
 
     private var includedItems: [CloudFoodItem] {
         (analysis?.items ?? []).filter { !excluded.contains($0.id) }
@@ -73,9 +96,15 @@ struct SmartFoodPhotoSheet: View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    heroPhoto
+                    if let image = source.image {
+                        heroPhoto(image)
+                    } else {
+                        dishNameField
+                    }
 
                     switch phase {
+                    case .awaitingInput:
+                        promptCard
                     case .analyzing, .refining:
                         analyzingCard
                     case .failed(let message):
@@ -104,28 +133,25 @@ struct SmartFoodPhotoSheet: View {
                 }
             }
         }
-        .onAppear {
-            startScanAnimation()
-            runAnalysis()
-        }
+        .onAppear { start() }
         .onDisappear {
             statusTimer?.invalidate()
             statusTimer = nil
         }
     }
 
-    // MARK: - Hero photo
+    // MARK: - Header, photo source
 
-    private var heroPhoto: some View {
+    private func heroPhoto(_ image: UIImage) -> some View {
         ZStack(alignment: .bottomLeading) {
             GeometryReader { geo in
-                Image(uiImage: photo)
+                Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
                     .frame(width: geo.size.width, height: 210)
                     .clipped()
                     .overlay {
-                        if phase == .analyzing || phase == .refining {
+                        if isBusy {
                             // A soft band sweeping top-to-bottom reads as
                             // "being looked at" without hiding the food.
                             LinearGradient(
@@ -142,7 +168,19 @@ struct SmartFoodPhotoSheet: View {
             .frame(height: 210)
 
             if phase == .results, let analysis = analysis, analysis.recognized {
-                dishBadge(analysis)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(analysis.dishName)
+                        .font(.system(size: 21, weight: .heavy))
+                        .foregroundColor(.white)
+                        .lineLimit(2)
+                    confidenceChip(analysis.confidence, onDark: true)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    LinearGradient(colors: [.clear, .black.opacity(0.75)],
+                                   startPoint: .top, endPoint: .bottom)
+                )
             }
         }
         .frame(height: 210)
@@ -150,40 +188,87 @@ struct SmartFoodPhotoSheet: View {
         .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
     }
 
-    private func dishBadge(_ analysis: CloudFoodAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(analysis.dishName)
-                .font(.system(size: 21, weight: .heavy))
-                .foregroundColor(.white)
-                .lineLimit(2)
+    // MARK: - Header, typed source
 
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 10, weight: .bold))
-                Text(confidenceLabel(analysis.confidence))
-                    .font(.system(size: 11, weight: .bold))
+    private var dishNameField: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("What did you eat?")
+                .font(.system(size: 17, weight: .bold))
+
+            HStack(spacing: 8) {
+                TextField("e.g. Valaikkai bajji, Chicken biryani…", text: $typedName)
+                    .focused($nameFocused)
+                    .submitLabel(.search)
+                    .autocorrectionDisabled()
+                    .onSubmit { runAnalysis() }
+                    .padding(.horizontal, 13).padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.tertiarySystemFill)))
+
+                Button(action: runAnalysis) {
+                    Group {
+                        if isBusy {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "sparkle.magnifyingglass")
+                                .font(.system(size: 20, weight: .semibold))
+                        }
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: 46, height: 46)
+                    .background(RoundedRectangle(cornerRadius: 12)
+                        .fill(typedName.trimmingCharacters(in: .whitespaces).isEmpty
+                              ? Color.gray.opacity(0.4) : Color.orange))
+                }
+                .disabled(typedName.trimmingCharacters(in: .whitespaces).isEmpty || isBusy)
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 9).padding(.vertical, 4)
-            .background(Capsule().fill(Color.white.opacity(0.25)))
+
+            if phase == .results, let analysis = analysis, analysis.recognized {
+                HStack(spacing: 8) {
+                    Text(analysis.dishName)
+                        .font(.system(size: 17, weight: .heavy))
+                        .lineLimit(2)
+                    confidenceChip(analysis.confidence, onDark: false)
+                    Spacer()
+                }
+            }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(colors: [.clear, .black.opacity(0.75)],
-                           startPoint: .top, endPoint: .bottom)
-        )
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 18).fill(Color(.secondarySystemGroupedBackground)))
     }
 
-    private func confidenceLabel(_ value: Double) -> String {
-        switch value {
-        case 0.8...:    return "Confident match"
-        case 0.55..<0.8: return "Likely match"
-        default:         return "Best guess — check below"
+    private func confidenceChip(_ value: Double, onDark: Bool) -> some View {
+        let label: String = {
+            switch value {
+            case 0.8...:     return "Confident match"
+            case 0.55..<0.8: return "Likely match"
+            default:         return "Best guess — check below"
+            }
+        }()
+
+        return HStack(spacing: 5) {
+            Image(systemName: "sparkles").font(.system(size: 10, weight: .bold))
+            Text(label).font(.system(size: 11, weight: .bold))
         }
+        .foregroundColor(onDark ? .white : .orange)
+        .padding(.horizontal, 9).padding(.vertical, 4)
+        .background(Capsule().fill(onDark ? Color.white.opacity(0.25) : Color.orange.opacity(0.15)))
     }
 
-    // MARK: - Analysing
+    // MARK: - Interim states
+
+    private var promptCard: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "sparkles")
+                .foregroundColor(.orange)
+            Text("Type any dish — home cooking, a restaurant plate, a packet — and it'll be broken down into calories and nutrition.")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 18).fill(Color(.secondarySystemGroupedBackground)))
+    }
 
     private var analyzingCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -191,7 +276,6 @@ struct SmartFoodPhotoSheet: View {
                 ProgressView()
                 Text(phase == .refining ? "Updating with your answers…" : statusLines[statusIndex])
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.primary)
                     .animation(.easeInOut, value: statusIndex)
                 Spacer()
             }
@@ -210,7 +294,7 @@ struct SmartFoodPhotoSheet: View {
 
     private func failureCard(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(.orange)
                 Text(message)
@@ -255,15 +339,18 @@ struct SmartFoodPhotoSheet: View {
     private func resultsBody(_ analysis: CloudFoodAnalysis) -> some View {
         if !analysis.recognized {
             VStack(alignment: .leading, spacing: 12) {
-                Label("No food spotted", systemImage: "questionmark.circle.fill")
+                Label(source.isPhoto ? "No food spotted" : "Didn't recognise that",
+                      systemImage: "questionmark.circle.fill")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.orange)
+
                 if !analysis.summary.isEmpty {
                     Text(analysis.summary)
                         .font(.system(size: 14))
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
                 Button {
                     dismiss()
                     onFallback()
@@ -307,7 +394,7 @@ struct SmartFoodPhotoSheet: View {
                 .padding(.horizontal, 4)
             }
 
-            Text("Estimated from your photo by Daily Planner PRO. Figures are a good guide, not lab measurements.")
+            Text("Estimated by Daily Planner PRO. Figures are a good guide, not lab measurements.")
                 .font(.caption2)
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 4)
@@ -391,12 +478,14 @@ struct SmartFoodPhotoSheet: View {
     private func itemsCard(_ analysis: CloudFoodAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("On your plate")
+                Text(source.isPhoto ? "On your plate" : "What's in it")
                     .font(.system(size: 16, weight: .bold))
                 Spacer()
-                Text("Tap to include or skip")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                if analysis.items.count > 1 {
+                    Text("Tap to include or skip")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
 
             ForEach(analysis.items) { item in
@@ -444,7 +533,9 @@ struct SmartFoodPhotoSheet: View {
     // ── Follow-up questions ────────────────────────────────────────────────
 
     private func questionsCard(_ analysis: CloudFoodAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let answered = analysis.questions.count - unansweredCount
+
+        return VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
                 Image(systemName: "hand.raised.fill")
                     .foregroundColor(.orange)
@@ -477,7 +568,7 @@ struct SmartFoodPhotoSheet: View {
                     Image(systemName: "arrow.clockwise")
                     Text(unansweredCount == 0
                          ? "Update the estimate"
-                         : "Update with \(analysis.questions.count - unansweredCount) answer\(analysis.questions.count - unansweredCount == 1 ? "" : "s")")
+                         : "Update with \(answered) answer\(answered == 1 ? "" : "s")")
                 }
                 .font(.system(size: 15, weight: .bold))
                 .frame(maxWidth: .infinity)
@@ -510,6 +601,7 @@ struct SmartFoodPhotoSheet: View {
                 Text(label)
                     .font(.system(size: 14, weight: picked ? .semibold : .regular))
                     .foregroundColor(.primary)
+                    .multilineTextAlignment(.leading)
                 Spacer()
                 if !detail.isEmpty {
                     Text(detail)
@@ -552,14 +644,34 @@ struct SmartFoodPhotoSheet: View {
 
     // MARK: - Actions
 
+    private func start() {
+        startScanAnimation()
+        switch source {
+        case .photo:
+            runAnalysis()
+        case .typed:
+            phase = .awaitingInput
+            nameFocused = true
+        }
+    }
+
     private func runAnalysis() {
+        let dish = typedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !source.isPhoto && dish.isEmpty { return }
+
+        nameFocused = false
         phase = .analyzing
         excluded.removeAll()
         answers.removeAll()
         customText.removeAll()
+        startScanAnimation()
 
-        CloudFoodAnalyzer.analyze(image: photo, mealName: mealName) { result in
-            apply(result)
+        let handle: (Result<CloudFoodAnalysis, Error>) -> Void = { apply($0) }
+
+        if let image = source.image {
+            CloudFoodAnalyzer.analyze(image: image, mealName: mealName, completion: handle)
+        } else {
+            CloudFoodAnalyzer.analyze(dishName: dish, mealName: mealName, completion: handle)
         }
     }
 
@@ -572,13 +684,23 @@ struct SmartFoodPhotoSheet: View {
         guard !payload.isEmpty else { return }
 
         phase = .refining
-        CloudFoodAnalyzer.analyze(image: photo, mealName: mealName, answers: payload) { result in
-            // Answers are cleared on the way in so a second round of questions
-            // starts fresh rather than showing stale ticks.
+        startScanAnimation()
+
+        // Answers are cleared on the way in so a second round of questions
+        // starts fresh rather than showing stale ticks.
+        let finish: (Result<CloudFoodAnalysis, Error>) -> Void = { result in
             answers.removeAll()
             customText.removeAll()
             excluded.removeAll()
             apply(result)
+        }
+
+        if let image = source.image {
+            CloudFoodAnalyzer.analyze(image: image, mealName: mealName,
+                                      answers: payload, completion: finish)
+        } else {
+            CloudFoodAnalyzer.analyze(dishName: typedName.trimmingCharacters(in: .whitespacesAndNewlines),
+                                      mealName: mealName, answers: payload, completion: finish)
         }
     }
 
@@ -588,6 +710,11 @@ struct SmartFoodPhotoSheet: View {
             withAnimation(.snappy) {
                 analysis = value
                 phase = .results
+            }
+            // A typed dish comes back with the properly spelled name — adopt it
+            // so a re-search doesn't undo the correction.
+            if !source.isPhoto, value.recognized, !value.dishName.isEmpty {
+                typedName = value.dishName
             }
         case .failure(let error):
             let message = (error as? CloudFoodError)?.errorDescription
@@ -612,12 +739,14 @@ struct SmartFoodPhotoSheet: View {
 
     /// Sweeps the highlight band down the photo and rotates the status line.
     private func startScanAnimation() {
+        scanOffset = -1
         withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: false)) {
             scanOffset = 1
         }
+        statusIndex = 0
         statusTimer?.invalidate()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 1.6, repeats: true) { timer in
-            guard phase == .analyzing || phase == .refining else {
+            guard isBusy else {
                 timer.invalidate()
                 return
             }
