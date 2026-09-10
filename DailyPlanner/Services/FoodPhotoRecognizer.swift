@@ -23,30 +23,57 @@ struct FoodDetection {
     let confidence: Float
     /// Other plausible foods the user can switch to.
     let alternatives: [String]
+    /// True when the name came from text on a package or price label, which
+    /// is far more reliable than the generic image classifier.
+    let fromLabelText: Bool
 
-    var isConfident: Bool { confidence >= 0.35 }
+    init(foodName: String, rawLabel: String, confidence: Float,
+         alternatives: [String], fromLabelText: Bool = false) {
+        self.foodName = foodName
+        self.rawLabel = rawLabel
+        self.confidence = confidence
+        self.alternatives = alternatives
+        self.fromLabelText = fromLabelText
+    }
+
+    /// Only claim a confident identification when the classifier is actually
+    /// sure, or the name was read straight off a label.
+    var isConfident: Bool { fromLabelText || confidence >= 0.35 }
 }
 
 enum FoodPhotoRecognizer {
 
     /// Classifies the image and resolves the most likely food.
     /// Calls back on the main thread. `nil` = nothing food-like found.
+    ///
+    /// Two independent signals are used, best-first:
+    ///   1. TEXT on the item — packaging, price stickers, menu boards. Read
+    ///      with on-device OCR and matched against the food database. When a
+    ///      food name is printed, this is far more accurate than guessing
+    ///      from pixels.
+    ///   2. IMAGE classification via VNClassifyImageRequest.
     static func detectFood(in image: UIImage,
                            completion: @escaping (FoodDetection?) -> Void) {
-        // Camera photos are 12 MP+; downscale first so Vision stays fast and
-        // memory-light. Redrawing also normalises orientation and guarantees a
-        // backing CGImage (a raw camera UIImage can have a nil cgImage).
-        let prepared = downscaled(image, maxDimension: 640)
+        // Text needs more detail than classification, so keep a larger copy
+        // for OCR and a small one for the classifier.
+        let forText  = downscaled(image, maxDimension: 1400)
+        let forClass = downscaled(image, maxDimension: 640)
 
-        guard let cgImage = prepared.cgImage else {
+        guard let textCG = forText.cgImage, let classCG = forClass.cgImage else {
             DispatchQueue.main.async { completion(nil) }
             return
         }
 
-        let request = VNClassifyImageRequest()
-        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
-
         DispatchQueue.global(qos: .userInitiated).async {
+            // ── 1. Read any printed text and look for a food name ──────────
+            if let fromText = foodFromLabelText(in: textCG) {
+                DispatchQueue.main.async { completion(fromText) }
+                return
+            }
+
+            // ── 2. Fall back to image classification ───────────────────────
+            let request = VNClassifyImageRequest()
+            let handler = VNImageRequestHandler(cgImage: classCG, orientation: .up, options: [:])
             do {
                 try handler.perform([request])
                 let observations = (request.results ?? [])
@@ -70,7 +97,9 @@ enum FoodPhotoRecognizer {
                     return
                 }
 
-                let alts = resolved.dropFirst().prefix(4).map(\.name)
+                // Offer more alternatives when the top guess is weak.
+                let altCount = best.conf < 0.35 ? 6 : 4
+                let alts = resolved.dropFirst().prefix(altCount).map(\.name)
                 let detection = FoodDetection(foodName: best.name,
                                               rawLabel: best.raw,
                                               confidence: best.conf,
@@ -80,6 +109,59 @@ enum FoodPhotoRecognizer {
                 DispatchQueue.main.async { completion(nil) }
             }
         }
+    }
+
+    // MARK: - Reading food names off packaging / price labels
+
+    /// Runs on-device OCR and returns the first food name found in the text.
+    /// Grocery stickers, wrappers and menu boards usually spell out exactly
+    /// what the item is, so this beats guessing from the picture.
+    private static func foodFromLabelText(in cgImage: CGImage) -> FoodDetection? {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
+
+        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
+        guard (try? handler.perform([request])) != nil,
+              let observations = request.results, !observations.isEmpty else { return nil }
+
+        // Longest, most confident lines first — a product name is usually the
+        // most prominent text, while codes and prices are short.
+        let lines = observations
+            .compactMap { $0.topCandidates(1).first?.string }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.count >= 3 }
+
+        var matches: [String] = []
+        for line in lines {
+            let lower = line.lowercased()
+            // Skip lines that are mostly digits (prices, barcodes, dates).
+            let digits = lower.filter(\.isNumber).count
+            if digits * 2 > lower.count { continue }
+
+            for word in tokenize(lower) where word.count >= 3 {
+                if let food = resolveFood(from: word), !matches.contains(food) {
+                    matches.append(food)
+                }
+            }
+            // Also try the whole line ("dragon fruit", "sweet potato").
+            if let food = resolveFood(from: lower), !matches.contains(food) {
+                matches.insert(food, at: 0)
+            }
+        }
+
+        guard let best = matches.first else { return nil }
+        return FoodDetection(foodName: best,
+                             rawLabel: "label text",
+                             confidence: 0.9,
+                             alternatives: Array(matches.dropFirst().prefix(5)),
+                             fromLabelText: true)
+    }
+
+    /// Splits a line into comparable words, dropping punctuation.
+    private static func tokenize(_ s: String) -> [String] {
+        s.components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
     }
 
     /// Redraws the image at a smaller size with orientation baked in.
@@ -110,7 +192,13 @@ enum FoodPhotoRecognizer {
         "material", "texture", "pattern", "person", "hand", "furniture",
         "container", "packaged goods", "drink", "beverage", "fruit",
         "vegetable", "citrus", "berry", "nut", "seed", "grain", "meat",
-        "seafood", "dairy", "dessert", "snack", "baked goods", "bread"
+        "seafood", "dairy", "dessert", "snack", "baked goods", "bread",
+        // Plurals and packaging words that show up in OCR'd price stickers
+        "fruits", "vegetables", "veggies", "berries", "nuts", "seeds",
+        "grains", "meats", "drinks", "beverages", "desserts", "snacks",
+        "groceries", "grocery", "organic", "fresh", "produce section",
+        "price", "total", "weight", "net", "packed", "expiry", "best before",
+        "thank you", "daily", "store", "market", "supermarket", "hypermarket"
     ]
 
     /// Maps Vision's vocabulary onto names our calorie database knows.
@@ -122,10 +210,47 @@ enum FoodPhotoRecognizer {
         "granny smith": "apple", "red delicious": "apple",
         "plantain": "banana",
         "watermelon": "watermelon", "muskmelon": "melon", "cantaloupe": "melon",
+        "honeydew": "melon", "melon": "melon",
         "grapes": "grapes", "grape": "grapes",
         "strawberries": "strawberry", "blueberries": "blueberry",
         "pomegranates": "pomegranate", "pineapples": "pineapple",
         "date fruit": "dates", "dried date": "dates",
+
+        // Tropical & other produce the generic classifier often mislabels
+        "papaya": "papaya", "papayas": "papaya", "pawpaw": "papaya",
+        "guava": "guava", "guavas": "guava",
+        "lychee": "lychee", "litchi": "lychee",
+        "jackfruit": "jackfruit", "dragon fruit": "dragon fruit",
+        "pitaya": "dragon fruit", "passion fruit": "passion fruit",
+        "starfruit": "starfruit", "carambola": "starfruit",
+        "custard apple": "custard apple", "sapota": "chikoo", "chikoo": "chikoo",
+        "fig": "fig", "figs": "fig", "apricot": "apricot", "plum": "plum",
+        "raspberry": "raspberry", "raspberries": "raspberry",
+        "blackberry": "blackberry", "blackberries": "blackberry",
+        "cranberry": "cranberry", "cranberries": "cranberry",
+        "mulberry": "mulberry", "gooseberry": "gooseberry", "amla": "gooseberry",
+        "grapefruit": "grapefruit", "raisin": "raisin", "raisins": "raisin",
+        "coconut": "coconut", "kiwi": "kiwi", "kiwifruit": "kiwi",
+        "lemon": "lemon", "lime": "lemon", "cherry": "cherry", "cherries": "cherry",
+        "pear": "pear", "pears": "pear", "peach": "peach", "peaches": "peach",
+
+        // Vegetables
+        "cauliflower": "cauliflower", "cabbage": "cabbage",
+        "eggplant": "brinjal", "aubergine": "brinjal", "brinjal": "brinjal",
+        "okra": "okra", "pumpkin": "pumpkin", "squash": "pumpkin",
+        "zucchini": "zucchini", "courgette": "zucchini",
+        "bell pepper": "capsicum", "capsicum": "capsicum",
+        "chili": "chilli", "chilli": "chilli", "chili pepper": "chilli",
+        "radish": "radish", "turnip": "turnip", "beetroot": "beetroot",
+        "ginger": "ginger", "garlic": "garlic", "celery": "celery",
+        "asparagus": "asparagus", "kale": "kale", "cucumber": "cucumber",
+        "green beans": "green beans", "cauliflower head": "cauliflower",
+        "yam": "yam", "taro": "yam", "gourd": "bottle gourd",
+
+        // Nuts & seeds
+        "hazelnut": "hazelnut", "pecan": "pecan", "macadamia": "macadamia",
+        "sunflower seed": "sunflower seed", "pumpkin seed": "pumpkin seed",
+        "chia": "chia seed", "flaxseed": "flax seed", "sesame": "sesame seed",
 
         // Common plates the classifier does recognise
         "pizza": "pizza", "hamburger": "burger", "cheeseburger": "burger",

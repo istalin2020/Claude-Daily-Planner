@@ -790,13 +790,25 @@ struct PhotoMealSheet: View {
                                 .foregroundColor(.secondary)
                         }
                     } else if let d = detection {
+                        // Be honest about certainty: a 5% classifier score is a
+                        // guess, not a detection, so say so and lead the user
+                        // to the alternatives or the text field.
                         HStack(spacing: 10) {
-                            Image(systemName: "sparkles")
+                            Image(systemName: d.fromLabelText ? "text.viewfinder"
+                                                              : (d.isConfident ? "sparkles" : "questionmark.circle"))
                                 .foregroundColor(.orange)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Detected: \(d.foodName.capitalized)")
+                                Text(d.fromLabelText
+                                     ? "Read from label: \(d.foodName.capitalized)"
+                                     : (d.isConfident
+                                        ? "Detected: \(d.foodName.capitalized)"
+                                        : "Best guess: \(d.foodName.capitalized)"))
                                     .font(.system(size: 15, weight: .bold))
-                                Text("\(Int(d.confidence * 100))% match · tap below to change")
+                                Text(d.fromLabelText
+                                     ? "Found the name printed on the item"
+                                     : (d.isConfident
+                                        ? "\(Int(d.confidence * 100))% match · tap below to change"
+                                        : "Not certain — pick below or type the name"))
                                     .font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()

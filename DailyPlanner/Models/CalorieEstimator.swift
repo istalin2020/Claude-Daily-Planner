@@ -75,6 +75,40 @@ final class CalorieEstimator {
         DBEntry(keywords: ["cherry"],      calories: 50,  portion: "½ cup",      questions: nil),
         DBEntry(keywords: ["lemon"],       calories: 17,  portion: "1 fruit",    questions: nil),
 
+        // ── MORE FRUITS ─────────────────────────────────────────────────────
+        DBEntry(keywords: ["papaya", "pawpaw", "papita"], calories: 120, portion: "1 small fruit", questions: [
+            ClarifyQuestion(prompt: "How much papaya?", options: [
+                ClarifyOption(label: "1 cup cubed",        calories: 62),
+                ClarifyOption(label: "Half a small fruit", calories: 60),
+                ClarifyOption(label: "1 small fruit",      calories: 120),
+                ClarifyOption(label: "1 large fruit",      calories: 215)
+            ])
+        ]),
+        DBEntry(keywords: ["guava", "amrood"],       calories: 68,  portion: "1 fruit",   questions: nil),
+        DBEntry(keywords: ["pomegranate", "anar"],   calories: 105, portion: "½ fruit",   questions: nil),
+        DBEntry(keywords: ["melon", "cantaloupe", "muskmelon", "honeydew"],
+                                                     calories: 60,  portion: "1 cup",     questions: nil),
+        DBEntry(keywords: ["plum"],                  calories: 30,  portion: "1 fruit",   questions: nil),
+        DBEntry(keywords: ["apricot"],               calories: 17,  portion: "1 fruit",   questions: nil),
+        DBEntry(keywords: ["fig", "anjeer"],         calories: 37,  portion: "1 fruit",   questions: nil),
+        DBEntry(keywords: ["dates", "date fruit", "khajoor"], calories: 66, portion: "2 dates", questions: nil),
+        DBEntry(keywords: ["raisin", "kishmish"],    calories: 108, portion: "¼ cup",     questions: nil),
+        DBEntry(keywords: ["chikoo", "sapota"],      calories: 83,  portion: "1 fruit",   questions: nil),
+        DBEntry(keywords: ["custard apple", "sitaphal"], calories: 94, portion: "1 fruit", questions: nil),
+        DBEntry(keywords: ["jackfruit"],             calories: 155, portion: "1 cup",     questions: nil),
+        DBEntry(keywords: ["lychee", "litchi"],      calories: 66,  portion: "10 fruits", questions: nil),
+        DBEntry(keywords: ["dragon fruit", "pitaya"],calories: 60,  portion: "1 cup",     questions: nil),
+        DBEntry(keywords: ["passion fruit"],         calories: 17,  portion: "1 fruit",   questions: nil),
+        DBEntry(keywords: ["starfruit", "carambola"],calories: 28,  portion: "1 fruit",   questions: nil),
+        DBEntry(keywords: ["mulberry"],              calories: 60,  portion: "1 cup",     questions: nil),
+        DBEntry(keywords: ["raspberr"],              calories: 64,  portion: "1 cup",     questions: nil),
+        DBEntry(keywords: ["blackberr"],             calories: 62,  portion: "1 cup",     questions: nil),
+        DBEntry(keywords: ["cranberr"],              calories: 46,  portion: "1 cup",     questions: nil),
+        DBEntry(keywords: ["grapefruit"],            calories: 52,  portion: "½ fruit",   questions: nil),
+        DBEntry(keywords: ["tangerine", "mandarin", "clementine"], calories: 47, portion: "1 fruit", questions: nil),
+        DBEntry(keywords: ["coconut"],               calories: 283, portion: "1 cup shredded", questions: nil),
+        DBEntry(keywords: ["gooseberry", "amla"],    calories: 33,  portion: "1 cup",     questions: nil),
+
         // ── VEGETABLES ──────────────────────────────────────────────────────
         DBEntry(keywords: ["salad", "lettuce"], calories: 15, portion: "1 cup", questions: nil),
         DBEntry(keywords: ["broccoli"],    calories: 55,  portion: "1 cup",      questions: nil),
@@ -113,6 +147,47 @@ final class CalorieEstimator {
         DBEntry(keywords: ["corn"],         calories: 132, portion: "1 ear",     questions: nil),
         DBEntry(keywords: ["pea"],          calories: 62,  portion: "½ cup",     questions: nil),
         DBEntry(keywords: ["mushroom"],     calories: 15,  portion: "½ cup",     questions: nil),
+
+        // ── MORE VEGETABLES ─────────────────────────────────────────────────
+        DBEntry(keywords: ["cauliflower", "gobi"],       calories: 27, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["cabbage", "patta gobi"],     calories: 22, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["brinjal", "eggplant", "aubergine", "baingan"], calories: 35, portion: "1 cup", questions: nil),
+        DBEntry(keywords: ["okra", "ladies finger", "bhindi"], calories: 33, portion: "1 cup", questions: nil),
+        DBEntry(keywords: ["pumpkin", "kaddu"],          calories: 30, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["bottle gourd", "lauki", "gourd"], calories: 17, portion: "1 cup", questions: nil),
+        DBEntry(keywords: ["bitter gourd", "karela"],    calories: 21, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["radish", "mooli"],           calories: 19, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["turnip"],                    calories: 36, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["zucchini", "courgette"],     calories: 21, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["capsicum", "bell pepper", "shimla mirch"], calories: 30, portion: "1 cup", questions: nil),
+        DBEntry(keywords: ["chilli", "chili", "pepper"], calories: 18, portion: "¼ cup",    questions: nil),
+        DBEntry(keywords: ["ginger", "adrak"],           calories: 9,  portion: "1 tbsp",   questions: nil),
+        DBEntry(keywords: ["garlic", "lehsun"],          calories: 13, portion: "3 cloves", questions: nil),
+        DBEntry(keywords: ["celery"],                    calories: 16, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["asparagus"],                 calories: 27, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["green beans", "french beans"], calories: 31, portion: "1 cup",  questions: nil),
+        DBEntry(keywords: ["drumstick", "moringa"],      calories: 37, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["yam", "taro", "arbi"],       calories: 145, portion: "1 cup",   questions: nil),
+        DBEntry(keywords: ["beetroot", "beet"],          calories: 59, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["kale"],                      calories: 33, portion: "1 cup",    questions: nil),
+        DBEntry(keywords: ["coriander", "cilantro", "dhania"], calories: 5, portion: "¼ cup", questions: nil),
+        DBEntry(keywords: ["mint", "pudina"],            calories: 5,  portion: "¼ cup",    questions: nil),
+        DBEntry(keywords: ["sprouted salad", "salad"],   calories: 90, portion: "1 bowl",   questions: nil),
+
+        // ── NUTS & SEEDS ────────────────────────────────────────────────────
+        DBEntry(keywords: ["almond", "badam"],           calories: 164, portion: "¼ cup (23 nuts)", questions: nil),
+        DBEntry(keywords: ["cashew", "kaju"],            calories: 157, portion: "¼ cup",   questions: nil),
+        DBEntry(keywords: ["walnut", "akhrot"],          calories: 185, portion: "¼ cup",   questions: nil),
+        DBEntry(keywords: ["pistachio", "pista"],        calories: 159, portion: "¼ cup",   questions: nil),
+        DBEntry(keywords: ["peanut", "groundnut", "moongphali"], calories: 166, portion: "¼ cup", questions: nil),
+        DBEntry(keywords: ["hazelnut"],                  calories: 178, portion: "¼ cup",   questions: nil),
+        DBEntry(keywords: ["pecan"],                     calories: 196, portion: "¼ cup",   questions: nil),
+        DBEntry(keywords: ["macadamia"],                 calories: 204, portion: "¼ cup",   questions: nil),
+        DBEntry(keywords: ["sunflower seed"],            calories: 165, portion: "¼ cup",   questions: nil),
+        DBEntry(keywords: ["pumpkin seed"],              calories: 180, portion: "¼ cup",   questions: nil),
+        DBEntry(keywords: ["chia seed"],                 calories: 138, portion: "2 tbsp",  questions: nil),
+        DBEntry(keywords: ["flax seed", "flaxseed"],     calories: 110, portion: "2 tbsp",  questions: nil),
+        DBEntry(keywords: ["sesame seed", "til"],        calories: 103, portion: "2 tbsp",  questions: nil),
 
         // ── COOKING OILS, FATS & GHEE ────────────────────────────────────────
         DBEntry(keywords: ["cooking oil", "vegetable oil", "oil"], calories: 120, portion: "1 tbsp", questions: [
