@@ -1068,6 +1068,12 @@ struct AppSettings: Codable {
     var smartBankSMSEnabled: Bool = true
     var dismissedSMSHashes: Set<String> = []
 
+    // MARK: - Smart Food Analysis (PRO)
+    /// When on, PRO users' food photos are sent to the Daily Planner analysis
+    /// service for a far more accurate identification and full nutrition
+    /// breakdown. Off (or no network, or not PRO) keeps everything on device.
+    var cloudFoodAnalysisEnabled: Bool = true
+
     // MARK: - Gmail Expense Sync (PRO)
     /// The Gmail address the user connected (empty = not connected).
     var gmailConnectedEmail: String = ""

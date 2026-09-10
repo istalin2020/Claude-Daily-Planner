@@ -4,6 +4,7 @@ import SwiftUI
 
 struct FoodTrackerView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     @State private var showAddSheet  = false
     @State private var selectedMeal  = "breakfast"
     @State private var editingItem: MealItem? = nil
@@ -11,7 +12,20 @@ struct FoodTrackerView: View {
     @State private var showCamera = false
     /// Holds the shot between camera dismissal and the review sheet opening.
     @State private var pendingPhoto: UIImage? = nil
+    /// Photo headed for the PRO cloud analysis sheet.
     @State private var capturedPhoto: CapturedFoodPhoto? = nil
+    /// Photo headed for the on-device sheet — the free-tier path, and where
+    /// the PRO sheet hands off when the service can't be reached.
+    @State private var manualPhoto: CapturedFoodPhoto? = nil
+    /// Set by the PRO sheet just before it dismisses, so its `onDismiss` can
+    /// reopen the on-device sheet with the same shot instead of losing it.
+    @State private var fallbackImage: UIImage? = nil
+
+    /// PRO users get cloud analysis unless they've switched it off, or the
+    /// build has no service configured.
+    private var usesSmartAnalysis: Bool {
+        pro.isPro && vm.settings.cloudFoodAnalysisEnabled && CloudFoodAnalyzer.isConfigured
+    }
 
     var entry: DailyEntry { vm.currentEntry }
 
@@ -71,7 +85,11 @@ struct FoodTrackerView: View {
         .fullScreenCover(isPresented: $showCamera, onDismiss: {
             if let image = pendingPhoto {
                 pendingPhoto = nil
-                capturedPhoto = CapturedFoodPhoto(image: image)
+                if usesSmartAnalysis {
+                    capturedPhoto = CapturedFoodPhoto(image: image)
+                } else {
+                    manualPhoto = CapturedFoodPhoto(image: image)
+                }
             }
         }) {
             FoodCameraPicker { image in
@@ -80,7 +98,23 @@ struct FoodTrackerView: View {
             }
             .ignoresSafeArea()
         }
-        .sheet(item: $capturedPhoto) { shot in
+        // PRO: full cloud analysis. If it can't run, it stashes the photo and
+        // dismisses; onDismiss then opens the on-device sheet with the same shot.
+        .sheet(item: $capturedPhoto, onDismiss: {
+            if let image = fallbackImage {
+                fallbackImage = nil
+                manualPhoto = CapturedFoodPhoto(image: image)
+            }
+        }) { shot in
+            let mealName = mealSections.first(where: { $0.key == selectedMeal })?.name ?? "Meal"
+            SmartFoodPhotoSheet(photo: shot.image, mealName: mealName) { items in
+                for item in items { vm.addMealItem(item, to: selectedMeal) }
+            } onFallback: {
+                fallbackImage = shot.image
+            }
+        }
+        // Free tier, and the PRO fallback: everything stays on the device.
+        .sheet(item: $manualPhoto) { shot in
             let mealName = mealSections.first(where: { $0.key == selectedMeal })?.name ?? "Meal"
             PhotoMealSheet(photo: shot.image, mealName: mealName) { item in
                 vm.addMealItem(item, to: selectedMeal)
