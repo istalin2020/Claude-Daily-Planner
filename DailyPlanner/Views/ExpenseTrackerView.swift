@@ -2133,12 +2133,100 @@ struct TransactionsListSheet: View {
         let expense: Expense
     }
 
+    /// What the chip band is filtering by. Categories are matched on the
+    /// displayed name, so custom categories filter just like the built-in ones.
+    enum TxFilter: Hashable {
+        case all
+        case income
+        case savings
+        case category(String)
+    }
+
+    @State private var selectedFilter: TxFilter = .all
+
     private var items: [DatedExpense] {
         vm.monthlyEntries(for: monthDate)
             .flatMap { entry in
                 entry.expenses.map { DatedExpense(id: $0.id, date: entry.date, expense: $0) }
             }
             .sorted { $0.date > $1.date }
+    }
+
+    private func matches(_ expense: Expense, _ filter: TxFilter) -> Bool {
+        switch filter {
+        case .all:                 return true
+        case .income:              return expense.isIncome
+        case .savings:             return expense.isDeposit
+        case .category(let name):
+            // Income and savings are their own chips, so a category chip shows
+            // spending only — otherwise a salary would appear under "Other".
+            return !expense.isIncome && !expense.isDeposit
+                && expense.displayCategory == name
+        }
+    }
+
+    private var filteredItems: [DatedExpense] {
+        items.filter { matches($0.expense, selectedFilter) }
+    }
+
+    /// Total of what's currently on screen — the point of filtering is usually
+    /// "how much did I spend on this", so answer it without a second tap.
+    private var filteredTotal: Double {
+        filteredItems.reduce(0) { $0 + $1.expense.amount }
+    }
+
+    // ── Chip band ──────────────────────────────────────────────────────────
+
+    struct FilterChip: Identifiable {
+        let id: String
+        let filter: TxFilter
+        let label: String
+        let icon: String
+        let color: Color
+        let count: Int
+    }
+
+    /// Only categories actually present this month get a chip, biggest spend
+    /// first, so the band stays short and useful.
+    private var chips: [FilterChip] {
+        var result: [FilterChip] = [
+            FilterChip(id: "all", filter: .all, label: "All",
+                       icon: "square.grid.2x2.fill", color: .secondary, count: items.count)
+        ]
+
+        let incomeCount = items.filter { $0.expense.isIncome }.count
+        if incomeCount > 0 {
+            result.append(FilterChip(id: "income", filter: .income, label: "Income",
+                                     icon: "arrow.down.circle.fill",
+                                     color: Color(red: 0.1, green: 0.62, blue: 0.35),
+                                     count: incomeCount))
+        }
+
+        let savingsCount = items.filter { $0.expense.isDeposit }.count
+        if savingsCount > 0 {
+            result.append(FilterChip(id: "savings", filter: .savings, label: "Savings",
+                                     icon: "banknote.fill",
+                                     color: Color(red: 0.2, green: 0.45, blue: 0.9),
+                                     count: savingsCount))
+        }
+
+        let spending = items.filter { !$0.expense.isIncome && !$0.expense.isDeposit }
+        var totals: [String: (total: Double, count: Int, icon: String, color: Color)] = [:]
+        for item in spending {
+            let key = item.expense.displayCategory
+            let icon = item.expense.customCategoryLabel.isEmpty
+                ? item.expense.category.icon : "tag.fill"
+            let existing = totals[key] ?? (0, 0, icon, item.expense.category.color)
+            totals[key] = (existing.total + item.expense.amount, existing.count + 1,
+                           existing.icon, existing.color)
+        }
+
+        for (name, data) in totals.sorted(by: { $0.value.total > $1.value.total }) {
+            result.append(FilterChip(id: "cat-\(name)", filter: .category(name), label: name,
+                                     icon: data.icon, color: data.color, count: data.count))
+        }
+
+        return result
     }
 
     private var monthLabel: String {
@@ -2150,25 +2238,25 @@ struct TransactionsListSheet: View {
         NavigationView {
             Group {
                 if items.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "tray")
-                            .font(.system(size: 40))
-                            .foregroundColor(.secondary.opacity(0.5))
-                        Text("No transactions this month")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    emptyState("No transactions this month")
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 6) {
-                            ForEach(items) { item in
-                                TransactionListRow(dated: item, sym: sym)
-                                    .padding(.horizontal, 16)
-                                    .onTapGesture { dismiss(); onEdit(item.expense) }
+                    VStack(spacing: 0) {
+                        filterBand
+
+                        if filteredItems.isEmpty {
+                            emptyState("Nothing in this category")
+                        } else {
+                            ScrollView {
+                                LazyVStack(spacing: 6) {
+                                    ForEach(filteredItems) { item in
+                                        TransactionListRow(dated: item, sym: sym)
+                                            .padding(.horizontal, 16)
+                                            .onTapGesture { dismiss(); onEdit(item.expense) }
+                                    }
+                                }
+                                .padding(.vertical, 12)
                             }
                         }
-                        .padding(.vertical, 12)
                     }
                 }
             }
@@ -2180,6 +2268,76 @@ struct TransactionsListSheet: View {
                 }
             }
         }
+    }
+
+    private func emptyState(_ message: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "tray")
+                .font(.system(size: 40))
+                .foregroundColor(.secondary.opacity(0.5))
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var filterBand: some View {
+        VStack(spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(chips) { chip in
+                        let selected = chip.filter == selectedFilter
+                        Button {
+                            withAnimation(.snappy) { selectedFilter = chip.filter }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: chip.icon)
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text(chip.label)
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text("\(chip.count)")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .padding(.horizontal, 5).padding(.vertical, 1)
+                                    .background(Capsule().fill(selected
+                                                               ? Color.white.opacity(0.3)
+                                                               : chip.color.opacity(0.18)))
+                            }
+                            .foregroundColor(selected ? .white : chip.color)
+                            .padding(.horizontal, 11).padding(.vertical, 8)
+                            .background(Capsule().fill(selected
+                                                       ? chip.color
+                                                       : chip.color.opacity(0.12)))
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.top, 10)
+
+            // Running total for whatever is on screen.
+            HStack {
+                Text(selectedFilter == .all ? "All transactions" : summaryLabel)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("\(sym)\(String(format: "%.2f", filteredTotal))")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.primary)
+                    .contentTransition(.numericText())
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+        .background(Color(.systemBackground))
+        .overlay(Divider(), alignment: .bottom)
+    }
+
+    private var summaryLabel: String {
+        let count = filteredItems.count
+        return "\(count) transaction\(count == 1 ? "" : "s")"
     }
 }
 
