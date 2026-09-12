@@ -15,6 +15,44 @@ struct SettingsView: View {
     @State private var showProUpgrade     = false
     @State private var showSharing        = false
 
+    // Smart Food Analysis diagnostics
+    @State private var smartFoodTesting    = false
+    @State private var smartFoodTestResult : String? = nil
+
+    /// True only when a typed dish or a photo will actually reach the service.
+    /// Mirrors the same three conditions FoodTrackerView gates on.
+    private var smartFoodActive: Bool {
+        pro.isPro && vm.settings.cloudFoodAnalysisEnabled && CloudFoodAnalyzer.isConfigured
+    }
+
+    /// The specific reason smart analysis isn't running, so the fix is obvious.
+    private var smartFoodStatusDetail: String {
+        if !CloudFoodAnalyzer.isConfigured {
+            return "No analysis service in this build — food is estimated on your device."
+        }
+        if !vm.settings.cloudFoodAnalysisEnabled {
+            return "Switched off above — food is estimated on your device."
+        }
+        return "Photos and typed dishes are analysed by the service."
+    }
+
+    private func testSmartFood() {
+        smartFoodTesting = true
+        smartFoodTestResult = nil
+        CloudFoodAnalyzer.checkHealth { result in
+            smartFoodTesting = false
+            switch result {
+            case .success(let health):
+                smartFoodTestResult = health.configured
+                    ? "Connected. Running \(health.model)."
+                    : "Reached the service, but its API key isn't set. Add the OPENAI_API_KEY secret to the Worker."
+            case .failure(let error):
+                smartFoodTestResult = (error as? CloudFoodError)?.errorDescription
+                    ?? error.localizedDescription
+            }
+        }
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -147,6 +185,39 @@ struct SettingsView: View {
                         }
                         .tint(.orange)
                         .disabled(!CloudFoodAnalyzer.isConfigured)
+
+                        // Says in one line whether smart analysis is actually
+                        // running, and why not when it isn't — no guessing.
+                        HStack(spacing: 8) {
+                            Image(systemName: smartFoodActive
+                                  ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                                .foregroundColor(smartFoodActive ? .green : .orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(smartFoodActive ? "Active" : "Not active")
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text(smartFoodStatusDetail)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                        Button {
+                            testSmartFood()
+                        } label: {
+                            HStack {
+                                Label("Test Connection", systemImage: "antenna.radiowaves.left.and.right")
+                                Spacer()
+                                if smartFoodTesting { ProgressView() }
+                            }
+                        }
+                        .disabled(!CloudFoodAnalyzer.isConfigured || smartFoodTesting)
+
+                        if let result = smartFoodTestResult {
+                            Text(result)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     } else {
                         Button {
                             showProUpgrade = true

@@ -178,6 +178,59 @@ enum CloudFoodAnalyzer {
              mealName: mealName, answers: answers, note: note, completion: completion)
     }
 
+    // ── Health check ───────────────────────────────────────────────────────
+
+    /// What the Worker reports about itself. `configured` false means the
+    /// Worker is deployed but one of its secrets is missing.
+    struct Health {
+        let configured: Bool
+        let model: String
+    }
+
+    /// Hits the Worker's `/health` endpoint so Settings can tell the user
+    /// exactly what's wrong instead of leaving them guessing.
+    static func checkHealth(completion: @escaping (Result<Health, Error>) -> Void) {
+        guard isConfigured, let url = URL(string: workerBaseURL + "/health") else {
+            DispatchQueue.main.async { completion(.failure(CloudFoodError.notConfigured)) }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            let finish: (Result<Health, Error>) -> Void = { result in
+                DispatchQueue.main.async { completion(result) }
+            }
+
+            if error != nil {
+                finish(.failure(CloudFoodError.service(
+                    "Couldn't reach the service. Check the Worker URL and your connection.")))
+                return
+            }
+
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard status == 200, let data = data else {
+                finish(.failure(CloudFoodError.service(
+                    "The service answered with an error (HTTP \(status)). Check the Worker URL.")))
+                return
+            }
+
+            struct Payload: Decodable {
+                let ok: Bool
+                let configured: Bool
+                let model: String
+            }
+            guard let payload = try? JSONDecoder().decode(Payload.self, from: data) else {
+                finish(.failure(CloudFoodError.service(
+                    "That URL answered, but it isn't the Daily Planner service.")))
+                return
+            }
+
+            finish(.success(Health(configured: payload.configured, model: payload.model)))
+        }.resume()
+    }
+
     // ── Shared request path ────────────────────────────────────────────────
 
     /// `extra` carries whatever identifies the meal — the photo or the typed
