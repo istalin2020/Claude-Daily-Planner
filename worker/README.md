@@ -89,24 +89,30 @@ is `false`, a secret didn't save — run Step 3 again.
 gitignored file instead, which also means `git pull` never wipes them — git
 leaves untracked files alone.
 
-1. In Xcode, right-click the **DailyPlanner → Services** folder →
-   **New File from Template…** → **Swift File**
-2. Name it exactly **`CloudFoodSecrets`**, and make sure **DailyPlanner** is
-   ticked under Targets
-3. Replace the file's contents with this, using your own two values:
+Just build once (**⌘B**). A build phase creates
+`DailyPlanner/Services/CloudFoodSecrets.swift` from the committed template and
+tells you so with a warning. Then open that file in Xcode and edit the two
+values:
 
 ```swift
-import Foundation
-
-enum CloudFoodSecrets {
-    static let workerBaseURL = "https://dailyplanner-food.<your-subdomain>.workers.dev"
-    static let appToken      = "the-random-string-from-step-3"
-}
+static let workerBaseURL = "https://dailyplanner-food.<your-subdomain>.workers.dev"
+static let appToken      = "the-random-string-from-step-3"
 ```
 
-No trailing slash on the URL. `CloudFoodSecrets.swift` is listed in
-`.gitignore`, so it stays on your Mac; `CloudFoodSecrets.example.swift` is the
-committed template to copy from.
+No trailing slash on the URL. Build again and you're done.
+
+**Don't create the file with Xcode's "New File"** — the project already has a
+reference to it, and a second one causes *"invalid redeclaration of
+CloudFoodSecrets"*. Let the build phase make it, or copy the template yourself:
+
+```bash
+cp DailyPlanner/Services/CloudFoodSecrets.example.swift \
+   DailyPlanner/Services/CloudFoodSecrets.swift
+```
+
+`CloudFoodSecrets.swift` is in `.gitignore`, so it stays on your Mac and no pull
+can overwrite it. The build phase only ever creates it when missing — it never
+touches a file that already exists, so your values are safe.
 
 Build and run, then try both ways into it from **Food Tracker → any meal**:
 
@@ -117,9 +123,8 @@ Either way you should get the dish identified with a full nutrition breakdown.
 **Settings → Food Analysis** shows whether smart analysis is active, and a
 **Test Connection** button that calls `/health` from the phone.
 
-> **If you re-clone this repo**, recreate `CloudFoodSecrets.swift` before
-> building. The project expects it, so the build fails with *"Build input file
-> cannot be found"* until it exists.
+> **After a re-clone**, the first build recreates `CloudFoodSecrets.swift` from
+> the template automatically — you just need to paste your two values back in.
 
 ### While testing: the Settings shortcut
 

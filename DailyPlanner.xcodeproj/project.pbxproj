@@ -299,6 +299,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = AA060000000000000000001A /* Build configuration list for PBXNativeTarget "DailyPlanner" */;
 			buildPhases = (
+				AAFCC000000000000000001A /* Create CloudFoodSecrets if missing */,
 				AA0B0000000000000000001A /* Sources */,
 				AA0C0000000000000000001A /* Resources */,
 				AA0D0000000000000000001A /* Frameworks */,
@@ -415,6 +416,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		AAFCC000000000000000001A /* Create CloudFoodSecrets if missing */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/DailyPlanner/Services/CloudFoodSecrets.example.swift",
+			);
+			name = "Create CloudFoodSecrets if missing";
+			outputPaths = (
+				"$(SRCROOT)/DailyPlanner/Services/CloudFoodSecrets.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "SECRETS=\"${SRCROOT}/DailyPlanner/Services/CloudFoodSecrets.swift\"\nTEMPLATE=\"${SRCROOT}/DailyPlanner/Services/CloudFoodSecrets.example.swift\"\n\n# CloudFoodSecrets.swift holds the analysis-service URL and app token. It is\n# gitignored, because this repo is public, so a fresh clone does not have it\n# and the build would otherwise fail with \"Build input file cannot be found\".\n# Seed it from the template instead; the app falls back to on-device food\n# recognition until real values are filled in.\nif [ ! -f \"$SECRETS\" ]; then\n  if [ ! -f \"$TEMPLATE\" ]; then\n    echo \"error: $TEMPLATE is missing, so CloudFoodSecrets.swift cannot be created.\"\n    exit 1\n  fi\n  cp \"$TEMPLATE\" \"$SECRETS\"\n  echo \"warning: Created CloudFoodSecrets.swift from the template. Fill in your Worker URL and app token (worker/README.md step 4) - smart food analysis stays off until you do.\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		BB400000000000000000001A /* Sources */ = {
