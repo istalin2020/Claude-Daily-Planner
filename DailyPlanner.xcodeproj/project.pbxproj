@@ -24,12 +24,42 @@
 		AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA290000000000000000001A /* DailyScheduleView.swift */; };
 		AA2C0000000000000000001A /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B0000000000000000001A /* AppointmentsView.swift */; };
 		AA2E0000000000000000001A /* NotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2D0000000000000000001A /* NotesView.swift */; };
-		AA300000000000000000001A /* NotesForTomorrowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2F0000000000000000001A /* NotesForTomorrowView.swift */; };
 		AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA310000000000000000001A /* ExpenseTrackerView.swift */; };
 		AA340000000000000000001A /* RateYourDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA330000000000000000001A /* RateYourDayView.swift */; };
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
 		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
+		AA440000000000000000001A /* CalorieEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA430000000000000000001A /* CalorieEstimator.swift */; };
 		AA420000000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA410000000000000000001A /* SettingsView.swift */; };
+		AA470000000000000000001A /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA460000000000000000001A /* HealthKitManager.swift */; };
+		AA6400000000000000001A /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA6500000000000000001A /* HealthKit.framework */; };
+		AA490000000000000000001A /* RecurrencePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4A0000000000000000001A /* RecurrencePicker.swift */; };
+		AA4B0000000000000000001A /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4C0000000000000000001A /* SearchView.swift */; };
+		AA4D0000000000000000001A /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4E0000000000000000001A /* ExportView.swift */; };
+		AA510000000000000000001A /* PomodoroTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA500000000000000000001A /* PomodoroTimerView.swift */; };
+		AA530000000000000000001A /* HabitTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA520000000000000000001A /* HabitTrackerView.swift */; };
+		AA550000000000000000001A /* BudgetSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA540000000000000000001A /* BudgetSettingsView.swift */; };
+		AA560000000000000000001A /* SleepTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA570000000000000000001A /* SleepTrackerView.swift */; };
+		AA580000000000000000001A /* WeeklySummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA590000000000000000001A /* WeeklySummaryView.swift */; };
+		AA5A0000000000000000001A /* AppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5B0000000000000000001A /* AppShortcuts.swift */; };
+		AA5C0000000000000000001A /* SpendingTrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5D0000000000000000001A /* SpendingTrendsView.swift */; };
+		AA5E0000000000000000001A /* MedicationTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5F0000000000000000001A /* MedicationTrackerView.swift */; };
+		AA600000000000000000001A /* ProManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA610000000000000000001A /* ProManager.swift */; };
+		AA620000000000000000001A /* ProUpgradeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA630000000000000000001A /* ProUpgradeView.swift */; };
+		AA680000000000000000001A /* SharingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA690000000000000000001A /* SharingView.swift */; };
+		AA6C0000000000000000001A /* CloudKitSharingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6A0000000000000000001A /* CloudKitSharingService.swift */; };
+		AA700000000000000000001A /* BankSMSParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001A /* BankSMSParser.swift */; };
+		AA700000000000000000001B /* CurrencyConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001B /* CurrencyConverter.swift */; };
+		AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001C /* LiquidGlassTheme.swift */; };
+		AA700000000000000000001D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001D /* KeychainHelper.swift */; };
+		AA700000000000000000001E /* GmailSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001E /* GmailSyncService.swift */; };
+		AA780000000000000000001E /* FoodPhotoRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000001E /* FoodPhotoRecognizer.swift */; };
+		AA780000000000000000002A /* CloudFoodAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000002A /* CloudFoodAnalyzer.swift */; };
+		AA780000000000000000002C /* CloudFoodSecrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000002C /* CloudFoodSecrets.swift */; };
+		AA700000000000000000001F /* GmailSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001F /* GmailSyncView.swift */; };
+		AA760000000000000000001F /* HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000001F /* HomeDashboardView.swift */; };
+		AA760000000000000000002B /* SmartMealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000002B /* SmartMealSheet.swift */; };
+		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
+		BB810000000000000000001A /* DailyPlannerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB900000000000000000001A /* DailyPlannerWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,17 +81,72 @@
 		AA290000000000000000001A /* DailyScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScheduleView.swift; sourceTree = "<group>"; };
 		AA2B0000000000000000001A /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
 		AA2D0000000000000000001A /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
-		AA2F0000000000000000001A /* NotesForTomorrowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesForTomorrowView.swift; sourceTree = "<group>"; };
 		AA310000000000000000001A /* ExpenseTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTrackerView.swift; sourceTree = "<group>"; };
 		AA330000000000000000001A /* RateYourDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateYourDayView.swift; sourceTree = "<group>"; };
 		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		AA430000000000000000001A /* CalorieEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieEstimator.swift; sourceTree = "<group>"; };
 		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA460000000000000000001A /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
+		AA6500000000000000001A /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		AA480000000000000000001A /* DailyPlanner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlanner.entitlements; sourceTree = "<group>"; };
+		AA4A0000000000000000001A /* RecurrencePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurrencePicker.swift; sourceTree = "<group>"; };
+		AA4C0000000000000000001A /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		AA4E0000000000000000001A /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
+		AA500000000000000000001A /* PomodoroTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroTimerView.swift; sourceTree = "<group>"; };
+		AA520000000000000000001A /* HabitTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitTrackerView.swift; sourceTree = "<group>"; };
+		AA540000000000000000001A /* BudgetSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetSettingsView.swift; sourceTree = "<group>"; };
+		AA570000000000000000001A /* SleepTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTrackerView.swift; sourceTree = "<group>"; };
+		AA590000000000000000001A /* WeeklySummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummaryView.swift; sourceTree = "<group>"; };
+		AA5B0000000000000000001A /* AppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShortcuts.swift; sourceTree = "<group>"; };
+		AA5D0000000000000000001A /* SpendingTrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingTrendsView.swift; sourceTree = "<group>"; };
+		AA5F0000000000000000001A /* MedicationTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationTrackerView.swift; sourceTree = "<group>"; };
+		AA610000000000000000001A /* ProManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProManager.swift; sourceTree = "<group>"; };
+		AA630000000000000000001A /* ProUpgradeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUpgradeView.swift; sourceTree = "<group>"; };
+		AA690000000000000000001A /* SharingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingView.swift; sourceTree = "<group>"; };
+		AA6A0000000000000000001A /* CloudKitSharingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitSharingService.swift; sourceTree = "<group>"; };
+		AA710000000000000000001A /* BankSMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankSMSParser.swift; sourceTree = "<group>"; };
+		AA710000000000000000001B /* CurrencyConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyConverter.swift; sourceTree = "<group>"; };
+		AA710000000000000000001C /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
+		AA710000000000000000001D /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		AA710000000000000000001E /* GmailSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncService.swift; sourceTree = "<group>"; };
+		AA790000000000000000001E /* FoodPhotoRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodPhotoRecognizer.swift; sourceTree = "<group>"; };
+		AA790000000000000000002A /* CloudFoodAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFoodAnalyzer.swift; sourceTree = "<group>"; };
+		AA790000000000000000002C /* CloudFoodSecrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFoodSecrets.swift; sourceTree = "<group>"; };
+		AA710000000000000000001F /* GmailSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncView.swift; sourceTree = "<group>"; };
+		AA770000000000000000001F /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardView.swift; sourceTree = "<group>"; };
+		AA770000000000000000002B /* SmartMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartMealSheet.swift; sourceTree = "<group>"; };
+		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
+		BB110000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB120000000000000000001A /* DailyPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlannerWidget.entitlements; sourceTree = "<group>"; };
+		BB900000000000000000001A /* DailyPlannerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DailyPlannerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB800000000000000000001A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB810000000000000000001A /* DailyPlannerWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AA0D0000000000000000001A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA6400000000000000001A /* HealthKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB420000000000000000001A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -75,11 +160,14 @@
 			isa = PBXGroup;
 			children = (
 				AA0F0000000000000000001A /* DailyPlannerApp.swift */,
+				AA5B0000000000000000001A /* AppShortcuts.swift */,
 				AA380000000000000000001A /* Models */,
 				AA390000000000000000001A /* ViewModels */,
+				AA450000000000000000001A /* Services */,
 				AA3A0000000000000000001A /* Views */,
 				AA350000000000000000001A /* Assets.xcassets */,
 				AA370000000000000000001A /* Info.plist */,
+				AA480000000000000000001A /* DailyPlanner.entitlements */,
 			);
 			path = DailyPlanner;
 			sourceTree = "<group>";
@@ -88,6 +176,7 @@
 			isa = PBXGroup;
 			children = (
 				AA0E0000000000000000001A /* DailyPlanner.app */,
+				BB900000000000000000001A /* DailyPlannerWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -97,6 +186,7 @@
 			children = (
 				AA110000000000000000001A /* PlannerModels.swift */,
 				AA3F0000000000000000001A /* NotificationManager.swift */,
+				AA430000000000000000001A /* CalorieEstimator.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -109,9 +199,29 @@
 			path = ViewModels;
 			sourceTree = "<group>";
 		};
+		AA450000000000000000001A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AA460000000000000000001A /* HealthKitManager.swift */,
+				AA610000000000000000001A /* ProManager.swift */,
+				AA6A0000000000000000001A /* CloudKitSharingService.swift */,
+				AA710000000000000000001A /* BankSMSParser.swift */,
+				AA710000000000000000001B /* CurrencyConverter.swift */,
+				AA710000000000000000001D /* KeychainHelper.swift */,
+				AA710000000000000000001E /* GmailSyncService.swift */,
+				AA790000000000000000001E /* FoodPhotoRecognizer.swift */,
+				AA790000000000000000002A /* CloudFoodAnalyzer.swift */,
+				AA790000000000000000002C /* CloudFoodSecrets.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		AA3A0000000000000000001A /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AA710000000000000000001F /* GmailSyncView.swift */,
+				AA770000000000000000001F /* HomeDashboardView.swift */,
+				AA770000000000000000002B /* SmartMealSheet.swift */,
 				AA150000000000000000001A /* ContentView.swift */,
 				AA3B0000000000000000001A /* Components */,
 				AA1B0000000000000000001A /* OverviewView.swift */,
@@ -125,10 +235,20 @@
 				AA290000000000000000001A /* DailyScheduleView.swift */,
 				AA2B0000000000000000001A /* AppointmentsView.swift */,
 				AA2D0000000000000000001A /* NotesView.swift */,
-				AA2F0000000000000000001A /* NotesForTomorrowView.swift */,
 				AA310000000000000000001A /* ExpenseTrackerView.swift */,
 				AA330000000000000000001A /* RateYourDayView.swift */,
 				AA410000000000000000001A /* SettingsView.swift */,
+				AA4C0000000000000000001A /* SearchView.swift */,
+				AA4E0000000000000000001A /* ExportView.swift */,
+				AA500000000000000000001A /* PomodoroTimerView.swift */,
+				AA520000000000000000001A /* HabitTrackerView.swift */,
+				AA540000000000000000001A /* BudgetSettingsView.swift */,
+				AA570000000000000000001A /* SleepTrackerView.swift */,
+				AA590000000000000000001A /* WeeklySummaryView.swift */,
+				AA5D0000000000000000001A /* SpendingTrendsView.swift */,
+				AA5F0000000000000000001A /* MedicationTrackerView.swift */,
+				AA630000000000000000001A /* ProUpgradeView.swift */,
+				AA690000000000000000001A /* SharingView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -138,16 +258,38 @@
 			children = (
 				AA170000000000000000001A /* DateScrollerView.swift */,
 				AA190000000000000000001A /* SharedComponents.swift */,
+				AA4A0000000000000000001A /* RecurrencePicker.swift */,
+				AA710000000000000000001C /* LiquidGlassTheme.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		BB300000000000000000001A /* DailyPlannerWidget */ = {
+			isa = PBXGroup;
+			children = (
+				BB100000000000000000001A /* DailyPlannerWidget.swift */,
+				BB110000000000000000001A /* Info.plist */,
+				BB120000000000000000001A /* DailyPlannerWidget.entitlements */,
+			);
+			path = DailyPlannerWidget;
 			sourceTree = "<group>";
 		};
 		AA3C0000000000000000001A = {
 			isa = PBXGroup;
 			children = (
 				AA020000000000000000001A /* DailyPlanner */,
+				BB300000000000000000001A /* DailyPlannerWidget */,
 				AA030000000000000000001A /* Products */,
+				AA6600000000000000001A /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		AA6600000000000000001A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				AA6500000000000000001A /* HealthKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -157,22 +299,54 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = AA060000000000000000001A /* Build configuration list for PBXNativeTarget "DailyPlanner" */;
 			buildPhases = (
+				AAFCC000000000000000001A /* Create CloudFoodSecrets if missing */,
 				AA0B0000000000000000001A /* Sources */,
 				AA0C0000000000000000001A /* Resources */,
 				AA0D0000000000000000001A /* Frameworks */,
+				BB800000000000000000001A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BB510000000000000000001A /* PBXTargetDependency */,
 			);
 			name = DailyPlanner;
 			productName = DailyPlanner;
 			productReference = AA0E0000000000000000001A /* DailyPlanner.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BB500000000000000000001A /* DailyPlannerWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB700000000000000000001A /* Build configuration list for PBXNativeTarget "DailyPlannerWidget" */;
+			buildPhases = (
+				BB400000000000000000001A /* Sources */,
+				BB410000000000000000001A /* Resources */,
+				BB420000000000000000001A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DailyPlannerWidget;
+			productName = DailyPlannerWidget;
+			productReference = BB900000000000000000001A /* DailyPlannerWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
+		BB510000000000000000001A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB500000000000000000001A /* DailyPlannerWidget */;
+			targetProxy = BB520000000000000000001A /* PBXContainerItemProxy */;
+		};
+		BB520000000000000000001A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA000000000000000000001A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB500000000000000000001A;
+			remoteInfo = DailyPlannerWidget;
+		};
 		AA000000000000000000001A /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
@@ -182,6 +356,27 @@
 				TargetAttributes = {
 					AA040000000000000000001A = {
 						CreatedOnToolsVersion = 16.2;
+						DevelopmentTeam = YOURTEAMID;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+							com.apple.HealthKit = {
+								enabled = 1;
+							};
+							com.apple.iCloud = {
+								enabled = 1;
+							};
+						};
+					};
+					BB500000000000000000001A = {
+						CreatedOnToolsVersion = 16.2;
+						DevelopmentTeam = YOURTEAMID;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -199,6 +394,7 @@
 			projectRoot = "";
 			targets = (
 				AA040000000000000000001A /* DailyPlanner */,
+				BB500000000000000000001A /* DailyPlannerWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -212,9 +408,43 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB410000000000000000001A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		AAFCC000000000000000001A /* Create CloudFoodSecrets if missing */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/DailyPlanner/Services/CloudFoodSecrets.example.swift",
+			);
+			name = "Create CloudFoodSecrets if missing";
+			outputPaths = (
+				"$(SRCROOT)/DailyPlanner/Services/CloudFoodSecrets.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "SECRETS=\"${SRCROOT}/DailyPlanner/Services/CloudFoodSecrets.swift\"\nTEMPLATE=\"${SRCROOT}/DailyPlanner/Services/CloudFoodSecrets.example.swift\"\n\n# CloudFoodSecrets.swift holds the analysis-service URL and app token. It is\n# gitignored, because this repo is public, so a fresh clone does not have it\n# and the build would otherwise fail with \"Build input file cannot be found\".\n# Seed it from the template instead; the app falls back to on-device food\n# recognition until real values are filled in.\nif [ ! -f \"$SECRETS\" ]; then\n  if [ ! -f \"$TEMPLATE\" ]; then\n    echo \"error: $TEMPLATE is missing, so CloudFoodSecrets.swift cannot be created.\"\n    exit 1\n  fi\n  cp \"$TEMPLATE\" \"$SECRETS\"\n  echo \"warning: Created CloudFoodSecrets.swift from the template. Fill in your Worker URL and app token (worker/README.md step 4) - smart food analysis stays off until you do.\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
+		BB400000000000000000001A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AA0B0000000000000000001A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -222,6 +452,7 @@
 				AA100000000000000000001A /* DailyPlannerApp.swift in Sources */,
 				AA120000000000000000001A /* PlannerModels.swift in Sources */,
 				AA400000000000000000001A /* NotificationManager.swift in Sources */,
+				AA440000000000000000001A /* CalorieEstimator.swift in Sources */,
 				AA140000000000000000001A /* PlannerViewModel.swift in Sources */,
 				AA160000000000000000001A /* ContentView.swift in Sources */,
 				AA180000000000000000001A /* DateScrollerView.swift in Sources */,
@@ -237,16 +468,92 @@
 				AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */,
 				AA2C0000000000000000001A /* AppointmentsView.swift in Sources */,
 				AA2E0000000000000000001A /* NotesView.swift in Sources */,
-				AA300000000000000000001A /* NotesForTomorrowView.swift in Sources */,
 				AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */,
 				AA340000000000000000001A /* RateYourDayView.swift in Sources */,
 				AA420000000000000000001A /* SettingsView.swift in Sources */,
+				AA470000000000000000001A /* HealthKitManager.swift in Sources */,
+				AA490000000000000000001A /* RecurrencePicker.swift in Sources */,
+				AA4B0000000000000000001A /* SearchView.swift in Sources */,
+				AA4D0000000000000000001A /* ExportView.swift in Sources */,
+				AA510000000000000000001A /* PomodoroTimerView.swift in Sources */,
+				AA530000000000000000001A /* HabitTrackerView.swift in Sources */,
+				AA550000000000000000001A /* BudgetSettingsView.swift in Sources */,
+				AA560000000000000000001A /* SleepTrackerView.swift in Sources */,
+				AA580000000000000000001A /* WeeklySummaryView.swift in Sources */,
+				AA5A0000000000000000001A /* AppShortcuts.swift in Sources */,
+				AA5C0000000000000000001A /* SpendingTrendsView.swift in Sources */,
+				AA5E0000000000000000001A /* MedicationTrackerView.swift in Sources */,
+				AA600000000000000000001A /* ProManager.swift in Sources */,
+				AA620000000000000000001A /* ProUpgradeView.swift in Sources */,
+				AA680000000000000000001A /* SharingView.swift in Sources */,
+				AA6C0000000000000000001A /* CloudKitSharingService.swift in Sources */,
+				AA700000000000000000001A /* BankSMSParser.swift in Sources */,
+				AA700000000000000000001B /* CurrencyConverter.swift in Sources */,
+				AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */,
+				AA700000000000000000001D /* KeychainHelper.swift in Sources */,
+				AA700000000000000000001E /* GmailSyncService.swift in Sources */,
+				AA780000000000000000001E /* FoodPhotoRecognizer.swift in Sources */,
+				AA780000000000000000002A /* CloudFoodAnalyzer.swift in Sources */,
+				AA780000000000000000002C /* CloudFoodSecrets.swift in Sources */,
+				AA700000000000000000001F /* GmailSyncView.swift in Sources */,
+				AA760000000000000000001F /* HomeDashboardView.swift in Sources */,
+				AA760000000000000000002B /* SmartMealSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		BB600000000000000000001A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = DailyPlannerWidget/DailyPlannerWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YOURTEAMID;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DailyPlannerWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner.widget;
+				PRODUCT_NAME = DailyPlannerWidget;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BB610000000000000000001A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = DailyPlannerWidget/DailyPlannerWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YOURTEAMID;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DailyPlannerWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner.widget;
+				PRODUCT_NAME = DailyPlannerWidget;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		AA070000000000000000001A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -368,7 +675,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = DailyPlanner/DailyPlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YOURTEAMID;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
@@ -379,8 +688,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dailyplanner.app;
+				MARKETING_VERSION = 3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -393,7 +702,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = DailyPlanner/DailyPlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YOURTEAMID;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
@@ -404,8 +715,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dailyplanner.app;
+				MARKETING_VERSION = 3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.istalin.DailyPlanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -430,6 +741,15 @@
 			buildConfigurations = (
 				AA090000000000000000001A /* Debug */,
 				AA0A0000000000000000001A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB700000000000000000001A /* Build configuration list for PBXNativeTarget "DailyPlannerWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB600000000000000000001A /* Debug */,
+				BB610000000000000000001A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

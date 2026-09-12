@@ -2,6 +2,10 @@ import SwiftUI
 
 struct DateScrollerView: View {
     @EnvironmentObject var vm: PlannerViewModel
+    /// Compact mode: smaller month header and date cells (used on hub pages).
+    var compact: Bool = false
+    /// Hides the month/year navigator row entirely (used inside sections).
+    var showMonthRow: Bool = true
     @State private var monthOffset: Int = 0
     @State private var showMonthPicker = false
 
@@ -9,7 +13,7 @@ struct DateScrollerView: View {
     private let maxFutureMonths = 12
 
     private var currentMonthDate: Date {
-        cal.date(byAdding: .month, value: monthOffset, to: cal.startOfDay(for: Date()))!
+        cal.date(byAdding: .month, value: monthOffset, to: cal.startOfDay(for: Date())) ?? Date()
     }
 
     private var monthYear: String {
@@ -32,40 +36,44 @@ struct DateScrollerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Month / Year navigator
-            HStack {
+            // Month / Year navigator — arrows sit right beside the month name
+            // so they never clash with the page's back arrow at the edge.
+            HStack(spacing: 22) {
                 Button(action: { withAnimation { monthOffset -= 1 } }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.secondary)
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
                 }
-                Spacer()
                 Button(action: { showMonthPicker = true }) {
                     Text(monthYear)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: compact ? 12 : 13, weight: .bold))
                         .foregroundColor(.primary)
                 }
-                Spacer()
                 Button(action: {
                     if monthOffset < maxFutureMonths { withAnimation { monthOffset += 1 } }
                 }) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(monthOffset < maxFutureMonths ? .secondary : Color.secondary.opacity(0.3))
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, compact ? 3 : 6)
 
             // Date scroll
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: compact ? 6 : 8) {
                         ForEach(datesInMonth, id: \.self) { date in
                             DateCell(
                                 date: date,
                                 isSelected: cal.isDate(date, inSameDayAs: vm.selectedDate),
-                                hasEntry: vm.entries[vm.dateKey(for: date)] != nil
+                                hasEntry: vm.entries[vm.dateKey(for: date)]?.hasData ?? false,
+                                compact: compact
                             )
                             .onTapGesture {
                                 withAnimation(.spring(response: 0.3)) {
@@ -81,10 +89,19 @@ struct DateScrollerView: View {
                 .onAppear {
                     proxy.scrollTo(vm.selectedDate, anchor: .center)
                 }
-                .onChange(of: vm.selectedDate) { newDate in
-                    withAnimation { proxy.scrollTo(newDate, anchor: .center) }
+                .onChange(of: vm.selectedDate) { _, newDate in
+                    let targetMonth = cal.dateComponents([.year, .month], from: newDate)
+                    let currentMonth = cal.dateComponents([.year, .month], from: currentMonthDate)
+                    if targetMonth.year != currentMonth.year || targetMonth.month != currentMonth.month {
+                        let now = cal.startOfDay(for: Date())
+                        let diff = cal.dateComponents([.month], from: now, to: newDate)
+                        monthOffset = diff.month ?? 0
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        withAnimation { proxy.scrollTo(newDate, anchor: .center) }
+                    }
                 }
-                .onChange(of: monthOffset) { _ in
+                .onChange(of: monthOffset) { _, _ in
                     let today = cal.startOfDay(for: Date())
                     if cal.isDate(today, equalTo: currentMonthDate, toGranularity: .month),
                        let todayCell = datesInMonth.first(where: { cal.isDateInToday($0) }) {
@@ -95,7 +112,7 @@ struct DateScrollerView: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
+        .background(.ultraThinMaterial)
         .shadow(color: .black.opacity(0.05), radius: 3, y: 2)
         .sheet(isPresented: $showMonthPicker) {
             MonthYearPickerView(monthOffset: $monthOffset, maxFuture: maxFutureMonths)
@@ -106,9 +123,11 @@ struct DateScrollerView: View {
 
 // MARK: - Date Cell
 struct DateCell: View {
+    @Environment(\.themeAccent) private var accent
     let date: Date
     let isSelected: Bool
     let hasEntry: Bool
+    var compact: Bool = false
 
     private let cal = Calendar.current
 
@@ -121,44 +140,28 @@ struct DateCell: View {
     private var isFuture: Bool { date > cal.startOfDay(for: Date()) }
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: compact ? 2 : 3) {
             Text(dayName)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: compact ? 8 : 10, weight: .medium))
                 .foregroundColor(isSelected ? .white : .secondary)
 
             Text(dayNum)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: compact ? 13 : 16, weight: .bold))
                 .foregroundColor(
                     isSelected ? .white :
-                    isToday    ? Color(red: 0.45, green: 0.25, blue: 0.85) :
-                    isFuture   ? Color(red: 0.45, green: 0.25, blue: 0.85).opacity(0.55) :
+                    isToday    ? accent :
+                    isFuture   ? accent.opacity(0.55) :
                                  .primary
                 )
 
             Circle()
                 .fill(hasEntry
-                      ? (isSelected ? Color.white.opacity(0.7)
-                                    : Color(red: 0.45, green: 0.25, blue: 0.85))
+                      ? (isSelected ? Color.white.opacity(0.7) : accent)
                       : Color.clear)
-                .frame(width: 5, height: 5)
+                .frame(width: compact ? 4 : 5, height: compact ? 4 : 5)
         }
-        .frame(width: 42, height: 60)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected
-                      ? LinearGradient(colors: [Color(red: 0.45, green: 0.25, blue: 0.85),
-                                                Color(red: 0.6,  green: 0.3,  blue: 0.95)],
-                                       startPoint: .top, endPoint: .bottom)
-                      : LinearGradient(colors: [Color.clear, Color.clear],
-                                       startPoint: .top, endPoint: .bottom))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isToday && !isSelected
-                        ? Color(red: 0.45, green: 0.25, blue: 0.85).opacity(0.5)
-                        : Color.clear,
-                        lineWidth: 1.5)
-        )
+        .frame(width: compact ? 34 : 42, height: compact ? 46 : 60)
+        .glassDateCell(isSelected: isSelected, isToday: isToday)
     }
 }
 
@@ -167,6 +170,7 @@ struct MonthYearPickerView: View {
     @Binding var monthOffset: Int
     let maxFuture: Int
     @Environment(\.dismiss) var dismiss
+    @Environment(\.themeAccent) private var accent
 
     private let months = Calendar.current.monthSymbols
     private let currentYear = Calendar.current.component(.year, from: Date())
@@ -178,7 +182,7 @@ struct MonthYearPickerView: View {
         self._monthOffset = monthOffset
         self.maxFuture    = maxFuture
         let cal    = Calendar.current
-        let target = cal.date(byAdding: .month, value: monthOffset.wrappedValue, to: Date())!
+        let target = cal.date(byAdding: .month, value: monthOffset.wrappedValue, to: Date()) ?? Date()
         _selectedMonthIdx = State(initialValue: cal.component(.month, from: target) - 1)
         _selectedYear     = State(initialValue: cal.component(.year,  from: target))
     }
@@ -227,7 +231,7 @@ struct MonthYearPickerView: View {
                 dismiss()
             }
             .buttonStyle(.borderedProminent)
-            .tint(Color(red: 0.45, green: 0.25, blue: 0.85))
+            .tint(accent)
             .padding(.bottom)
         }
         .padding(.horizontal)

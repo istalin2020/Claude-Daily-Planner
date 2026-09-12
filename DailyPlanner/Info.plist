@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -27,13 +27,10 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<!-- Plain system background at launch: white in light mode, black in
+	     dark mode. The in-app theme color takes over once the UI loads. -->
 	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIColorName</key>
-		<string>AccentColor</string>
-		<key>UIImageName</key>
-		<string></string>
-	</dict>
+	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
@@ -52,6 +49,30 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Camera access is not required for Daily Planner.</string>
+	<string>Daily Planner uses the camera so you can photograph your meals while logging food and calories.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Daily Planner lets you pick a photo of your meal when logging food and calories.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Daily Planner reads your steps, calories, exercise time, workouts, and sleep data from Apple Health to display your daily fitness and sleep summary.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Daily Planner saves your water intake and sleep records to Apple Health so your health data stays in sync across all your apps.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Gmail OAuth callback. Replace the placeholder below with YOUR reversed
+	     Google client ID (Client ID with the halves swapped), e.g.
+	     com.googleusercontent.apps.1234567890-abcdefg -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>GoogleOAuth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.295054109320-dnj7a038qmm5lk6dqj5hv5bm7o4fe4kr</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
