@@ -106,21 +106,81 @@ enum CloudFoodError: LocalizedError {
 enum CloudFoodAnalyzer {
 
     // ── Configuration ──────────────────────────────────────────────────────
-    // Replace both values after deploying the Worker (see worker/README.md).
+    //
+    // Two sources, checked in this order:
+    //
+    //  1. Values entered in Settings → Analysis Service, stored on the device.
+    //     DEBUG builds only. These live outside the repo, so pulling new code
+    //     never wipes them — which it does to anything edited in this file.
+    //  2. The bundled constants below, which is what App Store users get.
+    //
+    // For day-to-day testing use (1). Fill in (2) once, at release time.
 
     /// Worker URL, no trailing slash — e.g. "https://dailyplanner-food.<you>.workers.dev"
-    static let workerBaseURL = "https://PASTE-YOUR-WORKER-URL-HERE.workers.dev"
+    private static let bundledWorkerBaseURL = "https://PASTE-YOUR-WORKER-URL-HERE.workers.dev"
 
     /// Must match the APP_TOKEN secret set on the Worker.
-    static let appToken = "PASTE-YOUR-APP-TOKEN-HERE"
+    private static let bundledAppToken = "PASTE-YOUR-APP-TOKEN-HERE"
 
-    /// False until both values above are filled in, so the app quietly stays on
-    /// the on-device path instead of firing doomed requests.
+    private static let urlOverrideKey   = "dailyplanner_food_service_url"
+    private static let tokenOverrideKey = "dailyplanner_food_service_token"
+
+    static var workerBaseURL: String {
+        #if DEBUG
+        if let stored = UserDefaults.standard.string(forKey: urlOverrideKey),
+           !stored.isEmpty {
+            // Tolerate a pasted trailing slash rather than failing obscurely.
+            return stored.hasSuffix("/") ? String(stored.dropLast()) : stored
+        }
+        #endif
+        return bundledWorkerBaseURL
+    }
+
+    static var appToken: String {
+        #if DEBUG
+        if let stored = UserDefaults.standard.string(forKey: tokenOverrideKey),
+           !stored.isEmpty {
+            return stored
+        }
+        #endif
+        return bundledAppToken
+    }
+
+    /// False until a URL and token are available from either source, so the app
+    /// quietly stays on the on-device path instead of firing doomed requests.
     static var isConfigured: Bool {
         !workerBaseURL.contains("PASTE-YOUR")
             && !appToken.contains("PASTE-YOUR")
             && URL(string: workerBaseURL) != nil
     }
+
+    #if DEBUG
+    /// True when the device-stored values are in use rather than the bundled
+    /// constants — shown in Settings so it's obvious which is active.
+    static var usingStoredOverrides: Bool {
+        let url = UserDefaults.standard.string(forKey: urlOverrideKey) ?? ""
+        let token = UserDefaults.standard.string(forKey: tokenOverrideKey) ?? ""
+        return !url.isEmpty && !token.isEmpty
+    }
+
+    static func saveOverrides(url: String, token: String) {
+        let cleanURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(cleanURL, forKey: urlOverrideKey)
+        UserDefaults.standard.set(cleanToken, forKey: tokenOverrideKey)
+    }
+
+    static func clearOverrides() {
+        UserDefaults.standard.removeObject(forKey: urlOverrideKey)
+        UserDefaults.standard.removeObject(forKey: tokenOverrideKey)
+    }
+
+    /// What's currently stored, so Settings can pre-fill the fields.
+    static var storedOverrides: (url: String, token: String) {
+        (UserDefaults.standard.string(forKey: urlOverrideKey) ?? "",
+         UserDefaults.standard.string(forKey: tokenOverrideKey) ?? "")
+    }
+    #endif
 
     /// Longest edge sent to the model. 768px is the sweet spot: enough detail to
     /// tell a papaya from a melon, small enough to stay fast and cheap.
