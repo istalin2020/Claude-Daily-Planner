@@ -85,16 +85,28 @@ is `false`, a secret didn't save — run Step 3 again.
 
 ## Step 4 — Put both values into the app
 
-Open `DailyPlanner/Services/CloudFoodAnalyzer.swift` and replace the two
-placeholders near the top:
+**This repo is public, so the values must not be committed.** They go in a
+gitignored file instead, which also means `git pull` never wipes them — git
+leaves untracked files alone.
+
+1. In Xcode, right-click the **DailyPlanner → Services** folder →
+   **New File from Template…** → **Swift File**
+2. Name it exactly **`CloudFoodSecrets`**, and make sure **DailyPlanner** is
+   ticked under Targets
+3. Replace the file's contents with this, using your own two values:
 
 ```swift
-static let workerBaseURL = "https://dailyplanner-food.<your-subdomain>.workers.dev"
-static let appToken      = "the-random-string-from-step-3"
+import Foundation
+
+enum CloudFoodSecrets {
+    static let workerBaseURL = "https://dailyplanner-food.<your-subdomain>.workers.dev"
+    static let appToken      = "the-random-string-from-step-3"
+}
 ```
 
-No trailing slash on the URL. Until these are filled in, the app silently stays
-on on-device recognition, so nothing breaks in the meantime.
+No trailing slash on the URL. `CloudFoodSecrets.swift` is listed in
+`.gitignore`, so it stays on your Mac; `CloudFoodSecrets.example.swift` is the
+committed template to copy from.
 
 Build and run, then try both ways into it from **Food Tracker → any meal**:
 
@@ -102,21 +114,70 @@ Build and run, then try both ways into it from **Food Tracker → any meal**:
 - the **+ icon** — type a dish name such as `valaikkai bajji`
 
 Either way you should get the dish identified with a full nutrition breakdown.
+**Settings → Food Analysis** shows whether smart analysis is active, and a
+**Test Connection** button that calls `/health` from the phone.
+
+> **If you re-clone this repo**, recreate `CloudFoodSecrets.swift` before
+> building. The project expects it, so the build fails with *"Build input file
+> cannot be found"* until it exists.
+
+### While testing: the Settings shortcut
+
+DEBUG builds also read the URL and token from
+**Settings → Food Analysis → Analysis Service**, which overrides
+`CloudFoodSecrets` and is handy for pointing at a different Worker without
+touching code. Release builds ignore it entirely — that section isn't even
+compiled in — so App Store users always get the values from
+`CloudFoodSecrets.swift`. Nothing for them to set up.
 
 ---
 
-## Optional — cap usage per device
+## Guarding against abuse
 
-Without this, one person could in theory hammer the service. To cap each device
-at 40 analyses a day:
+The app token ships inside the binary and can be extracted from it, so assume
+that eventually someone will find it and try to call your Worker directly. Two
+guards make that a non-event. Set up both before you publish.
 
-```bash
-npx wrangler kv namespace create RATE_LIMIT
-```
+### 1. OpenAI spending limit — 30 seconds, do this first
 
-Paste the printed `id` into `wrangler.toml`, uncomment the three
-`[[kv_namespaces]]` lines, then `npx wrangler deploy` again. Adjust the number
-with the `DAILY_LIMIT` var in the same file.
+**platform.openai.com → Settings → Limits → monthly budget.** Set it to
+something you'd shrug at, say **$10**. This is a hard stop: whatever happens
+upstream, your bill cannot exceed it. Nothing in the app or Worker to change.
+
+### 2. Per-device daily cap — from the Cloudflare dashboard
+
+Caps each device at 40 analyses a day. The Worker already has the code; it stays
+dormant until you give it somewhere to count.
+
+1. **dash.cloudflare.com → Storage & Databases → KV → Create a namespace.**
+   Name it `dailyplanner-food-limits` → **Add**
+2. Go to **Workers & Pages → dailyplanner-food → Bindings → Add**
+3. Choose **KV namespace**. Variable name must be exactly **`RATE_LIMIT`**
+   (the Worker looks for that name). Pick the namespace from step 1 → **Add**
+4. Still in **Bindings**, **Add** → **Variable (plain text)**, name
+   **`DAILY_LIMIT`**, value **`40`**
+5. **Deploy**
+
+A device that hits the cap sees *"You've used all 40 food analyses for today.
+They reset tomorrow."* Raise or lower it by editing `DAILY_LIMIT` — no code
+change. Leave `RATE_LIMIT` unbound and the Worker simply doesn't rate limit.
+
+*(On the CLI the equivalent is `npx wrangler kv namespace create RATE_LIMIT`,
+then uncommenting the `[[kv_namespaces]]` block in `wrangler.toml`.)*
+
+### If a token does leak
+
+Set a new `APP_TOKEN` secret on the Worker and put the same value in
+`CloudFoodSecrets.swift`, then ship an app update. Published builds carrying the
+old token fall back to on-device analysis in the meantime — degraded, not
+broken.
+
+### The stronger fix, when you have real subscribers
+
+Verify the App Store receipt in the Worker so only genuine PRO subscribers get
+through. That removes the leaked-token problem rather than capping it, but it
+means passing receipts from the app, calling Apple's verification endpoint, and
+caching the result. Worth doing once the subscriber count justifies it.
 
 ---
 
@@ -143,8 +204,8 @@ npx wrangler tail
 
 | What you see in the app | Cause | Fix |
 |---|---|---|
-| "This build can't reach the analysis service" | `APP_TOKEN` in the app ≠ the Worker secret | Re-check Step 4 |
-| "Smart analysis isn't set up in this build yet" | Placeholders still in `CloudFoodAnalyzer.swift` | Step 4 |
+| "This build can't reach the analysis service" | `appToken` in the app ≠ the Worker's `APP_TOKEN` secret | Re-check Step 4 |
+| "Smart analysis isn't set up in this build yet" | `CloudFoodSecrets.swift` missing or still has placeholders | Step 4 |
 | "Couldn't analyse that photo" / "Couldn't work that dish out" | Check `wrangler tail` — usually no OpenAI credit, or a bad key | Step 1 |
 | "The analysis service is busy" | OpenAI rate limit | Wait a moment and retry |
 | "You've used all N food analyses for today" | The KV rate limit above | Raise `DAILY_LIMIT` |

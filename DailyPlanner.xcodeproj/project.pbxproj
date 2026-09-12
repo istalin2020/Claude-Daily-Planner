@@ -54,6 +54,7 @@
 		AA700000000000000000001E /* GmailSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001E /* GmailSyncService.swift */; };
 		AA780000000000000000001E /* FoodPhotoRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000001E /* FoodPhotoRecognizer.swift */; };
 		AA780000000000000000002A /* CloudFoodAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000002A /* CloudFoodAnalyzer.swift */; };
+		AA780000000000000000002C /* CloudFoodSecrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000002C /* CloudFoodSecrets.swift */; };
 		AA700000000000000000001F /* GmailSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001F /* GmailSyncView.swift */; };
 		AA760000000000000000001F /* HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000001F /* HomeDashboardView.swift */; };
 		AA760000000000000000002B /* SmartMealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000002B /* SmartMealSheet.swift */; };
@@ -112,6 +113,7 @@
 		AA710000000000000000001E /* GmailSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncService.swift; sourceTree = "<group>"; };
 		AA790000000000000000001E /* FoodPhotoRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodPhotoRecognizer.swift; sourceTree = "<group>"; };
 		AA790000000000000000002A /* CloudFoodAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFoodAnalyzer.swift; sourceTree = "<group>"; };
+		AA790000000000000000002C /* CloudFoodSecrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFoodSecrets.swift; sourceTree = "<group>"; };
 		AA710000000000000000001F /* GmailSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncView.swift; sourceTree = "<group>"; };
 		AA770000000000000000001F /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardView.swift; sourceTree = "<group>"; };
 		AA770000000000000000002B /* SmartMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartMealSheet.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 				AA710000000000000000001E /* GmailSyncService.swift */,
 				AA790000000000000000001E /* FoodPhotoRecognizer.swift */,
 				AA790000000000000000002A /* CloudFoodAnalyzer.swift */,
+				AA790000000000000000002C /* CloudFoodSecrets.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -471,6 +474,7 @@
 				AA700000000000000000001E /* GmailSyncService.swift in Sources */,
 				AA780000000000000000001E /* FoodPhotoRecognizer.swift in Sources */,
 				AA780000000000000000002A /* CloudFoodAnalyzer.swift in Sources */,
+				AA780000000000000000002C /* CloudFoodSecrets.swift in Sources */,
 				AA700000000000000000001F /* GmailSyncView.swift in Sources */,
 				AA760000000000000000001F /* HomeDashboardView.swift in Sources */,
 				AA760000000000000000002B /* SmartMealSheet.swift in Sources */,

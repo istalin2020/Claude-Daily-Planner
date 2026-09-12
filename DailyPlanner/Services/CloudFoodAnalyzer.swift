@@ -100,9 +100,13 @@ enum CloudFoodError: LocalizedError {
 /// and returns the dish, portion and nutrition.
 ///
 /// The OpenAI key is never in this app — it lives as a Cloudflare secret. The
-/// token below only proves the request came from Daily Planner; it can be
-/// rotated from the Worker without shipping a new build (older builds then fall
-/// back to on-device recognition, which is the free-tier experience anyway).
+/// app token only proves the request came from Daily Planner; it can be rotated
+/// from the Worker without shipping a new build (older builds then fall back to
+/// on-device recognition, which is the free-tier experience anyway).
+///
+/// That token does ship inside the binary and can be extracted from it, so the
+/// Worker carries its own guards: a per-device daily cap, and an OpenAI spending
+/// limit above it. See worker/README.md § "Guarding against abuse".
 enum CloudFoodAnalyzer {
 
     // ── Configuration ──────────────────────────────────────────────────────
@@ -110,17 +114,12 @@ enum CloudFoodAnalyzer {
     // Two sources, checked in this order:
     //
     //  1. Values entered in Settings → Analysis Service, stored on the device.
-    //     DEBUG builds only. These live outside the repo, so pulling new code
-    //     never wipes them — which it does to anything edited in this file.
-    //  2. The bundled constants below, which is what App Store users get.
+    //     DEBUG builds only — handy for switching Workers while testing.
+    //  2. `CloudFoodSecrets`, which is what App Store users get.
     //
-    // For day-to-day testing use (1). Fill in (2) once, at release time.
-
-    /// Worker URL, no trailing slash — e.g. "https://dailyplanner-food.<you>.workers.dev"
-    private static let bundledWorkerBaseURL = "https://PASTE-YOUR-WORKER-URL-HERE.workers.dev"
-
-    /// Must match the APP_TOKEN secret set on the Worker.
-    private static let bundledAppToken = "PASTE-YOUR-APP-TOKEN-HERE"
+    // CloudFoodSecrets.swift is gitignored because this repo is PUBLIC, so the
+    // real values never leave your Mac — and being untracked, `git pull` leaves
+    // them alone. Create it once from CloudFoodSecrets.example.swift.
 
     private static let urlOverrideKey   = "dailyplanner_food_service_url"
     private static let tokenOverrideKey = "dailyplanner_food_service_token"
@@ -133,7 +132,7 @@ enum CloudFoodAnalyzer {
             return stored.hasSuffix("/") ? String(stored.dropLast()) : stored
         }
         #endif
-        return bundledWorkerBaseURL
+        return CloudFoodSecrets.workerBaseURL
     }
 
     static var appToken: String {
@@ -143,7 +142,7 @@ enum CloudFoodAnalyzer {
             return stored
         }
         #endif
-        return bundledAppToken
+        return CloudFoodSecrets.appToken
     }
 
     /// False until a URL and token are available from either source, so the app
