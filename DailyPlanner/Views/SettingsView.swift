@@ -18,27 +18,9 @@ struct SettingsView: View {
     // Smart Food Analysis diagnostics
     @State private var smartFoodTesting    = false
     @State private var smartFoodTestResult : String? = nil
-    @State private var serviceURLDraft     = ""
-    @State private var serviceTokenDraft   = ""
-
-    private var canSaveService: Bool {
-        let url = serviceURLDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let token = serviceTokenDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        return url.hasPrefix("https://") && !token.isEmpty
-    }
-
-    /// Pre-fills the service fields with whatever is already stored, so the
-    /// screen shows the current state rather than looking empty.
-    private func loadServiceDraft() {
-        #if DEBUG
-        let stored = CloudFoodAnalyzer.storedOverrides
-        if serviceURLDraft.isEmpty   { serviceURLDraft = stored.url }
-        if serviceTokenDraft.isEmpty { serviceTokenDraft = stored.token }
-        #endif
-    }
 
     /// True only when a typed dish or a photo will actually reach the service.
-    /// Mirrors the same three conditions FoodTrackerView gates on.
+    /// Mirrors the same conditions FoodTrackerView gates on.
     private var smartFoodActive: Bool {
         pro.isPro && vm.settings.cloudFoodAnalysisEnabled && CloudFoodAnalyzer.isConfigured
     }
@@ -46,11 +28,7 @@ struct SettingsView: View {
     /// The specific reason smart analysis isn't running, so the fix is obvious.
     private var smartFoodStatusDetail: String {
         if !CloudFoodAnalyzer.isConfigured {
-            #if DEBUG
-            return "No service details yet — enter them below to switch it on."
-            #else
             return "No analysis service in this build — food is estimated on your device."
-            #endif
         }
         if !vm.settings.cloudFoodAnalysisEnabled {
             return "Switched off above — food is estimated on your device."
@@ -240,72 +218,6 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-
-                        // ── Service details (DEBUG builds only) ────────────
-                        // Stored on the device, not in the repo, so pulling new
-                        // code can't wipe them the way editing a source file can.
-                        #if DEBUG
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Analysis Service · testing only")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.secondary)
-
-                            TextField("https://your-worker.workers.dev", text: $serviceURLDraft)
-                                .font(.system(size: 13, design: .monospaced))
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .keyboardType(.URL)
-                                .padding(9)
-                                .background(RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(.tertiarySystemFill)))
-
-                            TextField("App token", text: $serviceTokenDraft)
-                                .font(.system(size: 13, design: .monospaced))
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .padding(9)
-                                .background(RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(.tertiarySystemFill)))
-
-                            HStack(spacing: 10) {
-                                Button {
-                                    CloudFoodAnalyzer.saveOverrides(url: serviceURLDraft,
-                                                                    token: serviceTokenDraft)
-                                    smartFoodTestResult = nil
-                                    testSmartFood()
-                                } label: {
-                                    Text("Save & Test")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 9)
-                                        .background(canSaveService ? Color.orange : Color.gray.opacity(0.3))
-                                        .foregroundColor(.white)
-                                        .cornerRadius(9)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .disabled(!canSaveService)
-
-                                if CloudFoodAnalyzer.usingStoredOverrides {
-                                    Button {
-                                        CloudFoodAnalyzer.clearOverrides()
-                                        serviceURLDraft = ""
-                                        serviceTokenDraft = ""
-                                        smartFoodTestResult = nil
-                                    } label: {
-                                        Text("Clear")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .frame(maxWidth: .infinity)
-                                            .padding(.vertical, 9)
-                                            .background(Color(.tertiarySystemFill))
-                                            .foregroundColor(.red)
-                                            .cornerRadius(9)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        #endif
                     } else {
                         Button {
                             showProUpgrade = true
@@ -321,11 +233,7 @@ struct SettingsView: View {
                     Text("Food Analysis")
                 } footer: {
                     if pro.isPro && !CloudFoodAnalyzer.isConfigured {
-                        #if DEBUG
-                        Text("Paste the Worker URL and app token above, then tap Save & Test. They're stored on this device, so pulling new code won't erase them.")
-                        #else
                         Text("Smart analysis isn't available in this build yet — food is estimated on your device for now.")
-                        #endif
                     } else if pro.isPro {
                         Text("When on, a photo of your meal — or a dish name you type — is sent securely for analysis and comes back with every item identified, portion sizes, calories and a full nutrition breakdown. Switch it off to keep everything on your device, where estimates come from a built-in food list and are more limited. Photos and dish names are used only to produce the estimate and are never stored.")
                     } else {
@@ -716,7 +624,6 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
-            .onAppear { loadServiceDraft() }
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }

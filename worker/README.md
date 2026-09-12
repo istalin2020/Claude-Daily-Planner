@@ -120,20 +120,15 @@ Build and run, then try both ways into it from **Food Tracker → any meal**:
 - the **+ icon** — type a dish name such as `valaikkai bajji`
 
 Either way you should get the dish identified with a full nutrition breakdown.
-**Settings → Food Analysis** shows whether smart analysis is active, and a
-**Test Connection** button that calls `/health` from the phone.
 
 > **After a re-clone**, the first build recreates `CloudFoodSecrets.swift` from
 > the template automatically — you just need to paste your two values back in.
 
-### While testing: the Settings shortcut
+### Checking it from the app
 
-DEBUG builds also read the URL and token from
-**Settings → Food Analysis → Analysis Service**, which overrides
-`CloudFoodSecrets` and is handy for pointing at a different Worker without
-touching code. Release builds ignore it entirely — that section isn't even
-compiled in — so App Store users always get the values from
-`CloudFoodSecrets.swift`. Nothing for them to set up.
+**Settings → Food Analysis** shows **Active** or **Not active** with the reason,
+and a **Test Connection** button that calls `/health` from the phone. That's the
+quickest way to tell an app problem from a Worker problem.
 
 ---
 

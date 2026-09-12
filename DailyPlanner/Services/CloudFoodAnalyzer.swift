@@ -111,75 +111,27 @@ enum CloudFoodAnalyzer {
 
     // ── Configuration ──────────────────────────────────────────────────────
     //
-    // Two sources, checked in this order:
-    //
-    //  1. Values entered in Settings → Analysis Service, stored on the device.
-    //     DEBUG builds only — handy for switching Workers while testing.
-    //  2. `CloudFoodSecrets`, which is what App Store users get.
-    //
-    // CloudFoodSecrets.swift is gitignored because this repo is PUBLIC, so the
-    // real values never leave your Mac — and being untracked, `git pull` leaves
-    // them alone. Create it once from CloudFoodSecrets.example.swift.
+    // Both values come from `CloudFoodSecrets`, which is gitignored because this
+    // repo is PUBLIC: the real values never leave the developer's Mac, `git pull`
+    // leaves them alone, and they still compile into the Release binary so App
+    // Store PRO users get smart analysis with nothing to set up.
+    // See worker/README.md step 4.
 
-    private static let urlOverrideKey   = "dailyplanner_food_service_url"
-    private static let tokenOverrideKey = "dailyplanner_food_service_token"
-
+    /// A pasted trailing slash is tolerated rather than failing obscurely.
     static var workerBaseURL: String {
-        #if DEBUG
-        if let stored = UserDefaults.standard.string(forKey: urlOverrideKey),
-           !stored.isEmpty {
-            // Tolerate a pasted trailing slash rather than failing obscurely.
-            return stored.hasSuffix("/") ? String(stored.dropLast()) : stored
-        }
-        #endif
-        return CloudFoodSecrets.workerBaseURL
+        let url = CloudFoodSecrets.workerBaseURL
+        return url.hasSuffix("/") ? String(url.dropLast()) : url
     }
 
-    static var appToken: String {
-        #if DEBUG
-        if let stored = UserDefaults.standard.string(forKey: tokenOverrideKey),
-           !stored.isEmpty {
-            return stored
-        }
-        #endif
-        return CloudFoodSecrets.appToken
-    }
+    static var appToken: String { CloudFoodSecrets.appToken }
 
-    /// False until a URL and token are available from either source, so the app
-    /// quietly stays on the on-device path instead of firing doomed requests.
+    /// False until both values are filled in, so the app quietly stays on the
+    /// on-device path instead of firing doomed requests.
     static var isConfigured: Bool {
         !workerBaseURL.contains("PASTE-YOUR")
             && !appToken.contains("PASTE-YOUR")
             && URL(string: workerBaseURL) != nil
     }
-
-    #if DEBUG
-    /// True when the device-stored values are in use rather than the bundled
-    /// constants — shown in Settings so it's obvious which is active.
-    static var usingStoredOverrides: Bool {
-        let url = UserDefaults.standard.string(forKey: urlOverrideKey) ?? ""
-        let token = UserDefaults.standard.string(forKey: tokenOverrideKey) ?? ""
-        return !url.isEmpty && !token.isEmpty
-    }
-
-    static func saveOverrides(url: String, token: String) {
-        let cleanURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        UserDefaults.standard.set(cleanURL, forKey: urlOverrideKey)
-        UserDefaults.standard.set(cleanToken, forKey: tokenOverrideKey)
-    }
-
-    static func clearOverrides() {
-        UserDefaults.standard.removeObject(forKey: urlOverrideKey)
-        UserDefaults.standard.removeObject(forKey: tokenOverrideKey)
-    }
-
-    /// What's currently stored, so Settings can pre-fill the fields.
-    static var storedOverrides: (url: String, token: String) {
-        (UserDefaults.standard.string(forKey: urlOverrideKey) ?? "",
-         UserDefaults.standard.string(forKey: tokenOverrideKey) ?? "")
-    }
-    #endif
 
     /// Longest edge sent to the model. 768px is the sweet spot: enough detail to
     /// tell a papaya from a melon, small enough to stay fast and cheap.
