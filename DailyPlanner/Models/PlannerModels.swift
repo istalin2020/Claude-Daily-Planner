@@ -304,6 +304,19 @@ struct PlannerTask: Identifiable, Codable, Equatable {
     var subtasks: [SubTask] = []
     var isShared: Bool = false
 
+    /// When this task's user-editable state last changed. The iCloud merge uses
+    /// it to decide which side of a conflict is newer: without it, a stale cloud
+    /// snapshot could overwrite a completion the user had just made, and the
+    /// task would reappear as incomplete.
+    ///
+    /// Tasks saved before this field existed decode as `.distantPast`, so the
+    /// first real edit always wins over untouched history.
+    var updatedAt: Date = .distantPast
+
+    /// Stamps `updatedAt`. Call on every user-driven change to the fields the
+    /// merge resolves — completion, title, notes, subtasks.
+    mutating func touch() { updatedAt = Date() }
+
     // Robust decoder: any field that might be absent in older saved JSON
     // falls back to its default rather than throwing a keyNotFound error.
     init(id: UUID = UUID(),
@@ -314,7 +327,8 @@ struct PlannerTask: Identifiable, Codable, Equatable {
          notes: String = "",
          recurrence: Recurrence = .none,
          subtasks: [SubTask] = [],
-         isShared: Bool = false) {
+         isShared: Bool = false,
+         updatedAt: Date = .distantPast) {
         self.id = id
         self.title = title
         self.isCompleted = isCompleted
@@ -324,6 +338,7 @@ struct PlannerTask: Identifiable, Codable, Equatable {
         self.recurrence = recurrence
         self.subtasks = subtasks
         self.isShared = isShared
+        self.updatedAt = updatedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -337,6 +352,7 @@ struct PlannerTask: Identifiable, Codable, Equatable {
         recurrence   = try c.decodeIfPresent(Recurrence.self, forKey: .recurrence)   ?? .none
         subtasks     = try c.decodeIfPresent([SubTask].self,  forKey: .subtasks)     ?? []
         isShared     = try c.decodeIfPresent(Bool.self,       forKey: .isShared)     ?? false
+        updatedAt    = try c.decodeIfPresent(Date.self,       forKey: .updatedAt)    ?? .distantPast
     }
 }
 

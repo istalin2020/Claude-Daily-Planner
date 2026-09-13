@@ -187,6 +187,7 @@ class PlannerViewModel: ObservableObject {
         var newState = task.isCompleted
         if let i = e.topPriorities.firstIndex(where: { $0.id == task.id }) {
             e.topPriorities[i].isCompleted.toggle()
+            e.topPriorities[i].touch()
             newState = e.topPriorities[i].isCompleted
         }
         e.topPriorities = sortedByCompletion(e.topPriorities) { $0.isCompleted }
@@ -203,6 +204,7 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.topPriorities.firstIndex(where: { $0.id == task.id }) {
             e.topPriorities[i].title = trimmed
+            e.topPriorities[i].touch()
         }
         currentEntry = e
     }
@@ -246,6 +248,7 @@ class PlannerViewModel: ObservableObject {
         var newState = task.isCompleted
         if let i = e.toDoLists.firstIndex(where: { $0.id == task.id }) {
             e.toDoLists[i].isCompleted.toggle()
+            e.toDoLists[i].touch()
             newState = e.toDoLists[i].isCompleted
         }
         e.toDoLists = sortedByCompletion(e.toDoLists) { $0.isCompleted }
@@ -260,6 +263,7 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.toDoLists.firstIndex(where: { $0.id == task.id }) {
             e.toDoLists[i].title = trimmed
+            e.toDoLists[i].touch()
         }
         currentEntry = e
     }
@@ -301,6 +305,7 @@ class PlannerViewModel: ObservableObject {
         var newState = task.isCompleted
         if let i = e.callsEmails.firstIndex(where: { $0.id == task.id }) {
             e.callsEmails[i].isCompleted.toggle()
+            e.callsEmails[i].touch()
             newState = e.callsEmails[i].isCompleted
         }
         e.callsEmails = sortedByCompletion(e.callsEmails) { $0.isCompleted }
@@ -351,6 +356,7 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.callsEmails.firstIndex(where: { $0.id == task.id }) {
             e.callsEmails[i].title = trimmed
+            e.callsEmails[i].touch()
         }
         currentEntry = e
     }
@@ -392,6 +398,7 @@ class PlannerViewModel: ObservableObject {
         var newState = task.isCompleted
         if let i = e.personalTodo.firstIndex(where: { $0.id == task.id }) {
             e.personalTodo[i].isCompleted.toggle()
+            e.personalTodo[i].touch()
             newState = e.personalTodo[i].isCompleted
         }
         e.personalTodo = sortedByCompletion(e.personalTodo) { $0.isCompleted }
@@ -412,16 +419,20 @@ class PlannerViewModel: ObservableObject {
             guard var entry = entries[key] else { continue }
             var changed = false
             if let i = entry.topPriorities.firstIndex(where: { $0.id == taskId }) {
-                entry.topPriorities[i].isCompleted = isCompleted; changed = true
+                entry.topPriorities[i].isCompleted = isCompleted
+                entry.topPriorities[i].touch(); changed = true
             }
             if let i = entry.toDoLists.firstIndex(where: { $0.id == taskId }) {
-                entry.toDoLists[i].isCompleted = isCompleted; changed = true
+                entry.toDoLists[i].isCompleted = isCompleted
+                entry.toDoLists[i].touch(); changed = true
             }
             if let i = entry.callsEmails.firstIndex(where: { $0.id == taskId }) {
-                entry.callsEmails[i].isCompleted = isCompleted; changed = true
+                entry.callsEmails[i].isCompleted = isCompleted
+                entry.callsEmails[i].touch(); changed = true
             }
             if let i = entry.personalTodo.firstIndex(where: { $0.id == taskId }) {
-                entry.personalTodo[i].isCompleted = isCompleted; changed = true
+                entry.personalTodo[i].isCompleted = isCompleted
+                entry.personalTodo[i].touch(); changed = true
             }
             if changed { entries[key] = entry }
         }
@@ -476,6 +487,7 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.personalTodo.firstIndex(where: { $0.id == task.id }) {
             e.personalTodo[i].title = trimmed
+            e.personalTodo[i].touch()
         }
         currentEntry = e
     }
@@ -1375,6 +1387,19 @@ class PlannerViewModel: ObservableObject {
         for (_, entry) in entries { allDeletedIDs.formUnion(entry.deletedTaskIDs) }
         te.deletedTaskIDs = allDeletedIDs
 
+        // A task the user has completed on ANY day must never roll forward, even
+        // if some other day still holds a stale incomplete copy of it. Rollover
+        // reads every one of the last 30 days, so without this a single stale
+        // copy — left behind by an interrupted sync — is enough to resurrect
+        // finished work the next morning.
+        var completedAnywhere: Set<UUID> = []
+        for (_, entry) in entries {
+            for t in entry.topPriorities where t.isCompleted { completedAnywhere.insert(t.id) }
+            for t in entry.toDoLists     where t.isCompleted { completedAnywhere.insert(t.id) }
+            for t in entry.callsEmails   where t.isCompleted { completedAnywhere.insert(t.id) }
+            for t in entry.personalTodo  where t.isCompleted { completedAnywhere.insert(t.id) }
+        }
+
         // Build a set of task IDs already present in today's entry so we never
         // add the same task twice, even across multiple rollover passes.
         var existingIDs: Set<UUID> = Set(
@@ -1399,16 +1424,20 @@ class PlannerViewModel: ObservableObject {
             // Collect tasks that are still incomplete, not yet in today,
             // and have NOT been explicitly deleted by the user.
             let missingPriorities = pastEntry.topPriorities.filter {
-                !$0.isCompleted && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
+                !$0.isCompleted && !completedAnywhere.contains($0.id)
+                    && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
             }
             let missingTodos = pastEntry.toDoLists.filter {
-                !$0.isCompleted && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
+                !$0.isCompleted && !completedAnywhere.contains($0.id)
+                    && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
             }
             let missingCalls = pastEntry.callsEmails.filter {
-                !$0.isCompleted && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
+                !$0.isCompleted && !completedAnywhere.contains($0.id)
+                    && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
             }
             let missingPersonal = pastEntry.personalTodo.filter {
-                !$0.isCompleted && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
+                !$0.isCompleted && !completedAnywhere.contains($0.id)
+                    && !existingIDs.contains($0.id) && !allDeletedIDs.contains($0.id)
             }
 
             guard !missingPriorities.isEmpty || !missingTodos.isEmpty
@@ -1946,23 +1975,38 @@ class PlannerViewModel: ObservableObject {
         result.callsEmails.removeAll    { allDeletedIDs.contains($0.id) }
         result.personalTodo.removeAll   { allDeletedIDs.contains($0.id) }
 
-        // For tasks present in both, apply memory's mutable state (the most
-        // recent user-side mutations: completion, title edits, notes, subtasks).
-        func applyMemory(to list: inout [PlannerTask], from memList: [PlannerTask]) {
-            let memById = Dictionary(uniqueKeysWithValues: memList.map { ($0.id, $0) })
+        // For tasks present in both, take the mutable state (completion, title,
+        // notes, subtasks) from whichever side was edited more recently.
+        //
+        // This used to apply `memory` unconditionally, which was wrong whenever
+        // memory was the *older* side. On two of the three call sites `memory`
+        // is the iCloud copy, so a stale cloud snapshot would overwrite a
+        // completion the user had just made and the task would come back as
+        // incomplete — and then roll over to the next day as unfinished work.
+        //
+        // `updatedAt` defaults to `.distantPast` on tasks saved before the field
+        // existed. When both sides are untouched the timestamps tie, and the
+        // `>=` keeps the previous memory-wins behaviour for that case.
+        func applyNewer(to list: inout [PlannerTask], from otherList: [PlannerTask]) {
+            let otherById = Dictionary(otherList.map { ($0.id, $0) },
+                                       uniquingKeysWith: { a, b in
+                                           a.updatedAt >= b.updatedAt ? a : b
+                                       })
             for i in list.indices {
-                guard let mem = memById[list[i].id] else { continue }
-                list[i].isCompleted  = mem.isCompleted
-                list[i].isRolledOver = mem.isRolledOver
-                list[i].title        = mem.title
-                list[i].notes        = mem.notes
-                list[i].subtasks     = mem.subtasks
+                guard let other = otherById[list[i].id] else { continue }
+                guard other.updatedAt >= list[i].updatedAt else { continue }
+                list[i].isCompleted  = other.isCompleted
+                list[i].isRolledOver = other.isRolledOver
+                list[i].title        = other.title
+                list[i].notes        = other.notes
+                list[i].subtasks     = other.subtasks
+                list[i].updatedAt    = other.updatedAt
             }
         }
-        applyMemory(to: &result.topPriorities, from: memory.topPriorities)
-        applyMemory(to: &result.toDoLists,     from: memory.toDoLists)
-        applyMemory(to: &result.callsEmails,   from: memory.callsEmails)
-        applyMemory(to: &result.personalTodo,  from: memory.personalTodo)
+        applyNewer(to: &result.topPriorities, from: memory.topPriorities)
+        applyNewer(to: &result.toDoLists,     from: memory.toDoLists)
+        applyNewer(to: &result.callsEmails,   from: memory.callsEmails)
+        applyNewer(to: &result.personalTodo,  from: memory.personalTodo)
 
         // Append tasks that exist only in memory (e.g. added since the last
         // async save) and haven't been deleted.
