@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screenshot 2 - Top Priorities</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 390px; height: 844px;
+  background: linear-gradient(160deg, #F59E0B 0%, #D97706 45%, #92400E 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 24px 20px; overflow: hidden;
+}
+.badge {
+  background: rgba(255,255,255,0.25); color: white;
+  padding: 5px 16px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 14px;
+}
+.headline {
+  color: white; font-size: 40px; font-weight: 800;
+  text-align: center; line-height: 1.1;
+  letter-spacing: -1px; margin-bottom: 10px;
+}
+.subtitle {
+  color: rgba(255,255,255,0.85); font-size: 15px;
+  text-align: center; font-weight: 400; margin-bottom: 24px; line-height: 1.4;
+}
+.phone {
+  width: 238px; height: 498px;
+  background: #F2F2F7; border-radius: 36px;
+  border: 3px solid rgba(255,255,255,0.28);
+  overflow: hidden;
+  box-shadow: 0 28px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.12);
+  flex-shrink: 0;
+}
+.ah {
+  background: linear-gradient(155deg, #7C3AED, #4C1D95);
+  padding: 10px 11px 0; color: white;
+}
+.ah-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.ah-title { font-size: 13px; font-weight: 700; }
+.ah-greet { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+.today-pill { background: rgba(255,255,255,0.22); color: white; font-size: 7px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.month-label { text-align: center; font-size: 8px; font-weight: 600; margin: 5px 0 4px; }
+.dates { display: flex; justify-content: space-between; padding: 0 2px; }
+.d { text-align: center; width: 28px; }
+.d-day { font-size: 6.5px; opacity: 0.75; }
+.d-num { font-size: 10px; font-weight: 600; }
+.d.active .d-inner { background: white; border-radius: 7px; padding: 2px 0; }
+.d.active .d-day { color: #6D28D9; opacity: 1; }
+.d.active .d-num { color: #6D28D9; }
+.tabs { display: flex; gap: 3px; padding: 7px 0 6px; }
+.tab { font-size: 7px; padding: 3px 7px; border-radius: 10px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.tab.on { background: rgba(255,255,255,0.9); color: #5B21B6; font-weight: 700; }
+/* body */
+.ab { background: #F2F2F7; padding: 10px 8px; flex: 1; }
+.sec-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sec-title { font-size: 11px; font-weight: 700; color: #1C1C1E; }
+.progress-pill { background: #F59E0B; color: white; font-size: 7px; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+.task { background: white; border-radius: 10px; padding: 8px 10px; margin-bottom: 5px; display: flex; align-items: flex-start; gap: 8px; }
+.check { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #D1D5DB; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; }
+.check.done { background: #22C55E; border-color: #22C55E; color: white; font-size: 10px; }
+.ttext { flex: 1; }
+.ttitle { font-size: 9px; font-weight: 600; color: #1C1C1E; }
+.ttitle.done { color: #8E8E93; text-decoration: line-through; }
+.tsub { font-size: 7px; color: #8E8E93; margin-top: 2px; }
+.star { color: #F59E0B; font-size: 9px; }
+/* progress ring area */
+.ring-row { display: flex; justify-content: center; margin: 8px 0 4px; }
+.ring-box { background: white; border-radius: 12px; padding: 8px 16px; display: flex; align-items: center; gap: 10px; }
+.ring { width: 44px; height: 44px; border-radius: 50%; background: conic-gradient(#F59E0B 0% 60%, #E5E7EB 60% 100%); display: flex; align-items: center; justify-content: center; }
+.ring-inner { width: 32px; height: 32px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.ring-pct { font-size: 9px; font-weight: 700; color: #1C1C1E; }
+.ring-lbl { font-size: 8px; color: #1C1C1E; font-weight: 600; }
+.ring-sub { font-size: 6.5px; color: #8E8E93; }
+/* bottom */
+.feats { display: flex; gap: 18px; margin-top: 20px; }
+.feat { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="badge">Top Priorities</div>
+  <div class="headline">Achieve Your<br>Top Goals Daily</div>
+  <div class="subtitle">Set your most important tasks and<br>track completion with a glance</div>
+
+  <div class="phone">
+    <div class="ah">
+      <div class="ah-row1">
+        <div><div class="ah-title">Daily Planner</div><div class="ah-greet">Good Morning ✨</div></div>
+        <div class="today-pill">Today</div>
+      </div>
+      <div class="month-label">February 2026</div>
+      <div class="dates">
+        <div class="d"><div class="d-day">Mon</div><div class="d-num">23</div></div>
+        <div class="d"><div class="d-day">Tue</div><div class="d-num">24</div></div>
+        <div class="d"><div class="d-day">Wed</div><div class="d-num">25</div></div>
+        <div class="d"><div class="d-day">Thu</div><div class="d-num">26</div></div>
+        <div class="d"><div class="d-day">Fri</div><div class="d-num">27</div></div>
+        <div class="d active"><div class="d-inner"><div class="d-day">Sat</div><div class="d-num">28</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab">Overview</div>
+        <div class="tab on">Top Priorities</div>
+        <div class="tab">To-Do</div>
+        <div class="tab">Health</div>
+      </div>
+    </div>
+    <div class="ab">
+      <div class="sec-header">
+        <div class="sec-title">⭐ Top Priorities</div>
+        <div class="progress-pill">3 / 5 Done</div>
+      </div>
+      <div class="task">
+        <div class="check done">✓</div>
+        <div class="ttext"><div class="ttitle done">Finish quarterly report</div><div class="tsub"><span class="star">★★★★★</span> High Priority</div></div>
+      </div>
+      <div class="task">
+        <div class="check done">✓</div>
+        <div class="ttext"><div class="ttitle done">Team standup meeting</div><div class="tsub"><span class="star">★★★★☆</span> Medium</div></div>
+      </div>
+      <div class="task">
+        <div class="check done">✓</div>
+        <div class="ttext"><div class="ttitle done">Reply to client emails</div><div class="tsub"><span class="star">★★★★☆</span> Medium</div></div>
+      </div>
+      <div class="task">
+        <div class="check"></div>
+        <div class="ttext"><div class="ttitle">Review project proposal</div><div class="tsub"><span class="star">★★★★★</span> High Priority</div></div>
+      </div>
+      <div class="task">
+        <div class="check"></div>
+        <div class="ttext"><div class="ttitle">Update roadmap document</div><div class="tsub"><span class="star">★★★☆☆</span> Normal</div></div>
+      </div>
+      <div class="ring-row">
+        <div class="ring-box">
+          <div class="ring"><div class="ring-inner"><div class="ring-pct">60%</div></div></div>
+          <div><div class="ring-lbl">Daily Progress</div><div class="ring-sub">3 of 5 priorities complete</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feats">
+    <div class="feat">✓ Star Ratings</div>
+    <div class="feat">✓ Daily Reset</div>
+    <div class="feat">✓ Roll Over</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "dailyplanner-food-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker that proxies Daily Planner food photos to OpenAI for nutrition analysis.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

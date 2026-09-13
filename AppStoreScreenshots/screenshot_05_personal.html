@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screenshot 5 - Personal To-Do</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 390px; height: 844px;
+  background: linear-gradient(160deg, #EC4899 0%, #BE185D 50%, #831843 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 24px 20px; overflow: hidden;
+}
+.badge { background: rgba(255,255,255,0.22); color: white; padding: 5px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+.headline { color: white; font-size: 38px; font-weight: 800; text-align: center; line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+.subtitle { color: rgba(255,255,255,0.85); font-size: 15px; text-align: center; font-weight: 400; margin-bottom: 24px; line-height: 1.4; }
+.phone { width: 238px; height: 498px; background: #F2F2F7; border-radius: 36px; border: 3px solid rgba(255,255,255,0.28); overflow: hidden; box-shadow: 0 28px 80px rgba(0,0,0,0.45); flex-shrink: 0; }
+.ah { background: linear-gradient(155deg, #7C3AED, #4C1D95); padding: 10px 11px 0; color: white; }
+.ah-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.ah-title { font-size: 13px; font-weight: 700; }
+.ah-greet { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+.today-pill { background: rgba(255,255,255,0.22); color: white; font-size: 7px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.month-label { text-align: center; font-size: 8px; font-weight: 600; margin: 5px 0 4px; }
+.dates { display: flex; justify-content: space-between; padding: 0 2px; }
+.d { text-align: center; width: 28px; }
+.d-day { font-size: 6.5px; opacity: 0.75; }
+.d-num { font-size: 10px; font-weight: 600; }
+.d.active .d-inner { background: white; border-radius: 7px; padding: 2px 0; }
+.d.active .d-day { color: #6D28D9; opacity: 1; }
+.d.active .d-num { color: #6D28D9; }
+.tabs { display: flex; gap: 3px; padding: 7px 0 6px; }
+.tab { font-size: 7px; padding: 3px 7px; border-radius: 10px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.tab.on { background: rgba(255,255,255,0.9); color: #5B21B6; font-weight: 700; }
+.ab { background: #F2F2F7; padding: 8px 8px; flex: 1; }
+.sec-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sec-title { font-size: 11px; font-weight: 700; color: #1C1C1E; }
+.progress-pill { background: #EC4899; color: white; font-size: 7px; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+.task { background: white; border-radius: 10px; padding: 7px 9px; margin-bottom: 5px; display: flex; align-items: center; gap: 7px; }
+.cb { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #D1D5DB; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.cb.done { background: #EC4899; border-color: #EC4899; color: white; font-size: 9px; }
+.ttext { flex: 1; }
+.ttitle { font-size: 8.5px; font-weight: 600; color: #1C1C1E; }
+.ttitle.done { color: #8E8E93; text-decoration: line-through; }
+.tsub { font-size: 6.5px; color: #8E8E93; margin-top: 1px; }
+.tag { font-size: 6px; background: #FDF2F8; color: #BE185D; padding: 1px 5px; border-radius: 5px; font-weight: 600; }
+.progress-bar-wrap { background: white; border-radius: 10px; padding: 8px 10px; margin-top: 4px; }
+.pb-label { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.pb-text { font-size: 8px; font-weight: 600; color: #1C1C1E; }
+.pb-pct { font-size: 8px; font-weight: 700; color: #EC4899; }
+.pb { background: #F3F4F6; border-radius: 4px; height: 6px; overflow: hidden; }
+.pb-fill { background: linear-gradient(90deg, #EC4899, #F472B6); height: 100%; border-radius: 4px; width: 57%; }
+.feats { display: flex; gap: 14px; margin-top: 20px; }
+.feat { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="badge">Personal Tasks</div>
+  <div class="headline">Balance Work<br>&amp; Personal Life</div>
+  <div class="subtitle">Keep your personal to-dos separate<br>and always under control</div>
+
+  <div class="phone">
+    <div class="ah">
+      <div class="ah-row1">
+        <div><div class="ah-title">Daily Planner</div><div class="ah-greet">Good Morning ✨</div></div>
+        <div class="today-pill">Today</div>
+      </div>
+      <div class="month-label">February 2026</div>
+      <div class="dates">
+        <div class="d"><div class="d-day">Mon</div><div class="d-num">23</div></div>
+        <div class="d"><div class="d-day">Tue</div><div class="d-num">24</div></div>
+        <div class="d"><div class="d-day">Wed</div><div class="d-num">25</div></div>
+        <div class="d"><div class="d-day">Thu</div><div class="d-num">26</div></div>
+        <div class="d"><div class="d-day">Fri</div><div class="d-num">27</div></div>
+        <div class="d active"><div class="d-inner"><div class="d-day">Sat</div><div class="d-num">28</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab">Overview</div>
+        <div class="tab">Priorities</div>
+        <div class="tab">To-Do</div>
+        <div class="tab on">Personal</div>
+      </div>
+    </div>
+    <div class="ab">
+      <div class="sec-header">
+        <div class="sec-title">✅ Personal To-Do</div>
+        <div class="progress-pill">4 / 7 Done</div>
+      </div>
+      <div class="task">
+        <div class="cb done">✓</div>
+        <div class="ttext"><div class="ttitle done">Morning meditation 🧘</div><div class="tsub"><span class="tag">Wellness</span></div></div>
+      </div>
+      <div class="task">
+        <div class="cb done">✓</div>
+        <div class="ttext"><div class="ttitle done">Call mom &amp; dad</div><div class="tsub"><span class="tag">Family</span></div></div>
+      </div>
+      <div class="task">
+        <div class="cb done">✓</div>
+        <div class="ttext"><div class="ttitle done">Read 30 minutes</div><div class="tsub"><span class="tag">Growth</span></div></div>
+      </div>
+      <div class="task">
+        <div class="cb done">✓</div>
+        <div class="ttext"><div class="ttitle done">Plan weekend trip</div><div class="tsub"><span class="tag">Fun</span></div></div>
+      </div>
+      <div class="task">
+        <div class="cb"></div>
+        <div class="ttext"><div class="ttitle">Renew gym membership</div><div class="tsub"><span class="tag">Health</span></div></div>
+      </div>
+      <div class="task">
+        <div class="cb"></div>
+        <div class="ttext"><div class="ttitle">Organize home office</div><div class="tsub"><span class="tag">Home</span></div></div>
+      </div>
+      <div class="task">
+        <div class="cb"></div>
+        <div class="ttext"><div class="ttitle">Journal evening thoughts</div><div class="tsub"><span class="tag">Wellness</span></div></div>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="pb-label"><div class="pb-text">Today's Progress</div><div class="pb-pct">57%</div></div>
+        <div class="pb"><div class="pb-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feats">
+    <div class="feat">✓ Custom Tags</div>
+    <div class="feat">✓ Daily Reset</div>
+    <div class="feat">✓ Progress Bar</div>
+  </div>
+</body>
+</html>

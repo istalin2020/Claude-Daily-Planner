@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screenshot 7 - Water Tracker</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 390px; height: 844px;
+  background: linear-gradient(160deg, #0EA5E9 0%, #0369A1 50%, #0C4A6E 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 24px 20px; overflow: hidden;
+}
+.badge { background: rgba(255,255,255,0.22); color: white; padding: 5px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+.headline { color: white; font-size: 40px; font-weight: 800; text-align: center; line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+.subtitle { color: rgba(255,255,255,0.85); font-size: 15px; text-align: center; font-weight: 400; margin-bottom: 24px; line-height: 1.4; }
+.phone { width: 238px; height: 498px; background: #F2F2F7; border-radius: 36px; border: 3px solid rgba(255,255,255,0.28); overflow: hidden; box-shadow: 0 28px 80px rgba(0,0,0,0.45); flex-shrink: 0; }
+.ah { background: linear-gradient(155deg, #7C3AED, #4C1D95); padding: 10px 11px 0; color: white; }
+.ah-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.ah-title { font-size: 13px; font-weight: 700; }
+.ah-greet { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+.today-pill { background: rgba(255,255,255,0.22); color: white; font-size: 7px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.month-label { text-align: center; font-size: 8px; font-weight: 600; margin: 5px 0 4px; }
+.dates { display: flex; justify-content: space-between; padding: 0 2px; }
+.d { text-align: center; width: 28px; }
+.d-day { font-size: 6.5px; opacity: 0.75; }
+.d-num { font-size: 10px; font-weight: 600; }
+.d.active .d-inner { background: white; border-radius: 7px; padding: 2px 0; }
+.d.active .d-day { color: #6D28D9; opacity: 1; }
+.d.active .d-num { color: #6D28D9; }
+.tabs { display: flex; gap: 3px; padding: 7px 0 6px; }
+.tab { font-size: 7px; padding: 3px 7px; border-radius: 10px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.tab.on { background: rgba(255,255,255,0.9); color: #5B21B6; font-weight: 700; }
+.ab { background: #F2F2F7; padding: 10px 10px; flex: 1; display: flex; flex-direction: column; }
+.sec-title { font-size: 11px; font-weight: 700; color: #1C1C1E; margin-bottom: 8px; }
+.big-count { background: white; border-radius: 14px; padding: 12px 10px; text-align: center; margin-bottom: 8px; }
+.count-num { font-size: 36px; font-weight: 900; color: #0EA5E9; line-height: 1; }
+.count-sub { font-size: 8px; color: #8E8E93; margin-top: 3px; }
+.glasses-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: white; border-radius: 14px; padding: 10px 8px; margin-bottom: 8px; }
+.glass { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.glass-ico { font-size: 18px; }
+.glass-ico.empty { opacity: 0.2; }
+.glass-lbl { font-size: 6px; color: #8E8E93; }
+.goal-row { background: white; border-radius: 12px; padding: 8px 10px; }
+.goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.goal-label { font-size: 8.5px; font-weight: 600; color: #1C1C1E; }
+.goal-pct { font-size: 8.5px; font-weight: 700; color: #0EA5E9; }
+.pb { background: #E0F2FE; border-radius: 4px; height: 8px; overflow: hidden; }
+.pb-fill { background: linear-gradient(90deg, #0EA5E9, #38BDF8); height: 100%; border-radius: 4px; width: 62.5%; }
+.goal-note { font-size: 7px; color: #8E8E93; margin-top: 4px; text-align: center; }
+.feats { display: flex; gap: 14px; margin-top: 20px; }
+.feat { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="badge">Water Tracker</div>
+  <div class="headline">Stay Hydrated<br>All Day Long</div>
+  <div class="subtitle">Log your water intake with one tap<br>and hit your daily hydration goal</div>
+
+  <div class="phone">
+    <div class="ah">
+      <div class="ah-row1">
+        <div><div class="ah-title">Daily Planner</div><div class="ah-greet">Good Morning ✨</div></div>
+        <div class="today-pill">Today</div>
+      </div>
+      <div class="month-label">February 2026</div>
+      <div class="dates">
+        <div class="d"><div class="d-day">Mon</div><div class="d-num">23</div></div>
+        <div class="d"><div class="d-day">Tue</div><div class="d-num">24</div></div>
+        <div class="d"><div class="d-day">Wed</div><div class="d-num">25</div></div>
+        <div class="d"><div class="d-day">Thu</div><div class="d-num">26</div></div>
+        <div class="d"><div class="d-day">Fri</div><div class="d-num">27</div></div>
+        <div class="d active"><div class="d-inner"><div class="d-day">Sat</div><div class="d-num">28</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab">Overview</div>
+        <div class="tab">Health</div>
+        <div class="tab on">Water</div>
+        <div class="tab">Food</div>
+      </div>
+    </div>
+    <div class="ab">
+      <div class="sec-title">💧 Water Tracker</div>
+      <div class="big-count">
+        <div class="count-num">5 <span style="font-size:18px;color:#8E8E93;">/ 8</span></div>
+        <div class="count-sub">glasses of water today</div>
+      </div>
+      <div class="glasses-grid">
+        <div class="glass"><div class="glass-ico">💧</div><div class="glass-lbl">1st</div></div>
+        <div class="glass"><div class="glass-ico">💧</div><div class="glass-lbl">2nd</div></div>
+        <div class="glass"><div class="glass-ico">💧</div><div class="glass-lbl">3rd</div></div>
+        <div class="glass"><div class="glass-ico">💧</div><div class="glass-lbl">4th</div></div>
+        <div class="glass"><div class="glass-ico">💧</div><div class="glass-lbl">5th</div></div>
+        <div class="glass"><div class="glass-ico empty">💧</div><div class="glass-lbl">6th</div></div>
+        <div class="glass"><div class="glass-ico empty">💧</div><div class="glass-lbl">7th</div></div>
+        <div class="glass"><div class="glass-ico empty">💧</div><div class="glass-lbl">8th</div></div>
+      </div>
+      <div class="goal-row">
+        <div class="goal-header">
+          <div class="goal-label">Daily Goal Progress</div>
+          <div class="goal-pct">62.5%</div>
+        </div>
+        <div class="pb"><div class="pb-fill"></div></div>
+        <div class="goal-note">3 more glasses to reach your goal! 💪</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feats">
+    <div class="feat">✓ Tap to Log</div>
+    <div class="feat">✓ Custom Goal</div>
+    <div class="feat">✓ Daily Reset</div>
+  </div>
+</body>
+</html>

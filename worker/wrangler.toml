@@ -1,0 +1,24 @@
+name = "dailyplanner-food"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Model to call. Swap this line and redeploy to change models — no code edit.
+#   gpt-5-nano    cheapest, plenty for food photos
+#   gpt-5.4-nano  newer nano, a little sharper, still very cheap
+OPENAI_MODEL = "gpt-5-nano"
+
+# Photo analyses allowed per device per day. Only enforced when the RATE_LIMIT
+# KV namespace below is uncommented — without it this value is ignored.
+DAILY_LIMIT = "40"
+
+# Optional abuse guard. To turn it on:
+#   npx wrangler kv namespace create RATE_LIMIT
+# then paste the printed id below and uncomment both lines.
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT"
+# id = "paste-the-id-wrangler-printed"
+
+# Secrets are NOT set here — they would end up in git. Set them with:
+#   npx wrangler secret put OPENAI_API_KEY
+#   npx wrangler secret put APP_TOKEN

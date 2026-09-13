@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screenshot 9 - Notes</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 390px; height: 844px;
+  background: linear-gradient(160deg, #6366F1 0%, #4338CA 50%, #1E1B4B 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 24px 20px; overflow: hidden;
+}
+.badge { background: rgba(255,255,255,0.22); color: white; padding: 5px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+.headline { color: white; font-size: 40px; font-weight: 800; text-align: center; line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+.subtitle { color: rgba(255,255,255,0.85); font-size: 15px; text-align: center; font-weight: 400; margin-bottom: 24px; line-height: 1.4; }
+.phone { width: 238px; height: 498px; background: #F2F2F7; border-radius: 36px; border: 3px solid rgba(255,255,255,0.28); overflow: hidden; box-shadow: 0 28px 80px rgba(0,0,0,0.45); flex-shrink: 0; }
+.ah { background: linear-gradient(155deg, #7C3AED, #4C1D95); padding: 10px 11px 0; color: white; }
+.ah-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.ah-title { font-size: 13px; font-weight: 700; }
+.ah-greet { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+.today-pill { background: rgba(255,255,255,0.22); color: white; font-size: 7px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.month-label { text-align: center; font-size: 8px; font-weight: 600; margin: 5px 0 4px; }
+.dates { display: flex; justify-content: space-between; padding: 0 2px; }
+.d { text-align: center; width: 28px; }
+.d-day { font-size: 6.5px; opacity: 0.75; }
+.d-num { font-size: 10px; font-weight: 600; }
+.d.active .d-inner { background: white; border-radius: 7px; padding: 2px 0; }
+.d.active .d-day { color: #6D28D9; opacity: 1; }
+.d.active .d-num { color: #6D28D9; }
+.tabs { display: flex; gap: 3px; padding: 7px 0 6px; }
+.tab { font-size: 7px; padding: 3px 7px; border-radius: 10px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.tab.on { background: rgba(255,255,255,0.9); color: #5B21B6; font-weight: 700; }
+.ab { background: #F2F2F7; padding: 8px 8px; flex: 1; }
+.sec-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sec-title { font-size: 11px; font-weight: 700; color: #1C1C1E; }
+.note-count { background: #6366F1; color: white; font-size: 7px; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+.note-card { border-radius: 12px; padding: 10px 11px; margin-bottom: 6px; }
+.note-date { font-size: 6.5px; font-weight: 600; margin-bottom: 4px; opacity: 0.7; }
+.note-title { font-size: 9px; font-weight: 700; color: #1C1C1E; margin-bottom: 3px; }
+.note-body { font-size: 7.5px; color: #374151; line-height: 1.45; }
+.note-tag { display: inline-block; font-size: 6px; font-weight: 600; padding: 1px 5px; border-radius: 5px; margin-top: 4px; }
+.feats { display: flex; gap: 14px; margin-top: 20px; }
+.feat { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="badge">Daily Notes</div>
+  <div class="headline">Capture Every<br>Idea &amp; Thought</div>
+  <div class="subtitle">Write daily notes, jot down ideas<br>and keep your thoughts organized</div>
+
+  <div class="phone">
+    <div class="ah">
+      <div class="ah-row1">
+        <div><div class="ah-title">Daily Planner</div><div class="ah-greet">Good Morning ✨</div></div>
+        <div class="today-pill">Today</div>
+      </div>
+      <div class="month-label">February 2026</div>
+      <div class="dates">
+        <div class="d"><div class="d-day">Mon</div><div class="d-num">23</div></div>
+        <div class="d"><div class="d-day">Tue</div><div class="d-num">24</div></div>
+        <div class="d"><div class="d-day">Wed</div><div class="d-num">25</div></div>
+        <div class="d"><div class="d-day">Thu</div><div class="d-num">26</div></div>
+        <div class="d"><div class="d-day">Fri</div><div class="d-num">27</div></div>
+        <div class="d active"><div class="d-inner"><div class="d-day">Sat</div><div class="d-num">28</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab">Overview</div>
+        <div class="tab">Health</div>
+        <div class="tab on">Notes</div>
+        <div class="tab">Rate Day</div>
+      </div>
+    </div>
+    <div class="ab">
+      <div class="sec-header">
+        <div class="sec-title">📝 Daily Notes</div>
+        <div class="note-count">3 Notes Today</div>
+      </div>
+      <div class="note-card" style="background:#FFFBEB;">
+        <div class="note-date">✏️ Morning · 7:15 AM</div>
+        <div class="note-title">Morning Intentions</div>
+        <div class="note-body">Today I want to focus on deep work sessions, avoid distractions, and make meaningful progress on the app launch.</div>
+        <div class="note-tag" style="background:#FEF3C7;color:#92400E;">🌅 Morning</div>
+      </div>
+      <div class="note-card" style="background:#F0FDF4;">
+        <div class="note-date">💡 Midday · 12:30 PM</div>
+        <div class="note-title">App Store Strategy</div>
+        <div class="note-body">Key insight: Screenshots with context text perform 3x better. Need to add lifestyle photography to the mix for the product page.</div>
+        <div class="note-tag" style="background:#DCFCE7;color:#166534;">💼 Work</div>
+      </div>
+      <div class="note-card" style="background:#EEF2FF;">
+        <div class="note-date">🌙 Evening · 8:00 PM</div>
+        <div class="note-title">Gratitude &amp; Reflection</div>
+        <div class="note-body">Grateful for the progress today. Completed 3 of 5 priorities. Tomorrow: review the marketing plan.</div>
+        <div class="note-tag" style="background:#E0E7FF;color:#3730A3;">🌙 Evening</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feats">
+    <div class="feat">✓ Daily Notes</div>
+    <div class="feat">✓ Rich Text</div>
+    <div class="feat">✓ Organized</div>
+  </div>
+</body>
+</html>
