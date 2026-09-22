@@ -132,7 +132,15 @@ final class GmailSyncService: NSObject, ObservableObject {
         // Ask Gmail for transaction-shaped mail only, and let Gmail's own
         // classifier keep Promotions/Social/Forums out — that alone removes
         // most newsletters and sweepstakes before we ever parse them.
-        let verbs = "(debited OR credited OR withdrawn OR spent OR utilised OR utilized OR charged OR transferred OR deposited)"
+        //
+        // The verb list has to cover how each bank actually words its alerts.
+        // Bank Muscat writes "card ... used for USD 5.000" for credit cards and
+        // "has been reversed" for refunds; neither contains any of the original
+        // verbs, so those emails were never even fetched. Over-fetching is
+        // cheap — BankSMSParser.looksLikeBankSMS is what decides.
+        let verbs = "(debited OR credited OR withdrawn OR spent OR utilised OR utilized "
+                  + "OR charged OR transferred OR deposited OR used OR reversed OR reversal "
+                  + "OR refunded OR purchase OR payment)"
         let refs  = "(account OR \"a/c\" OR card OR balance)"
         let excludeCategories = "-category:promotions -category:social -category:forums"
         let excludeNoise = "-\"no purchase necessary\" -sweepstakes -\"gift card\" -newsletter -\"view in browser\" -\"unsubscribe from\""

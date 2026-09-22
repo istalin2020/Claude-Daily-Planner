@@ -102,10 +102,18 @@ struct BankSMSParser {
         if isMarketing(lower) { return false }
 
         // A genuine bank alert has STRUCTURE that marketing never has:
-        //   1. a masked account or card reference, and
-        //   2. the amount sitting right next to a transaction verb.
+        //   1. a masked account or card reference, AND
+        //   2. either the amount sitting near a transaction verb (one-line SMS
+        //      style), or a block of labelled transaction fields (the layout
+        //      Bank Muscat and most Gulf banks use in email alerts).
+        //
+        // Requiring (2) by proximity alone was wrong: in a labelled email the
+        // verb is in the header line and the amount is several lines below, so
+        // whether it passed depended on how long the merchant name happened to
+        // be. Real transactions were silently dropped for having a wordy
+        // merchant.
         guard hasMaskedAccountReference(text) else { return false }
-        return hasAmountNearTransactionVerb(lower)
+        return hasAmountNearTransactionVerb(lower) || hasLabelledTransactionFields(lower)
     }
 
     /// Newsletter / promo / sweepstakes markers.
@@ -143,17 +151,57 @@ struct BankSMSParser {
         return false
     }
 
-    /// True when a currency amount appears within ~100 characters of a verb
-    /// describing money moving. Requiring adjacency stops a long marketing
-    /// email from qualifying just because a price and a stray verb both exist
-    /// somewhere in it.
+    /// Shared currency alternation, used by every amount-matching pattern.
+    private static let currencyAlternation =
+        #"(?:rs\.?|inr|₹|omr|aed|sar|usd|\$|eur|€|gbp|£|kwd|bhd|qar|sgd|myr|pkr|bdt|lkr|npr)"#
+
+    private static func matches(_ pattern: String, _ text: String) -> Bool {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        else { return false }
+        let ns = text as NSString
+        return regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) != nil
+    }
+
+    /// True when the text is laid out as a bank's labelled field block, e.g.
+    ///
+    ///     Account number : xxxx0028
+    ///     Description : 459403-GULF OCEAN INTERNATIONAOM
+    ///     Amount : OMR 4.62
+    ///     Date/Time : 22 SEP 26 14:48
+    ///
+    /// An "Amount:" line carrying a real figure, plus at least one other
+    /// transaction field. Marketing email does not have this shape, so the
+    /// structure alone is strong enough evidence without needing the amount to
+    /// sit near a verb.
+    private static func hasLabelledTransactionFields(_ lower: String) -> Bool {
+        let amountLine = #"amount\s*[:\-]\s*"# + currencyAlternation + #"?\s*[\d,]+(?:\.\d{1,3})?"#
+        guard matches(amountLine, lower) else { return false }
+
+        let supporting = [
+            #"account\s*(?:number|no\.?|#)\s*[:\-]"#,
+            #"card\s*(?:number|no\.?|#)\s*[:\-]"#,
+            #"date\s*/?\s*time\s*[:\-]"#,
+            #"description\s*[:\-]"#,
+            #"transaction\s+(?:country|date|type|reference)\s*[:\-]"#,
+            #"merchant\s*[:\-]"#,
+        ]
+        return supporting.contains { matches($0, lower) }
+    }
+
+    /// True when a currency amount appears near a verb describing money moving.
+    /// Adjacency stops a long marketing email from qualifying just because a
+    /// price and a stray verb both exist somewhere in it.
+    ///
+    /// The window is generous (250 chars) because a labelled bank email can put
+    /// several field lines between the verb and the amount; the masked-account
+    /// requirement in `looksLikeBankSMS` is what actually keeps marketing out.
     private static func hasAmountNearTransactionVerb(_ lower: String) -> Bool {
         let verbs = ["debited", "credited", "withdrawn", "spent", "utilised",
                      "utilized", "charged", "transferred", "deposited",
-                     "refunded", "has been used", "debit", "credit"]
+                     "refunded", "reversed", "used", "purchase", "payment",
+                     "debit", "credit"]
 
-        let currency = #"(?:rs\.?|inr|₹|omr|aed|sar|usd|\$|eur|€|gbp|£|kwd|bhd|qar|sgd|myr|pkr|bdt|lkr|npr)"#
-        let pattern = currency + #"\s*[\d,]+(?:\.\d{1,3})?"#
+        let pattern = currencyAlternation + #"\s*[\d,]+(?:\.\d{1,3})?"#
 
         guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
             return false
@@ -162,8 +210,8 @@ struct BankSMSParser {
         let matches = regex.matches(in: lower, range: NSRange(location: 0, length: ns.length))
 
         for match in matches {
-            let start = max(0, match.range.location - 100)
-            let end   = min(ns.length, match.range.location + match.range.length + 100)
+            let start = max(0, match.range.location - 250)
+            let end   = min(ns.length, match.range.location + match.range.length + 250)
             let window = ns.substring(with: NSRange(location: start, length: end - start))
             if verbs.contains(where: { window.contains($0) }) { return true }
         }
@@ -172,30 +220,84 @@ struct BankSMSParser {
 
     // MARK: - Amount
 
+    /// Finds the transacted amount.
+    ///
+    /// Order matters. A message often carries more than one figure — the amount
+    /// spent AND the balance or remaining limit — so picking by currency-list
+    /// order was wrong: "used for USD 5.000 ... Available limit: OMR 0.562"
+    /// recorded the leftover limit as the expense, because OMR is checked
+    /// before USD. Now a labelled "Amount:" line wins outright, balance and
+    /// limit figures are excluded, and what's left is scored by nearness to a
+    /// transaction verb.
     private static func extractAmount(from text: String) -> (Double, String)? {
-        for entry in currencyPatterns {
-            let patterns = [
-                "\(entry.regex)\\s*([0-9,]+(?:\\.[0-9]{1,3})?)",
-                "([0-9,]+(?:\\.[0-9]{1,3})?)\\s*\(entry.regex)",
-            ]
-            for pattern in patterns {
-                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-                    let range = NSRange(text.startIndex..<text.endIndex, in: text)
-                    if let match = regex.firstMatch(in: text, range: range) {
-                        for g in 1..<match.numberOfRanges {
-                            if let r = Range(match.range(at: g), in: text) {
-                                let str = String(text[r])
-                                let digits = str.replacingOccurrences(of: ",", with: "")
-                                if let val = Double(digits), val > 0 {
-                                    return (val, entry.codes[0])
-                                }
-                            }
-                        }
-                    }
+        // 1. An explicit "Amount : OMR 4.62" line is authoritative.
+        let labelled = #"(?i)amount\s*[:\-]\s*("# + currencyAlternation + #")?\s*([0-9,]+(?:\.[0-9]{1,3})?)"#
+        if let regex = try? NSRegularExpression(pattern: labelled),
+           let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)),
+           let numRange = Range(match.range(at: 2), in: text) {
+            let digits = String(text[numRange]).replacingOccurrences(of: ",", with: "")
+            if let val = Double(digits), val > 0 {
+                var code = ""
+                if let curRange = Range(match.range(at: 1), in: text) {
+                    code = normalizedCurrencyCode(String(text[curRange]))
                 }
+                return (val, code)
             }
         }
 
+        // 2. Otherwise score every currency amount in the message.
+        let ns = text as NSString
+        let lower = text.lowercased() as NSString
+        let anyAmount = "(" + currencyAlternation + #")\s*([0-9,]+(?:\.[0-9]{1,3})?)"#
+
+        // Figures introduced by these describe what's LEFT, not what moved.
+        let notTheAmount = ["available limit", "avl limit", "available balance",
+                            "avl bal", "avlbal", "balance", "bal:", "bal :",
+                            "limit:", "limit :", "remaining"]
+        let verbs = ["debited", "credited", "withdrawn", "spent", "utilised",
+                     "utilized", "charged", "transferred", "deposited",
+                     "refunded", "reversed", "used", "purchase", "payment"]
+
+        if let regex = try? NSRegularExpression(pattern: anyAmount, options: .caseInsensitive) {
+            var best: (value: Double, code: String, distance: Int)? = nil
+
+            for match in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+                guard let numRange = Range(match.range(at: 2), in: text),
+                      let curRange = Range(match.range(at: 1), in: text) else { continue }
+                let digits = String(text[numRange]).replacingOccurrences(of: ",", with: "")
+                guard let val = Double(digits), val > 0 else { continue }
+
+                // Skip balances and remaining limits.
+                let lookBackStart = max(0, match.range.location - 30)
+                let lookBack = lower.substring(with: NSRange(location: lookBackStart,
+                                                            length: match.range.location - lookBackStart))
+                if notTheAmount.contains(where: { lookBack.contains($0) }) { continue }
+
+                // Prefer the amount closest to a verb describing money moving.
+                var distance = Int.max
+                for verb in verbs {
+                    var searchStart = 0
+                    while searchStart < lower.length {
+                        let found = lower.range(of: verb,
+                                                range: NSRange(location: searchStart,
+                                                               length: lower.length - searchStart))
+                        if found.location == NSNotFound { break }
+                        let gap = abs(match.range.location - found.location)
+                        distance = min(distance, gap)
+                        searchStart = found.location + 1
+                    }
+                }
+
+                let code = normalizedCurrencyCode(String(text[curRange]))
+                if best == nil || distance < best!.distance {
+                    best = (val, code, distance)
+                }
+            }
+
+            if let best = best { return (best.value, best.code) }
+        }
+
+        // 3. Last resort: a bare "1,234.00 is debited" with no currency symbol.
         let genericPattern = #"([0-9,]+\.[0-9]{1,3})\s+is\s+(?:debited|credited)"#
         if let regex = try? NSRegularExpression(pattern: genericPattern, options: .caseInsensitive) {
             let range = NSRange(text.startIndex..<text.endIndex, in: text)
@@ -211,6 +313,19 @@ struct BankSMSParser {
         return nil
     }
 
+    /// Maps a matched currency token ("Rs.", "₹", "usd") to its canonical code.
+    private static func normalizedCurrencyCode(_ raw: String) -> String {
+        let token = raw.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !token.isEmpty else { return "" }
+        for entry in currencyPatterns {
+            for code in entry.codes where token == code.lowercased()
+                || token == code.lowercased() + "." {
+                return entry.codes[0]
+            }
+        }
+        return raw.uppercased()
+    }
+
     // MARK: - Credit / Debit
 
     private static func detectCreditWithConfidence(in text: String) -> (Bool, ParsedTransaction.ConfidenceLevel) {
@@ -220,6 +335,18 @@ struct BankSMSParser {
         let lower = text.lowercased()
             .replacingOccurrences(of: #"credit\s+card"#, with: "card", options: .regularExpression)
             .replacingOccurrences(of: #"debit\s+card"#,  with: "card", options: .regularExpression)
+
+        // A reversal or refund is money coming BACK, whatever verb the original
+        // transaction used. "utilised as follows has been reversed" names the
+        // spend first, so the nearest-word scoring below would call it a debit
+        // and the refund would be logged as another expense.
+        let reversalMarkers = ["has been reversed", "been reversed", "reversal of",
+                               "is reversed", "has been refunded", "been refunded",
+                               "refund of", "refunded to"]
+        if reversalMarkers.contains(where: { lower.contains($0) }) {
+            return (true, .high)
+        }
+
         let creditWords = ["credited", "credit", "received", "deposited", "refund",
                            "cash back", "cashback", "reversed", "added", "incoming"]
         let debitWords = ["debited", "debit", "spent", "withdrawn", "sent",
