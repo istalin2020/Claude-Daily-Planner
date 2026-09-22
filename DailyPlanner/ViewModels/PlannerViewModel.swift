@@ -762,19 +762,53 @@ class PlannerViewModel: ObservableObject {
     }
 
     /// Safe ID-based delete that works regardless of list reordering.
+    /// Deletes an expense wherever it lives, not only on the selected day.
+    ///
+    /// The Transactions list spans a whole month, so an item deleted from there
+    /// usually belongs to some other date. Searching only `currentEntry` meant
+    /// the row stayed put and the totals never changed. Every matching day is
+    /// swept so a duplicated import cannot leave one copy behind, and the ID is
+    /// recorded in `deletedExpenseIDs` so an older iCloud snapshot can't bring
+    /// it back.
     func deleteExpense(byID id: UUID) {
-        var e = currentEntry
-        e.expenses.removeAll { $0.id == id }
-        e.deletedExpenseIDs.insert(id)
-        currentEntry = e
-    }
+        var found = false
+        for key in entries.keys {
+            guard var entry = entries[key],
+                  entry.expenses.contains(where: { $0.id == id }) else { continue }
+            entry.expenses.removeAll { $0.id == id }
+            entry.deletedExpenseIDs.insert(id)
+            entries[key] = entry
+            found = true
+        }
 
-    func updateExpense(_ updated: Expense) {
-        var e = currentEntry
-        if let idx = e.expenses.firstIndex(where: { $0.id == updated.id }) {
-            e.expenses[idx] = updated
+        // Nothing matched (already gone, or removed on another device): still
+        // record the tombstone so a merge can't resurrect it.
+        if !found {
+            var e = currentEntry
+            e.deletedExpenseIDs.insert(id)
             currentEntry = e
         }
+        objectWillChange.send()
+    }
+
+    /// Updates an expense wherever it lives, not only on the selected day.
+    ///
+    /// Same reason as `deleteExpense(byID:)`: edits made from the month-wide
+    /// Transactions list almost never belong to today's entry, so this used to
+    /// find nothing and silently discard the change — Save closed the sheet and
+    /// the amount stayed as it was.
+    func updateExpense(_ updated: Expense) {
+        guard let key = entries.first(where: { _, entry in
+            entry.expenses.contains { $0.id == updated.id }
+        })?.key else { return }
+
+        guard var entry = entries[key],
+              let idx = entry.expenses.firstIndex(where: { $0.id == updated.id })
+        else { return }
+
+        entry.expenses[idx] = updated
+        entries[key] = entry
+        objectWillChange.send()
     }
 
     // MARK: - Gmail Expense Sync

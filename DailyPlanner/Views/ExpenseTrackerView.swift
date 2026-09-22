@@ -93,8 +93,7 @@ struct ExpenseTrackerView: View {
         }
         .sheet(isPresented: $showTransactions) {
             TransactionsListSheet(monthDate: summaryDate, sym: sym,
-                                  onEdit: { editingExpense = $0 },
-                                  onDelete: { deleteConfirmItem = $0 })
+                                  onEdit: { editingExpense = $0 })
                 .environmentObject(vm)
         }
         .sheet(isPresented: $showProUpgrade) {
@@ -969,7 +968,13 @@ struct EditTransactionSheet: View {
         self.original = expense
         self.currencySymbol = currencySymbol
         self.onSave = onSave
-        _amount = State(initialValue: String(format: "%.2f", expense.amount))
+        // Pre-fill with the amount the expense actually holds. Formatting to two
+        // places truncated Gulf currencies — an OMR 19.411 card charge opened as
+        // "19.41", and simply pressing Save wrote that back, quietly losing the
+        // third decimal. Three places are shown only when they carry a value.
+        let a = expense.amount
+        let hasThirdDecimal = abs(a * 100 - (a * 100).rounded()) > 0.0000001
+        _amount = State(initialValue: String(format: hasThirdDecimal ? "%.3f" : "%.2f", a))
         _description = State(initialValue: expense.description)
         _category = State(initialValue: expense.category)
         _customCategoryLabel = State(initialValue: expense.customCategoryLabel)
@@ -2125,7 +2130,6 @@ struct TransactionsListSheet: View {
     let monthDate: Date
     let sym: String
     let onEdit: (Expense) -> Void
-    let onDelete: (Expense) -> Void
 
     struct DatedExpense: Identifiable {
         let id: UUID
@@ -2143,6 +2147,10 @@ struct TransactionsListSheet: View {
     }
 
     @State private var selectedFilter: TxFilter = .all
+    /// Confirmation is handled inside this sheet rather than by the presenting
+    /// view: an alert attached behind a sheet never appears, and staying put
+    /// lets several stray imports be cleared in one visit.
+    @State private var pendingDelete: DatedExpense? = nil
 
     private var items: [DatedExpense] {
         vm.monthlyEntries(for: monthDate)
@@ -2249,9 +2257,28 @@ struct TransactionsListSheet: View {
                             ScrollView {
                                 LazyVStack(spacing: 6) {
                                     ForEach(filteredItems) { item in
-                                        TransactionListRow(dated: item, sym: sym)
-                                            .padding(.horizontal, 16)
-                                            .onTapGesture { dismiss(); onEdit(item.expense) }
+                                        HStack(spacing: 8) {
+                                            Button {
+                                                dismiss(); onEdit(item.expense)
+                                            } label: {
+                                                TransactionListRow(dated: item, sym: sym)
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+
+                                            Button {
+                                                pendingDelete = item
+                                            } label: {
+                                                Image(systemName: "trash.fill")
+                                                    .font(.system(size: 14))
+                                                    .foregroundColor(.red)
+                                                    .frame(width: 40, height: 40)
+                                                    .background(RoundedRectangle(cornerRadius: 11)
+                                                        .fill(Color.red.opacity(0.10)))
+                                                    .contentShape(Rectangle())
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        }
+                                        .padding(.horizontal, 16)
                                     }
                                 }
                                 .padding(.vertical, 12)
@@ -2265,6 +2292,25 @@ struct TransactionsListSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }.fontWeight(.semibold)
+                }
+            }
+            .alert("Delete Transaction", isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            )) {
+                Button("Delete", role: .destructive) {
+                    if let item = pendingDelete {
+                        vm.deleteExpense(byID: item.expense.id)
+                    }
+                    pendingDelete = nil
+                }
+                Button("Cancel", role: .cancel) { pendingDelete = nil }
+            } message: {
+                if let item = pendingDelete {
+                    let e = item.expense
+                    let sign = (e.isIncome || e.isDeposit) ? "+" : "-"
+                    let name = e.description.isEmpty ? e.displayCategory : e.description
+                    Text("Delete \"\(name)\" (\(sign)\(sym)\(String(format: "%.2f", e.amount)))? This can't be undone.")
                 }
             }
         }
