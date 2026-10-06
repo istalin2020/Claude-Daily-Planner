@@ -107,7 +107,10 @@ struct SubscriptionBrand: Equatable {
               color: Color(red: 0.35, green: 0.35, blue: 0.38), symbol: "applelogo"),
         .init(name: "Google One",     keywords: ["google one", "google storage", "google *one"],
               color: Color(red: 0.26, green: 0.52, blue: 0.96), symbol: "externaldrive.fill"),
-        .init(name: "Microsoft",      keywords: ["microsoft", "office 365", "microsoft 365"],
+        // Only the subscription products: a bare "microsoft" also matches
+        // one-off Store and Xbox game purchases.
+        .init(name: "Microsoft 365",  keywords: ["microsoft 365", "office 365", "msft *microsoft",
+                                                 "xbox game pass", "game pass"],
               color: Color(red: 0.00, green: 0.47, blue: 0.83), symbol: "square.grid.2x2.fill"),
         .init(name: "Adobe",          keywords: ["adobe"],
               color: Color(red: 0.92, green: 0.15, blue: 0.16), symbol: "paintbrush.pointed.fill"),
@@ -122,6 +125,9 @@ struct SubscriptionBrand: Equatable {
         .init(name: "Zoom",           keywords: ["zoom.us", "zoom video"],
               color: Color(red: 0.18, green: 0.47, blue: 1.00), symbol: "video.fill"),
 
+        .init(name: "WhatsApp",       keywords: ["whatsapp"],
+              color: Color(red: 0.15, green: 0.83, blue: 0.40), symbol: "message.fill"),
+
         // Telecom (often billed monthly in the Gulf)
         .init(name: "Ooredoo",        keywords: ["ooredoo"],
               color: Color(red: 0.89, green: 0.10, blue: 0.20), symbol: "antenna.radiowaves.left.and.right"),
@@ -135,13 +141,24 @@ struct SubscriptionBrand: Equatable {
         let lower = text.lowercased()
         var best: (brand: SubscriptionBrand, length: Int)? = nil
         for brand in catalogue {
-            for keyword in brand.keywords where lower.contains(keyword) {
+            for keyword in brand.keywords where contains(keyword, in: lower) {
                 if best == nil || keyword.count > best!.length {
                     best = (brand, keyword.count)
                 }
             }
         }
         return best?.brand
+    }
+
+    /// Short keywords must stand as whole words: "canva" is inside "CANVAS ART
+    /// SUPPLIES" and "osn" inside plenty of shop names. Longer brand names are
+    /// distinctive enough as substrings, which matters because bank
+    /// descriptors often glue words together ("DISNEYPLUS", "NETFLIX.COM").
+    private static func contains(_ keyword: String, in lower: String) -> Bool {
+        guard keyword.count < 6 else { return lower.contains(keyword) }
+        let pattern = #"(?<![a-z0-9])"# + NSRegularExpression.escapedPattern(for: keyword)
+                    + #"(?![a-z0-9])"#
+        return lower.range(of: pattern, options: .regularExpression) != nil
     }
 
     /// A stand-in for anything not in the catalogue, coloured from its name so
@@ -174,19 +191,37 @@ struct Subscription: Identifiable, Codable, Equatable {
     /// to pay for is worth remembering — but it stops counting towards the
     /// next payment and the totals.
     var cancelledOn: Date? = nil
+    /// Billed through the App Store. These are listed apart, and their
+    /// presence hides the generic "Apple" row that bank alerts produce
+    /// ("APPLE.COM/BILL"), which would otherwise count the same money twice.
+    var viaApple: Bool = false
+    /// The key this plan was first detected under. Kept when the user renames
+    /// it, so the next receipt still finds it instead of starting a duplicate.
+    var sourceKey: String? = nil
+    /// The amount in the currency it was actually charged in, when that
+    /// differs from the user's — an Indian App Store account bills in rupees.
+    var originalAmount: Double? = nil
     /// True when it came from imported spending rather than being typed in.
     var isDetected: Bool = false
     /// How many charges the detector matched. One means the cycle is a guess.
     var chargeCount: Int = 1
 
     /// A stable key for a detected subscription, so hiding one sticks.
-    var detectionKey: String { name.lowercased() }
+    var detectionKey: String { sourceKey ?? name.lowercased() }
 
     /// Still running, so it still has a next payment.
     var isActive: Bool { cancelledOn == nil }
 
     var brand: SubscriptionBrand {
-        SubscriptionBrand.match(name) ?? SubscriptionBrand.generic(named: name)
+        if let known = SubscriptionBrand.match(name) { return known }
+        if viaApple {
+            // An App Store plan the receipt didn't name — Apple's tax invoice
+            // shows the app only as an icon — still reads as App Store.
+            return SubscriptionBrand(name: name, keywords: ["app store"],
+                                     color: Color(red: 0.04, green: 0.52, blue: 1.0),
+                                     symbol: "app.badge.fill")
+        }
+        return SubscriptionBrand.generic(named: name)
     }
 
     /// Next payment date, rolled forward past any charge we never saw imported.
@@ -221,7 +256,7 @@ struct Subscription: Identifiable, Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, amount, currencyCode, cycle, startedOn, lastChargedOn,
-             cancelledOn, isDetected, chargeCount
+             cancelledOn, viaApple, sourceKey, originalAmount, isDetected, chargeCount
     }
 
     init(id: UUID = UUID(), name: String, amount: Double, currencyCode: String = "",
@@ -249,6 +284,9 @@ struct Subscription: Identifiable, Codable, Equatable {
         startedOn     = try c.decodeIfPresent(Date.self,         forKey: .startedOn) ?? Date()
         lastChargedOn = try c.decodeIfPresent(Date.self,         forKey: .lastChargedOn) ?? Date()
         cancelledOn   = try c.decodeIfPresent(Date.self,         forKey: .cancelledOn)
+        viaApple      = try c.decodeIfPresent(Bool.self,         forKey: .viaApple) ?? false
+        sourceKey     = try c.decodeIfPresent(String.self,       forKey: .sourceKey)
+        originalAmount = try c.decodeIfPresent(Double.self,      forKey: .originalAmount)
         isDetected    = try c.decodeIfPresent(Bool.self,         forKey: .isDetected) ?? false
         chargeCount   = try c.decodeIfPresent(Int.self,          forKey: .chargeCount) ?? 1
     }
@@ -305,32 +343,63 @@ enum SubscriptionDetector {
         return byService.compactMap { key, charges in
             let sorted = charges.sorted { $0.date < $1.date }
             guard let last = sorted.last, let first = sorted.first else { return nil }
-            return Subscription(
+            var sub = Subscription(
                 name: displayName[key] ?? key.capitalized,
-                amount: last.amount,
-                cycle: inferCycle(from: sorted.map(\.date), fallbackAmountCount: sorted.count),
+                amount: planAmount(sorted.map { ($0.date, $0.amount) }),
+                cycle: inferCycle(from: sorted.map(\.date)),
                 startedOn: first.date,
                 lastChargedOn: last.date,
                 isDetected: true,
                 chargeCount: sorted.count)
+            sub.sourceKey = key
+            return sub
         }
     }
 
-    /// Median gap between charges decides the cycle; a single charge defaults
-    /// to monthly, which is what most subscriptions are.
-    private static func inferCycle(from dates: [Date], fallbackAmountCount: Int) -> BillingCycle {
+    /// The plan's price, read from the most recent charges.
+    ///
+    /// The latest charge alone can be a one-off add-on or top-up — Higgsfield
+    /// showed a USD 5 card charge beside the OMR 19.411 plan — so the most
+    /// frequent of the last three wins, ties going to the newest. Looking back
+    /// only three charges still lets a genuine price rise show through.
+    private static func planAmount(_ charges: [(Date, Double)]) -> Double {
+        let recent = charges.suffix(3)
+        var counts: [Double: (count: Int, latest: Date)] = [:]
+        for (date, amount) in recent {
+            let key = (amount * 1000).rounded() / 1000
+            let prior = counts[key] ?? (0, .distantPast)
+            counts[key] = (prior.count + 1, max(prior.latest, date))
+        }
+        return counts.max { a, b in
+            a.value.count != b.value.count ? a.value.count < b.value.count
+                                           : a.value.latest < b.value.latest
+        }?.key ?? (charges.last?.1 ?? 0)
+    }
+
+    /// Infers the billing period from the gaps between charges.
+    ///
+    /// Gaps under 20 days are ignored: two charges that close together are an
+    /// add-on, a top-up or a charge and its reversal, not the billing period.
+    /// Counting them made Higgsfield "Weekly" from a 3-day gap. Weekly is only
+    /// believed with three or more charges spaced about a week apart, and
+    /// anything unclear is assumed monthly, the overwhelmingly common case.
+    private static func inferCycle(from dates: [Date]) -> BillingCycle {
         guard dates.count >= 2 else { return .monthly }
         let cal = Calendar.current
         var gaps: [Int] = []
         for i in 1..<dates.count {
-            if let d = cal.dateComponents([.day], from: dates[i - 1], to: dates[i]).day, d > 0 {
+            if let d = cal.dateComponents([.day], from: dates[i - 1], to: dates[i]).day {
                 gaps.append(d)
             }
         }
-        guard !gaps.isEmpty else { return .monthly }
-        let sortedGaps = gaps.sorted()
-        let median = sortedGaps[sortedGaps.count / 2]
-        return BillingCycle.nearest(toDays: median)
+
+        if dates.count >= 3, gaps.allSatisfy({ (6...8).contains($0) }) { return .weekly }
+
+        let periodGaps = gaps.filter { $0 >= 20 }.sorted()
+        guard !periodGaps.isEmpty else { return .monthly }
+        let median = periodGaps[periodGaps.count / 2]
+        let candidates: [BillingCycle] = [.monthly, .quarterly, .yearly]
+        return candidates.min(by: { abs($0.days - median) < abs($1.days - median) }) ?? .monthly
     }
 
     /// Strips the noise banks add so the same merchant groups together.

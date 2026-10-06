@@ -19,6 +19,8 @@ struct SubscriptionsView: View {
     @State private var pendingCancel: Subscription? = nil
     @State private var pendingDelete: Subscription? = nil
     @State private var showCancelled = false
+    @State private var scanning = false
+    @State private var scanResult: String? = nil
 
     private var sym: String { vm.settings.currency.symbol }
 
@@ -42,6 +44,8 @@ struct SubscriptionsView: View {
                 }
 
                 if !cancelled.isEmpty { cancelledSection }
+
+                if !vm.settings.gmailConnectedEmail.isEmpty { gmailScanRow }
 
                 appleRow
 
@@ -178,32 +182,58 @@ struct SubscriptionsView: View {
     // MARK: - List
 
     private var listSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("ALL SUBSCRIPTIONS")
+        let appStore = subscriptions.filter(\.viaApple)
+        let others = subscriptions.filter { !$0.viaApple }
+
+        return VStack(alignment: .leading, spacing: 8) {
+            if !appStore.isEmpty {
+                groupHeader("APP STORE", symbol: "applelogo", count: appStore.count)
+                ForEach(appStore) { sub in row(sub) }
+            }
+            if !others.isEmpty {
+                groupHeader(appStore.isEmpty ? "ALL SUBSCRIPTIONS" : "OTHER SUBSCRIPTIONS",
+                            symbol: nil, count: others.count)
+                    .padding(.top, appStore.isEmpty ? 0 : 8)
+                ForEach(others) { sub in row(sub) }
+            }
+        }
+    }
+
+    private func groupHeader(_ title: String, symbol: String?, count: Int) -> some View {
+        HStack(spacing: 6) {
+            if let symbol = symbol {
+                Image(systemName: symbol).font(.system(size: 11, weight: .bold))
+            }
+            Text(title)
                 .font(.system(size: 11, weight: .heavy))
                 .tracking(1.1)
-                .foregroundColor(.secondary)
-                .padding(.leading, 4)
-                .padding(.top, 4)
+            Text("\(count)")
+                .font(.system(size: 11, weight: .heavy))
+                .padding(.horizontal, 6).padding(.vertical, 1)
+                .background(Capsule().fill(Color.secondary.opacity(0.18)))
+            Spacer()
+        }
+        .foregroundColor(.secondary)
+        .padding(.leading, 4)
+        .padding(.top, 4)
+    }
 
-            ForEach(subscriptions) { sub in
-                Button {
-                    editing = sub
-                } label: {
-                    SubscriptionRow(sub: sub, sym: sym)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .contextMenu {
-                    Button { editing = sub } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    Button { pendingCancel = sub } label: {
-                        Label("Cancel subscription", systemImage: "xmark.circle")
-                    }
-                    Button(role: .destructive) { pendingDelete = sub } label: {
-                        Label("Remove from list", systemImage: "trash")
-                    }
-                }
+    private func row(_ sub: Subscription) -> some View {
+        Button {
+            editing = sub
+        } label: {
+            SubscriptionRow(sub: sub, sym: sym)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .contextMenu {
+            Button { editing = sub } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            Button { pendingCancel = sub } label: {
+                Label("Cancel subscription", systemImage: "xmark.circle")
+            }
+            Button(role: .destructive) { pendingDelete = sub } label: {
+                Label("Remove from list", systemImage: "trash")
             }
         }
     }
@@ -270,6 +300,75 @@ struct SubscriptionsView: View {
         .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: 20)
             .fill(Color(.secondarySystemGroupedBackground)))
+    }
+
+    // MARK: - Gmail search
+
+    /// Reads the last 13 months of receipts and cancellation notices. The
+    /// regular sync only covers a month or two, so without this a yearly plan
+    /// whose one receipt arrived last spring would never appear.
+    private var gmailScanRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                Task { await scanGmail() }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "envelope.open.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.white)
+                        .frame(width: 38, height: 38)
+                        .background(RoundedRectangle(cornerRadius: 11)
+                            .fill(Color(red: 0.86, green: 0.27, blue: 0.22)))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(scanning ? "Searching your Gmail…" : "Find subscriptions in Gmail")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text("Receipts, renewals and cancellations · last 13 months")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    if scanning { ProgressView() }
+                    else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemGroupedBackground)))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(scanning)
+
+            if let result = scanResult {
+                Text(result)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    // GmailSyncService is main-actor isolated, and this updates view state.
+    @MainActor
+    private func scanGmail() async {
+        scanning = true
+        scanResult = nil
+        defer { scanning = false }
+        do {
+            let events = try await GmailSyncService.shared.scanForSubscriptions(monthsBack: 13)
+            let changed = vm.applySubscriptionEvents(events)
+            scanResult = changed == 0
+                ? "Nothing new — your list is up to date."
+                : "Updated \(changed) subscription\(changed == 1 ? "" : "s") from your emails."
+        } catch {
+            scanResult = "Couldn't search Gmail: \(error.localizedDescription)"
+        }
     }
 
     // MARK: - Apple
@@ -383,7 +482,21 @@ private struct SubscriptionRow: View {
 
     private var sinceText: String {
         let f = DateFormatter(); f.dateFormat = "MMM yyyy"
-        return "Since \(f.string(from: sub.startedOn))"
+        let since = "Since \(f.string(from: sub.startedOn))"
+        // An Indian App Store account bills in rupees; the list shows the
+        // converted figure so totals add up, and the real charge here.
+        guard let original = sub.originalAmount, !sub.currencyCode.isEmpty else { return since }
+        return "\(since) · billed \(Self.symbol(for: sub.currencyCode))\(String(format: "%.2f", original))"
+    }
+
+    private static func symbol(for code: String) -> String {
+        switch code.uppercased() {
+        case "INR": return "₹"
+        case "USD": return "$"
+        case "EUR": return "€"
+        case "GBP": return "£"
+        default:    return code.uppercased() + " "
+        }
     }
 
     private var dueText: String {

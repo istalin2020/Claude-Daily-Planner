@@ -117,7 +117,7 @@ struct BankSMSParser {
     }
 
     /// Newsletter / promo / sweepstakes markers.
-    private static func isMarketing(_ lower: String) -> Bool {
+    static func isMarketing(_ lower: String) -> Bool {
         let markers = [
             "no purchase necessary", "void where prohibited", "sweepstakes",
             "gift card", "you could win", "chance to win", "enter to win",

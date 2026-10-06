@@ -146,42 +146,102 @@ final class GmailSyncService: NSObject, ObservableObject {
         // Subscription receipts carry none of the bank wording above, so they
         // need their own arm of the query. Apple's receipts are the only way
         // App Store subscriptions can ever reach this app.
-        let subs = "(subscription OR renewal OR renews OR \"auto-renew\" "
-                 + "OR \"automatically renew\" OR \"billing period\" OR \"apple.com/bill\")"
+        let subs = Self.subscriptionQueryArm
         let excludeCategories = "-category:promotions -category:social -category:forums"
         let excludeNoise = "-\"no purchase necessary\" -sweepstakes -\"gift card\" -newsletter -\"view in browser\" -\"unsubscribe from\""
 
+        // Apple mail gets its own arm with no category filter: Gmail sometimes
+        // files Apple receipts under Promotions, and they are the only record
+        // of an App Store subscription there is.
         let query = "after:\(after) before:\(before) ((\(verbs) \(refs)) OR \(subs)) "
                   + "\(excludeCategories) \(excludeNoise)"
+        // Apple mail is fetched separately and without the category filter:
+        // Gmail sometimes files Apple receipts under Promotions, and they are
+        // the only record of an App Store subscription there is.
+        let appleQuery = "after:\(after) before:\(before) from:apple.com"
 
-        let ids = try await listMessageIDs(query: query)
+        var seen = Set<String>()
+        var ids: [String] = []
+        for q in [query, appleQuery] {
+            for id in try await listMessageIDs(query: q) where seen.insert(id).inserted {
+                ids.append(id)
+            }
+        }
         var candidates: [GmailCandidate] = []
-        var appleSubs: [Subscription] = []
+        var events: [SubscriptionEvent] = []
 
         for id in ids where !alreadyProcessed.contains(id) {
-            guard let (body, date) = try? await fetchMessage(id: id) else { continue }
+            guard let msg = try? await fetchMessage(id: id) else { continue }
 
-            // An Apple receipt is not a bank alert and never passes the bank
-            // filter, so it is read first and on its own terms.
-            if let sub = SubscriptionEmailParser.appleSubscription(from: body, receivedOn: date) {
-                appleSubs.append(sub)
+            // A receipt or cancellation notice is read first, and never becomes
+            // an expense. The bank alert for the same charge is the expense;
+            // booking the receipt too counted every subscription twice, since
+            // a USD receipt can't be matched to an OMR alert to the baisa.
+            if let event = SubscriptionEmailParser.event(body: msg.body, sender: msg.sender,
+                                                         subject: msg.subject,
+                                                         receivedOn: msg.date) {
+                events.append(event)
                 continue
             }
 
-            if BankSMSParser.looksLikeBankSMS(body),
-               let parsed = BankSMSParser.parse(body) {
-                candidates.append(GmailCandidate(id: id, date: date, parsed: parsed))
+            if BankSMSParser.looksLikeBankSMS(msg.body),
+               let parsed = BankSMSParser.parse(msg.body) {
+                candidates.append(GmailCandidate(id: id, date: msg.date, parsed: parsed))
             }
         }
 
-        lastAppleSubscriptions = appleSubs
+        lastSubscriptionEvents = events
         return candidates
     }
 
-    /// Subscriptions read out of Apple receipts during the last fetch. Kept
-    /// here rather than threaded through GmailCandidate because they are not
-    /// transactions and never enter the expense review queue.
-    private(set) var lastAppleSubscriptions: [Subscription] = []
+    /// Subscription receipts and cancellations read during the last fetch.
+    /// Held here rather than threaded through GmailCandidate because they are
+    /// not transactions and never enter the expense review queue.
+    private(set) var lastSubscriptionEvents: [SubscriptionEvent] = []
+
+    /// Gmail terms that catch subscription receipts and cancellations. They
+    /// carry none of the bank-alert wording, so without this arm they are
+    /// never fetched at all.
+    private static let subscriptionQueryArm =
+        "(subscription OR membership OR renewal OR renews OR renewed OR \"auto-renew\" "
+      + "OR \"automatically renew\" OR \"billing period\" OR \"apple.com/bill\" "
+      + "OR cancelled OR canceled)"
+
+    /// Looks back over the last `monthsBack` months for subscription receipts
+    /// and cancellations only — no bank alerts, so nothing enters the expense
+    /// review.
+    ///
+    /// The regular sync covers only the current or previous month, so a
+    /// yearly plan whose single receipt arrived months ago would otherwise
+    /// never be found. Safe to repeat: storing what it finds is idempotent.
+    func scanForSubscriptions(monthsBack: Int = 13) async throws -> [SubscriptionEvent] {
+        try await ensureAccessToken()
+        let start = Calendar.current.date(byAdding: .month, value: -monthsBack, to: Date()) ?? Date()
+        let after = Int(start.timeIntervalSince1970)
+
+        let general = "after:\(after) \(Self.subscriptionQueryArm) "
+                    + "-category:social -category:forums"
+        let apple   = "after:\(after) from:apple.com"
+
+        var seen = Set<String>()
+        var ids: [String] = []
+        for query in [apple, general] {
+            for id in try await listMessageIDs(query: query) where seen.insert(id).inserted {
+                ids.append(id)
+            }
+        }
+
+        var events: [SubscriptionEvent] = []
+        for id in ids {
+            guard let msg = try? await fetchMessage(id: id) else { continue }
+            if let event = SubscriptionEmailParser.event(body: msg.body, sender: msg.sender,
+                                                         subject: msg.subject,
+                                                         receivedOn: msg.date) {
+                events.append(event)
+            }
+        }
+        return events
+    }
 
     // MARK: - OAuth: authorization request
 
@@ -326,16 +386,31 @@ final class GmailSyncService: NSObject, ObservableObject {
         return ids
     }
 
-    /// Returns the plain-text body and received date of a message.
-    private func fetchMessage(id: String) async throws -> (String, Date) {
+    struct FetchedMessage {
+        let body: String
+        let date: Date
+        /// "Display Name <address>". The most reliable clue to who a receipt
+        /// is from — the body mentions other brands far too freely.
+        let sender: String
+        let subject: String
+    }
+
+    /// Returns the plain-text body, received date, sender and subject.
+    private func fetchMessage(id: String) async throws -> FetchedMessage {
         let url = URL(string: "https://gmail.googleapis.com/gmail/v1/users/me/messages/\(id)?format=full")!
         let json = try await authorizedGET(url)
 
         let epochMs = Double(json["internalDate"] as? String ?? "") ?? 0
         let date = Date(timeIntervalSince1970: epochMs / 1000)
 
-        let body = Self.extractBody(from: json["payload"] as? [String: Any])
-        return (body, date)
+        let payload = json["payload"] as? [String: Any]
+        let headers = payload?["headers"] as? [[String: Any]] ?? []
+        func header(_ name: String) -> String {
+            headers.first { ($0["name"] as? String)?.lowercased() == name }?["value"] as? String ?? ""
+        }
+
+        return FetchedMessage(body: Self.extractBody(from: payload), date: date,
+                              sender: header("from"), subject: header("subject"))
     }
 
     private func authorizedGET(_ url: URL) async throws -> [String: Any] {
@@ -406,6 +481,7 @@ final class GmailSyncService: NSObject, ObservableObject {
             .replacingOccurrences(of: "&lt;",   with: "<")
             .replacingOccurrences(of: "&gt;",   with: ">")
             .replacingOccurrences(of: "&#39;",  with: "'")
+            .decodingNumericEntities()
             .replacingOccurrences(of: "[ \\t]+", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "\\s*\\n\\s*", with: "\n", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -463,4 +539,34 @@ private extension CharacterSet {
         set.remove(charactersIn: "+&=")
         return set
     }()
+}
+
+
+private extension String {
+    /// Decodes "&#8377;" and "&#x20B9;" style entities. Receipts commonly
+    /// encode the currency sign this way, and without decoding the amount has
+    /// no currency in front of it and can't be read.
+    func decodingNumericEntities() -> String {
+        guard contains("&#") else { return self }
+        let pattern = #"&#(x[0-9a-fA-F]+|[0-9]+);"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return self }
+        let ns = self as NSString
+        var result = ""
+        var cursor = 0
+        for m in regex.matches(in: self, range: NSRange(location: 0, length: ns.length)) {
+            result += ns.substring(with: NSRange(location: cursor, length: m.range.location - cursor))
+            let token = ns.substring(with: m.range(at: 1))
+            let value = token.hasPrefix("x") || token.hasPrefix("X")
+                ? UInt32(token.dropFirst(), radix: 16)
+                : UInt32(token, radix: 10)
+            if let v = value, let scalar = Unicode.Scalar(v) {
+                result.unicodeScalars.append(scalar)
+            } else {
+                result += ns.substring(with: m.range)
+            }
+            cursor = m.range.location + m.range.length
+        }
+        result += ns.substring(from: cursor)
+        return result
+    }
 }

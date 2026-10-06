@@ -821,13 +821,40 @@ class PlannerViewModel: ObservableObject {
     /// them — and anything they stopped tracking is dropped.
     private var mergedSubscriptions: [Subscription] {
         let hidden = Set(settings.hiddenSubscriptionKeys)
-        let manual = settings.manualSubscriptions
-        let manualKeys = Set(manual.map(\.detectionKey))
+        var stored = settings.manualSubscriptions
+        let storedKeys = Set(stored.map(\.detectionKey))
 
-        let detected = SubscriptionDetector.detect(from: entries)
-            .filter { !manualKeys.contains($0.detectionKey) }
+        let detectedAll = SubscriptionDetector.detect(from: entries)
+        let detectedByKey = Dictionary(detectedAll.map { ($0.detectionKey, $0) },
+                                       uniquingKeysWith: { a, _ in a })
 
-        return (manual + detected).filter { !hidden.contains($0.detectionKey) }
+        // A plan known from a receipt is still being paid through the bank
+        // each month. Take its latest bank charge, so the schedule keeps
+        // moving between receipts. Only for plans the user hasn't edited —
+        // their figures are pinned.
+        for i in stored.indices where stored[i].isDetected && stored[i].isActive {
+            if let bank = detectedByKey[stored[i].detectionKey],
+               bank.lastChargedOn > stored[i].lastChargedOn {
+                stored[i].lastChargedOn = bank.lastChargedOn
+            }
+        }
+
+        // App Store plans arrive by name from Apple's receipts, while the bank
+        // only ever sees "APPLE.COM/BILL". Once any receipt is on file, that
+        // generic Apple row is the same money counted again, so it goes.
+        let hasAppStorePlans = stored.contains { $0.viaApple }
+
+        let detected = detectedAll.filter { sub in
+            !storedKeys.contains(sub.detectionKey)
+                && !(hasAppStorePlans && sub.detectionKey == "apple")
+        }
+
+        return (stored + detected).filter { !hidden.contains($0.detectionKey) }
+    }
+
+    /// App Store plans, listed apart on the Subscriptions page.
+    var appStoreSubscriptions: [Subscription] {
+        allSubscriptions.filter(\.viaApple)
     }
 
     /// Running subscriptions, soonest payment first. A cancelled plan keeps its
@@ -873,32 +900,91 @@ class PlannerViewModel: ObservableObject {
         hideSubscription(sub)
     }
 
-    /// Files subscriptions read out of Apple receipts during a Gmail sync.
+    /// Applies what subscription emails said happened — charges and
+    /// cancellations — oldest first, so a later email always has the last word.
     ///
-    /// They are stored rather than re-derived because the receipt is a one-off
-    /// email: unlike a bank charge it will not reappear next month, so nothing
-    /// would rebuild the entry. An existing plan of the same name is refreshed
-    /// instead of duplicated, and one the user already cancelled is left alone.
-    func mergeAppleSubscriptions(_ found: [Subscription]) {
-        guard !found.isEmpty else { return }
+    /// Stored rather than re-derived: unlike a bank charge, a receipt or a
+    /// cancellation notice arrives once and will not be seen again. Every rule
+    /// below is safe to repeat, so re-running a sync or a 13-month scan over the
+    /// same emails changes nothing.
+    ///
+    /// Returns how many plans were added or changed, for the page to report.
+    @discardableResult
+    func applySubscriptionEvents(_ events: [SubscriptionEvent]) -> Int {
+        guard !events.isEmpty else { return 0 }
         let hidden = Set(settings.hiddenSubscriptionKeys)
         var list = settings.manualSubscriptions
+        var changed = 0
+        let local = settings.currency.rawValue
 
-        for sub in found where !hidden.contains(sub.detectionKey) {
-            if let idx = list.firstIndex(where: { $0.detectionKey == sub.detectionKey }) {
-                guard list[idx].isActive else { continue }   // cancelled stays cancelled
-                // Keep the newest receipt's figures and schedule.
-                if sub.lastChargedOn >= list[idx].lastChargedOn {
-                    list[idx].amount = sub.amount
-                    list[idx].cycle = sub.cycle
-                    list[idx].lastChargedOn = sub.lastChargedOn
+        for event in events.sorted(by: { $0.date < $1.date }) {
+            switch event {
+            case .charged(var sub):
+                let key = (SubscriptionBrand.match(sub.name)?.name ?? sub.name).lowercased()
+                guard !hidden.contains(key) else { continue }
+
+                // Store in the user's currency so totals add up; keep the
+                // original for display.
+                if CurrencyConverter.needsConversion(detected: sub.currencyCode, local: local),
+                   let converted = CurrencyConverter.convert(amount: sub.amount,
+                                                             from: sub.currencyCode, to: local) {
+                    sub.originalAmount = sub.amount
+                    sub.amount = converted
                 }
-            } else {
-                list.append(sub)
+
+                if let idx = list.firstIndex(where: { $0.detectionKey == key }) {
+                    var existing = list[idx]
+                    if let ended = existing.cancelledOn {
+                        // Only a charge AFTER the cancellation means they
+                        // subscribed again. An older receipt seen by a re-scan
+                        // must not undo the cancellation.
+                        guard sub.lastChargedOn > ended else { continue }
+                        existing.cancelledOn = nil
+                    } else if sub.lastChargedOn <= existing.lastChargedOn {
+                        continue
+                    }
+                    existing.lastChargedOn = sub.lastChargedOn
+                    existing.startedOn = min(existing.startedOn, sub.startedOn)
+                    existing.viaApple = existing.viaApple || sub.viaApple
+                    // A plan the user edited keeps their figures.
+                    if existing.isDetected {
+                        existing.amount = sub.amount
+                        existing.originalAmount = sub.originalAmount
+                        existing.currencyCode = sub.currencyCode
+                        existing.cycle = sub.cycle
+                    }
+                    list[idx] = existing
+                } else {
+                    sub.sourceKey = key
+                    list.append(sub)
+                }
+                changed += 1
+
+            case .cancelled(let name, let on):
+                let key = (SubscriptionBrand.match(name)?.name ?? name).lowercased()
+                guard !hidden.contains(key) else { continue }
+
+                if let idx = list.firstIndex(where: { $0.detectionKey == key }) {
+                    // Ignore a notice older than the latest payment: the user
+                    // resumed or resubscribed after it.
+                    guard list[idx].isActive, on >= list[idx].lastChargedOn else { continue }
+                    list[idx].cancelledOn = on
+                    changed += 1
+                } else if var detected = SubscriptionDetector.detect(from: entries)
+                            .first(where: { $0.detectionKey == key }),
+                          on >= detected.lastChargedOn {
+                    // Known only from bank charges: store it, cancelled, so the
+                    // cancellation survives detection re-running.
+                    detected.cancelledOn = on
+                    list.append(detected)
+                    changed += 1
+                }
             }
         }
+
         settings.manualSubscriptions = list
         saveSettings()
+        return changed
     }
 
     func saveSubscription(_ sub: Subscription) {
