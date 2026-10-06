@@ -57,10 +57,13 @@ struct SubscriptionsView: View {
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .safeAreaInset(edge: .bottom) { addBar }
         .sheet(isPresented: $showAdd) {
-            SubscriptionEditSheet(subscription: nil, sym: sym) { vm.saveSubscription($0) }
+            SubscriptionEditSheet(subscription: nil, sym: sym,
+                                  onSave: { vm.saveSubscription($0) })
         }
         .sheet(item: $editing) { sub in
-            SubscriptionEditSheet(subscription: sub, sym: sym) { vm.saveSubscription($0) }
+            SubscriptionEditSheet(subscription: sub, sym: sym,
+                                  onSave: { vm.saveSubscription($0) },
+                                  onRemove: { vm.deleteSubscription(sub) })
         }
         .alert("Cancel this subscription?", isPresented: Binding(
             get: { pendingCancel != nil },
@@ -566,6 +569,11 @@ struct SubscriptionEditSheet: View {
     let subscription: Subscription?
     let sym: String
     let onSave: (Subscription) -> Void
+    /// Set when editing an existing plan, so it can be removed from here —
+    /// the long-press menu alone was too easy to miss.
+    var onRemove: (() -> Void)? = nil
+
+    @State private var confirmRemove = false
 
     @State private var name: String
     @State private var amount: String
@@ -573,10 +581,13 @@ struct SubscriptionEditSheet: View {
     @State private var startedOn: Date
     @State private var lastChargedOn: Date
 
-    init(subscription: Subscription?, sym: String, onSave: @escaping (Subscription) -> Void) {
+    init(subscription: Subscription?, sym: String,
+         onSave: @escaping (Subscription) -> Void,
+         onRemove: (() -> Void)? = nil) {
         self.subscription = subscription
         self.sym = sym
         self.onSave = onSave
+        self.onRemove = onRemove
         _name    = State(initialValue: subscription?.name ?? "")
         _cycle   = State(initialValue: subscription?.cycle ?? .monthly)
         _startedOn = State(initialValue: subscription?.startedOn ?? Date())
@@ -654,6 +665,31 @@ struct SubscriptionEditSheet: View {
                               systemImage: "xmark.circle.fill")
                             .foregroundColor(.secondary)
                             .font(.system(size: 14))
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if let onRemove = onRemove {
+                    Button(role: .destructive) {
+                        confirmRemove = true
+                    } label: {
+                        Label("Not subscribed — remove", systemImage: "trash")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .background(RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.red.opacity(0.10)))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .confirmationDialog("Remove \(trimmedName.isEmpty ? "this" : trimmedName)?",
+                                        isPresented: $confirmRemove, titleVisibility: .visible) {
+                        Button("Remove from list", role: .destructive) {
+                            onRemove()
+                            dismiss()
+                        }
+                    } message: {
+                        Text("For something you're not subscribed to. It won't come back from your emails or bank charges, and your expenses aren't touched.")
                     }
                 }
             }

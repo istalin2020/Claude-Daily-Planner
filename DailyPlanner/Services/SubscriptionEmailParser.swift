@@ -193,7 +193,7 @@ enum SubscriptionEmailParser {
                                     body: String, viaApple: Bool) -> String? {
         if viaApple {
             if let app = appleAppName(from: subject + "\n" + body) {
-                return SubscriptionBrand.match(app)?.name ?? app
+                return SubscriptionBrand.canonicalName(app)
             }
             // Apple's tax-invoice receipt does not name the app in text at
             // all — only its icon does — so there is nothing better to call
@@ -267,8 +267,13 @@ enum SubscriptionEmailParser {
             #"(?m)^[ \t]*App[ \t]*:?[ \t]*\n[ \t]*([^\n]{2,40})$"#,
             // Cancellation and expiry notices.
             #"(?i)subscription\s+(?:to|for)\s+([A-Za-z0-9][A-Za-z0-9 .:+&'’\-]{1,40}?)(?:\s+(?:has|was|will|is)\b|[.,\n])"#,
-            // Item line followed by a bracketed plan: "Disney+ (Monthly)".
-            #"(?m)^\s*([A-Za-z0-9][A-Za-z0-9 .:+&'’\-]{1,40}?)\s*\((?:monthly|yearly|annual|weekly|quarterly|\d+\s*(?:month|year|week)s?)[^)]*\)"#,
+            // The receipt prints the app, then its plan with the period in
+            // brackets, so the app is the line above:
+            //     iCloud+
+            //     iCloud+ with 2 TB of storage (Monthly)
+            #"(?im)^[ \t]*([^\n(]{1,40}?)[ \t]*\n[^\n]*\((?:monthly|yearly|annual|weekly|quarterly|\d+\s*(?:month|year|week)s?)[^)]*\)"#,
+            // Otherwise the plan line itself: "Disney+ (Monthly)".
+            #"(?im)^\s*([A-Za-z0-9][A-Za-z0-9 .:+&'’\-]{1,40}?)\s*\((?:monthly|yearly|annual|weekly|quarterly|\d+\s*(?:month|year|week)s?)[^)]*\)"#,
         ]
         for pattern in patterns {
             guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
@@ -286,7 +291,8 @@ enum SubscriptionEmailParser {
 
     /// Rejects captures that are a billing period or a label, not a name.
     private static func isUsableName(_ name: String) -> Bool {
-        guard name.count >= 2 else { return false }
+        // A single character is allowed: "X" is a real app.
+        guard !name.isEmpty, name.rangeOfCharacter(from: .alphanumerics) != nil else { return false }
         let lower = name.lowercased()
         let notNames: Set<String> = ["monthly", "yearly", "annual", "annually", "weekly",
                                      "quarterly", "subscription", "plan", "store",

@@ -150,6 +150,18 @@ struct SubscriptionBrand: Equatable {
         return best?.brand
     }
 
+    /// The name a plan is stored and matched under.
+    ///
+    /// A recognised brand uses its catalogue name ("OPENAI *CHATGPT" ->
+    /// "OpenAI"), with one exception: Apple. Apple's own App Store services —
+    /// iCloud+, Apple One, Apple Fitness+ — all contain an Apple keyword, and
+    /// collapsing them to "Apple" merged separate plans into one row. They keep
+    /// their own names; only the bank's bare "APPLE.COM/BILL" line is "Apple".
+    static func canonicalName(_ name: String) -> String {
+        if let brand = match(name), brand.name != "Apple" { return brand.name }
+        return name
+    }
+
     /// Short keywords must stand as whole words: "canva" is inside "CANVAS ART
     /// SUPPLIES" and "osn" inside plenty of shop names. Longer brand names are
     /// distinctive enough as substrings, which matters because bank

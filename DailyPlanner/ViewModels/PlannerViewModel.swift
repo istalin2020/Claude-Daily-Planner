@@ -931,7 +931,7 @@ class PlannerViewModel: ObservableObject {
         for event in events.sorted(by: { $0.date < $1.date }) {
             switch event {
             case .charged(var sub):
-                let key = (SubscriptionBrand.match(sub.name)?.name ?? sub.name).lowercased()
+                let key = SubscriptionBrand.canonicalName(sub.name).lowercased()
                 guard !hidden.contains(key) else { continue }
 
                 // Store in the user's currency so totals add up; keep the
@@ -972,7 +972,7 @@ class PlannerViewModel: ObservableObject {
                 changed += 1
 
             case .cancelled(let name, let on):
-                let key = (SubscriptionBrand.match(name)?.name ?? name).lowercased()
+                let key = SubscriptionBrand.canonicalName(name).lowercased()
                 guard !hidden.contains(key) else { continue }
 
                 if let idx = list.firstIndex(where: { $0.detectionKey == key }) {
