@@ -142,23 +142,46 @@ final class GmailSyncService: NSObject, ObservableObject {
                   + "OR charged OR transferred OR deposited OR used OR reversed OR reversal "
                   + "OR refunded OR purchase OR payment)"
         let refs  = "(account OR \"a/c\" OR card OR balance)"
+
+        // Subscription receipts carry none of the bank wording above, so they
+        // need their own arm of the query. Apple's receipts are the only way
+        // App Store subscriptions can ever reach this app.
+        let subs = "(subscription OR renewal OR renews OR \"auto-renew\" "
+                 + "OR \"automatically renew\" OR \"billing period\" OR \"apple.com/bill\")"
         let excludeCategories = "-category:promotions -category:social -category:forums"
         let excludeNoise = "-\"no purchase necessary\" -sweepstakes -\"gift card\" -newsletter -\"view in browser\" -\"unsubscribe from\""
 
-        let query = "after:\(after) before:\(before) \(verbs) \(refs) \(excludeCategories) \(excludeNoise)"
+        let query = "after:\(after) before:\(before) ((\(verbs) \(refs)) OR \(subs)) "
+                  + "\(excludeCategories) \(excludeNoise)"
 
         let ids = try await listMessageIDs(query: query)
         var candidates: [GmailCandidate] = []
+        var appleSubs: [Subscription] = []
 
         for id in ids where !alreadyProcessed.contains(id) {
             guard let (body, date) = try? await fetchMessage(id: id) else { continue }
+
+            // An Apple receipt is not a bank alert and never passes the bank
+            // filter, so it is read first and on its own terms.
+            if let sub = SubscriptionEmailParser.appleSubscription(from: body, receivedOn: date) {
+                appleSubs.append(sub)
+                continue
+            }
+
             if BankSMSParser.looksLikeBankSMS(body),
                let parsed = BankSMSParser.parse(body) {
                 candidates.append(GmailCandidate(id: id, date: date, parsed: parsed))
             }
         }
+
+        lastAppleSubscriptions = appleSubs
         return candidates
     }
+
+    /// Subscriptions read out of Apple receipts during the last fetch. Kept
+    /// here rather than threaded through GmailCandidate because they are not
+    /// transactions and never enter the expense review queue.
+    private(set) var lastAppleSubscriptions: [Subscription] = []
 
     // MARK: - OAuth: authorization request
 

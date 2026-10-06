@@ -873,6 +873,34 @@ class PlannerViewModel: ObservableObject {
         hideSubscription(sub)
     }
 
+    /// Files subscriptions read out of Apple receipts during a Gmail sync.
+    ///
+    /// They are stored rather than re-derived because the receipt is a one-off
+    /// email: unlike a bank charge it will not reappear next month, so nothing
+    /// would rebuild the entry. An existing plan of the same name is refreshed
+    /// instead of duplicated, and one the user already cancelled is left alone.
+    func mergeAppleSubscriptions(_ found: [Subscription]) {
+        guard !found.isEmpty else { return }
+        let hidden = Set(settings.hiddenSubscriptionKeys)
+        var list = settings.manualSubscriptions
+
+        for sub in found where !hidden.contains(sub.detectionKey) {
+            if let idx = list.firstIndex(where: { $0.detectionKey == sub.detectionKey }) {
+                guard list[idx].isActive else { continue }   // cancelled stays cancelled
+                // Keep the newest receipt's figures and schedule.
+                if sub.lastChargedOn >= list[idx].lastChargedOn {
+                    list[idx].amount = sub.amount
+                    list[idx].cycle = sub.cycle
+                    list[idx].lastChargedOn = sub.lastChargedOn
+                }
+            } else {
+                list.append(sub)
+            }
+        }
+        settings.manualSubscriptions = list
+        saveSettings()
+    }
+
     func saveSubscription(_ sub: Subscription) {
         var list = settings.manualSubscriptions
         if let idx = list.firstIndex(where: { $0.id == sub.id }) {
@@ -935,6 +963,10 @@ class PlannerViewModel: ObservableObject {
         }
         let desc = p.merchant.isEmpty ? "\(p.bankName) Transaction" : p.merchant
 
+        // Decide here whether the source email was about a subscription: this
+        // is the only point where the email text still exists.
+        let recurring = SubscriptionEmailParser.looksLikeSubscription(p.rawText)
+
         if p.isCredit {
             return Expense(amount: amount, category: .other, description: desc,
                            isIncome: true, isFromSMS: true, isFromGmail: true,
@@ -947,7 +979,8 @@ class PlannerViewModel: ObservableObject {
                            description: desc,
                            isFromSMS: true,
                            isFromGmail: true,
-                           gmailMessageID: candidate.id)
+                           gmailMessageID: candidate.id,
+                           isSubscription: recurring)
         }
     }
 

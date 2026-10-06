@@ -356,9 +356,20 @@ struct BrandTile: View {
                                     colors: [brand.color, brand.color.opacity(0.78)],
                                     startPoint: .topLeading, endPoint: .bottomTrailing)))
 
-            Text(brand.monogram)
-                .font(.system(size: size * 0.38, weight: .heavy, design: .rounded))
-                .foregroundColor(.white)
+            // A recognised service gets its mark drawn from a system glyph in
+            // the brand's own colour; anything else falls back to initials.
+            // Nothing third-party is bundled — reproducing another company's
+            // logo is a trademark problem and an App Store review risk, and a
+            // glyph reads just as fast at this size.
+            if brand.keywords.isEmpty {
+                Text(brand.monogram)
+                    .font(.system(size: size * 0.38, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+            } else {
+                Image(systemName: brand.symbol)
+                    .font(.system(size: size * 0.42, weight: .semibold))
+                    .foregroundColor(.white)
+            }
         }
         .frame(width: size, height: size)
     }

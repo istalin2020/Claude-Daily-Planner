@@ -763,6 +763,7 @@ struct GmailSyncView: View {
 
                 // Advance the cursor NOW, covering every email seen in this
                 // sync — the next sync fetches only strictly newer emails.
+                vm.mergeAppleSubscriptions(GmailSyncService.shared.lastAppleSubscriptions)
                 vm.finalizeGmailSync(handledIDs: candidates.map(\.id),
                                      advanceCursorTo: newestEpoch)
 

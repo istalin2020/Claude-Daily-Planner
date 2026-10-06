@@ -411,6 +411,12 @@ struct Expense: Identifiable, Codable, Equatable {
     /// Gmail). Lets a per-month reset release exactly those emails so the
     /// month can be re-synced cleanly.
     var gmailMessageID: String = ""
+    /// True when the source email actually talked about a subscription —
+    /// renewing, a billing period, a plan. Set once at import, because the
+    /// email text is long gone by the time the Subscriptions page runs, and
+    /// recurrence alone cannot tell a monthly Netflix bill from a monthly
+    /// visit to the same restaurant.
+    var isSubscription: Bool = false
 
     /// The human-readable category name to display (custom label takes priority).
     var displayCategory: String {
@@ -426,7 +432,8 @@ struct Expense: Identifiable, Codable, Equatable {
          isIncome: Bool = false,
          isFromSMS: Bool = false,
          isFromGmail: Bool = false,
-         gmailMessageID: String = "") {
+         gmailMessageID: String = "",
+         isSubscription: Bool = false) {
         self.id = id
         self.amount = amount
         self.category = category
@@ -437,6 +444,7 @@ struct Expense: Identifiable, Codable, Equatable {
         self.isFromSMS = isFromSMS
         self.isFromGmail = isFromGmail
         self.gmailMessageID = gmailMessageID
+        self.isSubscription = isSubscription
     }
 
     init(from decoder: Decoder) throws {
@@ -451,6 +459,7 @@ struct Expense: Identifiable, Codable, Equatable {
         isFromSMS           = try c.decodeIfPresent(Bool.self,            forKey: .isFromSMS)           ?? false
         isFromGmail         = try c.decodeIfPresent(Bool.self,            forKey: .isFromGmail)         ?? false
         gmailMessageID      = try c.decodeIfPresent(String.self,          forKey: .gmailMessageID)      ?? ""
+        isSubscription      = try c.decodeIfPresent(Bool.self,            forKey: .isSubscription)      ?? false
     }
 }
 

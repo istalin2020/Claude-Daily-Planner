@@ -265,10 +265,19 @@ struct Subscription: Identifiable, Codable, Equatable {
 /// provides no way for one app to read another's.
 enum SubscriptionDetector {
 
-    /// A charge has to repeat, or be a recognised service, before it counts.
-    /// A single unrecognised shop is just a purchase.
+    /// Only two things make a charge a subscription:
+    ///
+    ///   1. the email it came from talked about renewing, a billing period or
+    ///      a plan, or
+    ///   2. the merchant is a service we recognise.
+    ///
+    /// Recurrence on its own is explicitly NOT enough. The first version of
+    /// this accepted any merchant that charged twice for a similar amount, and
+    /// the page filled with restaurants, pharmacies, petrol stations and a
+    /// furniture shop — all of which genuinely do charge you about the same
+    /// amount about once a month. The real subscriptions were lost among them.
     static func detect(from entries: [String: DailyEntry]) -> [Subscription] {
-        struct Charge { let date: Date; let amount: Double; let currency: String }
+        struct Charge { let date: Date; let amount: Double }
 
         var byService: [String: [Charge]] = [:]
         var displayName: [String: String] = [:]
@@ -280,48 +289,31 @@ enum SubscriptionDetector {
                 guard !text.isEmpty else { continue }
 
                 let brand = SubscriptionBrand.match(text)
-                // Unrecognised merchants are keyed on a normalised name so the
-                // same shop groups together across months.
+
+                // The gate. Everything else is an ordinary purchase.
+                guard brand != nil || expense.isSubscription else { continue }
+
                 let key = brand?.name.lowercased() ?? normalise(text)
-                guard !key.isEmpty, key.count >= 3 else { continue }
+                guard key.count >= 3 else { continue }
 
                 displayName[key] = brand?.name ?? titleCased(text)
                 byService[key, default: []].append(
-                    Charge(date: entry.date, amount: expense.amount, currency: ""))
+                    Charge(date: entry.date, amount: expense.amount))
             }
         }
 
-        var result: [Subscription] = []
-
-        for (key, charges) in byService {
+        return byService.compactMap { key, charges in
             let sorted = charges.sorted { $0.date < $1.date }
-            let isKnownBrand = SubscriptionBrand.catalogue.contains { $0.name.lowercased() == key }
-
-            // One-off from an unknown merchant: not a subscription.
-            guard sorted.count >= 2 || isKnownBrand else { continue }
-
-            // Repeated charges must be for a similar amount — a supermarket
-            // visited twice is not a subscription.
-            if sorted.count >= 2 && !isKnownBrand {
-                let amounts = sorted.map(\.amount)
-                let lo = amounts.min() ?? 0, hi = amounts.max() ?? 0
-                guard lo > 0, hi / lo <= 1.25 else { continue }
-            }
-
-            let cycle = inferCycle(from: sorted.map(\.date), fallbackAmountCount: sorted.count)
-            let last = sorted.last!
-
-            result.append(Subscription(
+            guard let last = sorted.last, let first = sorted.first else { return nil }
+            return Subscription(
                 name: displayName[key] ?? key.capitalized,
                 amount: last.amount,
-                cycle: cycle,
-                startedOn: sorted.first!.date,
+                cycle: inferCycle(from: sorted.map(\.date), fallbackAmountCount: sorted.count),
+                startedOn: first.date,
                 lastChargedOn: last.date,
                 isDetected: true,
-                chargeCount: sorted.count))
+                chargeCount: sorted.count)
         }
-
-        return result
     }
 
     /// Median gap between charges decides the cycle; a single charge defaults

@@ -49,6 +49,7 @@
 		AA680000000000000000001A /* SharingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA690000000000000000001A /* SharingView.swift */; };
 		AA6C0000000000000000001A /* CloudKitSharingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6A0000000000000000001A /* CloudKitSharingService.swift */; };
 		AA700000000000000000001A /* BankSMSParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001A /* BankSMSParser.swift */; };
+		AA780000000000000000004A /* SubscriptionEmailParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000004A /* SubscriptionEmailParser.swift */; };
 		AA700000000000000000001B /* CurrencyConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001B /* CurrencyConverter.swift */; };
 		AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001C /* LiquidGlassTheme.swift */; };
 		AA700000000000000000001D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001D /* KeychainHelper.swift */; };
@@ -110,6 +111,7 @@
 		AA690000000000000000001A /* SharingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingView.swift; sourceTree = "<group>"; };
 		AA6A0000000000000000001A /* CloudKitSharingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitSharingService.swift; sourceTree = "<group>"; };
 		AA710000000000000000001A /* BankSMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankSMSParser.swift; sourceTree = "<group>"; };
+		AA790000000000000000004A /* SubscriptionEmailParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionEmailParser.swift; sourceTree = "<group>"; };
 		AA710000000000000000001B /* CurrencyConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyConverter.swift; sourceTree = "<group>"; };
 		AA710000000000000000001C /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
 		AA710000000000000000001D /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -211,6 +213,7 @@
 				AA610000000000000000001A /* ProManager.swift */,
 				AA6A0000000000000000001A /* CloudKitSharingService.swift */,
 				AA710000000000000000001A /* BankSMSParser.swift */,
+				AA790000000000000000004A /* SubscriptionEmailParser.swift */,
 				AA710000000000000000001B /* CurrencyConverter.swift */,
 				AA710000000000000000001D /* KeychainHelper.swift */,
 				AA710000000000000000001E /* GmailSyncService.swift */,
@@ -495,6 +498,7 @@
 				AA680000000000000000001A /* SharingView.swift in Sources */,
 				AA6C0000000000000000001A /* CloudKitSharingService.swift in Sources */,
 				AA700000000000000000001A /* BankSMSParser.swift in Sources */,
+				AA780000000000000000004A /* SubscriptionEmailParser.swift in Sources */,
 				AA700000000000000000001B /* CurrencyConverter.swift in Sources */,
 				AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */,
 				AA700000000000000000001D /* KeychainHelper.swift in Sources */,
