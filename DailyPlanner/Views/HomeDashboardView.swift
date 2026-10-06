@@ -26,7 +26,7 @@ enum HomeTileGroup: String, CaseIterable, Identifiable {
         case .health:   return [.healthFitness, .waterTracker, .foodTracker,
                                 .sleepTracker, .medications, .habits]
         case .finance:  return [.expenseTracker]
-        case .schedule: return [.dailySchedule, .appointments]
+        case .schedule: return [.dailySchedule, .appointments, .subscriptions]
         case .journal:  return [.notes, .rateYourDay]
         }
     }
@@ -46,7 +46,7 @@ enum HomeTileGroup: String, CaseIterable, Identifiable {
         case .tasks:    return "Priorities · Lists · Calls"
         case .health:   return "Fitness · Water · Sleep"
         case .finance:  return "Income · Expenses · Savings"
-        case .schedule: return "Day Plan · Appointments"
+        case .schedule: return "Day Plan · Appointments · Subscriptions"
         case .journal:  return "Notes · Rate Your Day"
         }
     }
@@ -316,6 +316,17 @@ struct GroupHubTile: View {
             let done = habits.filter { vm.isHabitCompleted($0, for: vm.selectedDate) }.count
             return habits.isEmpty ? ("0", "habits", "None yet")
                                   : ("\(done)/\(habits.count)", "done", "habits today")
+
+        case .subscriptions:
+            let subs = vm.allSubscriptions
+            guard let next = subs.first else {
+                return ("None", "tracked", "tap to add")
+            }
+            let days = next.daysUntilDue
+            let when = days <= 0 ? "due today" : (days == 1 ? "due tomorrow" : "in \(days) days")
+            let amount = vm.settings.currency.symbol
+                       + String(format: "%.2f", next.amount)
+            return (next.name, amount, when)
 
         case .dailySchedule:
             let total = e.dailySchedule.count

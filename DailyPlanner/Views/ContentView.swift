@@ -155,6 +155,7 @@ struct ContentView: View {
             ProGate(featureName: "Sleep Tracker", featureIcon: "moon.zzz.fill") {
                 SleepTrackerView()
             }
+        case .subscriptions:   SubscriptionsView()
         case .medications:
             ProGate(featureName: "Medication Reminders", featureIcon: "pill.fill") {
                 MedicationTrackerView()

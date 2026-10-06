@@ -1084,6 +1084,14 @@ struct AppSettings: Codable {
     var smartBankSMSEnabled: Bool = true
     var dismissedSMSHashes: Set<String> = []
 
+    // MARK: - Subscriptions
+    /// Subscriptions the user typed in, or a detected one they edited (editing
+    /// pins it, so their figures stop being overwritten by detection).
+    var manualSubscriptions: [Subscription] = []
+    /// Detection keys the user chose to stop tracking, so a recurring charge
+    /// they don't consider a subscription stays hidden.
+    var hiddenSubscriptionKeys: [String] = []
+
     // MARK: - Smart Food Analysis (PRO)
     /// When on, PRO users' food photos are sent to the Daily Planner analysis
     /// service for a far more accurate identification and full nutrition
@@ -1211,6 +1219,8 @@ struct AppSettings: Codable {
         receivedSharedLists       = try c.decodeIfPresent([ReceivedSharedList].self,  forKey: .receivedSharedLists)        ?? []
         smartBankSMSEnabled       = try c.decodeIfPresent(Bool.self,                 forKey: .smartBankSMSEnabled)        ?? true
         dismissedSMSHashes        = try c.decodeIfPresent(Set<String>.self,          forKey: .dismissedSMSHashes)         ?? []
+        manualSubscriptions       = try c.decodeIfPresent([Subscription].self,       forKey: .manualSubscriptions)        ?? []
+        hiddenSubscriptionKeys    = try c.decodeIfPresent([String].self,             forKey: .hiddenSubscriptionKeys)     ?? []
         cloudFoodAnalysisEnabled  = try c.decodeIfPresent(Bool.self,                 forKey: .cloudFoodAnalysisEnabled)   ?? true
         gmailConnectedEmail       = try c.decodeIfPresent(String.self,               forKey: .gmailConnectedEmail)        ?? ""
         gmailLastSyncEpoch        = try c.decodeIfPresent(Double.self,               forKey: .gmailLastSyncEpoch)         ?? 0
@@ -1349,6 +1359,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     case habits = "Habit Tracker"
     case sleepTracker = "Sleep Tracker"
     case medications = "Medications"
+    case subscriptions = "Subscriptions"
 
     var id: String { rawValue }
 
@@ -1370,6 +1381,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .habits: return "checkmark.circle.fill"
         case .sleepTracker: return "moon.zzz.fill"
         case .medications: return "pill.fill"
+        case .subscriptions: return "repeat.circle.fill"
         }
     }
 
@@ -1391,6 +1403,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .habits: return Color(red: 0.45, green: 0.25, blue: 0.85)
         case .sleepTracker: return Color(red: 0.25, green: 0.15, blue: 0.65)
         case .medications: return Color(red: 0.1, green: 0.6, blue: 0.65)
+        case .subscriptions: return Color(red: 0.42, green: 0.36, blue: 0.92)
         }
     }
 }

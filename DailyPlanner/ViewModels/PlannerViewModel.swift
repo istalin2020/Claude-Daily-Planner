@@ -811,6 +811,55 @@ class PlannerViewModel: ObservableObject {
         objectWillChange.send()
     }
 
+    // MARK: - Subscriptions
+
+    /// Every tracked subscription, soonest payment first.
+    ///
+    /// Detection runs over spending already imported, so no new permission is
+    /// needed. A manual entry of the same service wins — editing a detected one
+    /// pins it, so the user's own figures stop being recalculated underneath
+    /// them — and anything they stopped tracking is dropped.
+    var allSubscriptions: [Subscription] {
+        let hidden = Set(settings.hiddenSubscriptionKeys)
+        let manual = settings.manualSubscriptions
+        let manualKeys = Set(manual.map(\.detectionKey))
+
+        let detected = SubscriptionDetector.detect(from: entries)
+            .filter { !manualKeys.contains($0.detectionKey) }
+
+        return (manual + detected)
+            .filter { !hidden.contains($0.detectionKey) }
+            .sorted { $0.nextDue < $1.nextDue }
+    }
+
+    /// The payment the My Schedule tile advertises.
+    var nextSubscription: Subscription? { allSubscriptions.first }
+
+    func saveSubscription(_ sub: Subscription) {
+        var list = settings.manualSubscriptions
+        if let idx = list.firstIndex(where: { $0.id == sub.id }) {
+            list[idx] = sub
+        } else if let idx = list.firstIndex(where: { $0.detectionKey == sub.detectionKey }) {
+            // Same service typed twice — replace rather than duplicate.
+            list[idx] = sub
+        } else {
+            list.append(sub)
+        }
+        settings.manualSubscriptions = list
+        // Saving un-hides it, so editing something previously dismissed brings
+        // it back rather than silently doing nothing.
+        settings.hiddenSubscriptionKeys.removeAll { $0 == sub.detectionKey }
+        saveSettings()
+    }
+
+    func hideSubscription(_ sub: Subscription) {
+        settings.manualSubscriptions.removeAll { $0.id == sub.id }
+        if !settings.hiddenSubscriptionKeys.contains(sub.detectionKey) {
+            settings.hiddenSubscriptionKeys.append(sub.detectionKey)
+        }
+        saveSettings()
+    }
+
     // MARK: - Gmail Expense Sync
 
     /// Deletes an expense from a specific calendar day (not selectedDate).

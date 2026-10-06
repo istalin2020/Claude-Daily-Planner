@@ -29,6 +29,7 @@
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
 		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
 		AA440000000000000000001A /* CalorieEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA430000000000000000001A /* CalorieEstimator.swift */; };
+		AA780000000000000000003A /* Subscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000003A /* Subscription.swift */; };
 		AA420000000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA410000000000000000001A /* SettingsView.swift */; };
 		AA470000000000000000001A /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA460000000000000000001A /* HealthKitManager.swift */; };
 		AA6400000000000000001A /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA6500000000000000001A /* HealthKit.framework */; };
@@ -58,6 +59,7 @@
 		AA700000000000000000001F /* GmailSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001F /* GmailSyncView.swift */; };
 		AA760000000000000000001F /* HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000001F /* HomeDashboardView.swift */; };
 		AA760000000000000000002B /* SmartMealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000002B /* SmartMealSheet.swift */; };
+		AA760000000000000000003B /* SubscriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000003B /* SubscriptionsView.swift */; };
 		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
 		BB810000000000000000001A /* DailyPlannerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB900000000000000000001A /* DailyPlannerWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -87,6 +89,7 @@
 		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		AA430000000000000000001A /* CalorieEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieEstimator.swift; sourceTree = "<group>"; };
+		AA790000000000000000003A /* Subscription.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subscription.swift; sourceTree = "<group>"; };
 		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AA460000000000000000001A /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		AA6500000000000000001A /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
@@ -117,6 +120,7 @@
 		AA710000000000000000001F /* GmailSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncView.swift; sourceTree = "<group>"; };
 		AA770000000000000000001F /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardView.swift; sourceTree = "<group>"; };
 		AA770000000000000000002B /* SmartMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartMealSheet.swift; sourceTree = "<group>"; };
+		AA770000000000000000003B /* SubscriptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionsView.swift; sourceTree = "<group>"; };
 		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
 		BB110000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB120000000000000000001A /* DailyPlannerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyPlannerWidget.entitlements; sourceTree = "<group>"; };
@@ -187,6 +191,7 @@
 				AA110000000000000000001A /* PlannerModels.swift */,
 				AA3F0000000000000000001A /* NotificationManager.swift */,
 				AA430000000000000000001A /* CalorieEstimator.swift */,
+				AA790000000000000000003A /* Subscription.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -222,6 +227,7 @@
 				AA710000000000000000001F /* GmailSyncView.swift */,
 				AA770000000000000000001F /* HomeDashboardView.swift */,
 				AA770000000000000000002B /* SmartMealSheet.swift */,
+				AA770000000000000000003B /* SubscriptionsView.swift */,
 				AA150000000000000000001A /* ContentView.swift */,
 				AA3B0000000000000000001A /* Components */,
 				AA1B0000000000000000001A /* OverviewView.swift */,
@@ -453,6 +459,7 @@
 				AA120000000000000000001A /* PlannerModels.swift in Sources */,
 				AA400000000000000000001A /* NotificationManager.swift in Sources */,
 				AA440000000000000000001A /* CalorieEstimator.swift in Sources */,
+				AA780000000000000000003A /* Subscription.swift in Sources */,
 				AA140000000000000000001A /* PlannerViewModel.swift in Sources */,
 				AA160000000000000000001A /* ContentView.swift in Sources */,
 				AA180000000000000000001A /* DateScrollerView.swift in Sources */,
@@ -498,6 +505,7 @@
 				AA700000000000000000001F /* GmailSyncView.swift in Sources */,
 				AA760000000000000000001F /* HomeDashboardView.swift in Sources */,
 				AA760000000000000000002B /* SmartMealSheet.swift in Sources */,
+				AA760000000000000000003B /* SubscriptionsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
