@@ -16,13 +16,14 @@ struct SubscriptionsView: View {
 
     @State private var editing: Subscription? = nil
     @State private var showAdd = false
-    @State private var pendingHide: Subscription? = nil
+    @State private var pendingCancel: Subscription? = nil
+    @State private var pendingDelete: Subscription? = nil
+    @State private var showCancelled = false
 
     private var sym: String { vm.settings.currency.symbol }
 
-    private var subscriptions: [Subscription] {
-        vm.allSubscriptions
-    }
+    private var subscriptions: [Subscription] { vm.allSubscriptions }
+    private var cancelled: [Subscription] { vm.cancelledSubscriptions }
 
     private var next: Subscription? { subscriptions.first }
 
@@ -40,6 +41,8 @@ struct SubscriptionsView: View {
                     emptyState
                 }
 
+                if !cancelled.isEmpty { cancelledSection }
+
                 appleRow
 
                 Spacer(minLength: 28)
@@ -55,20 +58,32 @@ struct SubscriptionsView: View {
         .sheet(item: $editing) { sub in
             SubscriptionEditSheet(subscription: sub, sym: sym) { vm.saveSubscription($0) }
         }
-        .alert("Stop tracking?", isPresented: Binding(
-            get: { pendingHide != nil },
-            set: { if !$0 { pendingHide = nil } }
+        .alert("Cancel this subscription?", isPresented: Binding(
+            get: { pendingCancel != nil },
+            set: { if !$0 { pendingCancel = nil } }
         )) {
-            Button("Stop tracking", role: .destructive) {
-                if let s = pendingHide { vm.hideSubscription(s) }
-                pendingHide = nil
+            Button("Mark as cancelled") {
+                if let s = pendingCancel { vm.cancelSubscription(s) }
+                pendingCancel = nil
             }
-            Button("Cancel", role: .cancel) { pendingHide = nil }
+            Button("Keep it", role: .cancel) { pendingCancel = nil }
         } message: {
-            if let s = pendingHide {
-                Text(s.isDetected
-                     ? "\(s.name) was found in your spending. It will be hidden here, and your expenses are not touched."
-                     : "Remove \(s.name) from your subscriptions?")
+            if let s = pendingCancel {
+                Text("\(s.name) stops showing a next payment and leaves your monthly total. It stays on record below, and your past expenses aren't touched.")
+            }
+        }
+        .alert("Remove from the list?", isPresented: Binding(
+            get: { pendingDelete != nil },
+            set: { if !$0 { pendingDelete = nil } }
+        )) {
+            Button("Remove", role: .destructive) {
+                if let s = pendingDelete { vm.deleteSubscription(s) }
+                pendingDelete = nil
+            }
+            Button("Keep it", role: .cancel) { pendingDelete = nil }
+        } message: {
+            if let s = pendingDelete {
+                Text("\(s.name) disappears from this page entirely. Your expenses aren't touched.")
             }
         }
     }
@@ -179,11 +194,61 @@ struct SubscriptionsView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .contextMenu {
-                    Button("Edit") { editing = sub }
-                    Button("Stop tracking", role: .destructive) { pendingHide = sub }
+                    Button { editing = sub } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    Button { pendingCancel = sub } label: {
+                        Label("Cancel subscription", systemImage: "xmark.circle")
+                    }
+                    Button(role: .destructive) { pendingDelete = sub } label: {
+                        Label("Remove from list", systemImage: "trash")
+                    }
                 }
             }
         }
+    }
+
+    // MARK: - Cancelled
+
+    private var cancelledSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.snappy) { showCancelled.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Text("CANCELLED")
+                        .font(.system(size: 11, weight: .heavy))
+                        .tracking(1.1)
+                    Text("\(cancelled.count)")
+                        .font(.system(size: 11, weight: .heavy))
+                        .padding(.horizontal, 6).padding(.vertical, 1)
+                        .background(Capsule().fill(Color.secondary.opacity(0.18)))
+                    Spacer()
+                    Image(systemName: showCancelled ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if showCancelled {
+                ForEach(cancelled) { sub in
+                    SubscriptionRow(sub: sub, sym: sym)
+                        .opacity(0.6)
+                        .contextMenu {
+                            Button { vm.resumeSubscription(sub) } label: {
+                                Label("Resume", systemImage: "arrow.clockwise")
+                            }
+                            Button(role: .destructive) { pendingDelete = sub } label: {
+                                Label("Remove from list", systemImage: "trash")
+                            }
+                        }
+                }
+            }
+        }
+        .padding(.top, 4)
     }
 
     // MARK: - Empty
@@ -312,12 +377,15 @@ private struct SubscriptionRow: View {
 
     private var dueText: String {
         let f = DateFormatter(); f.dateFormat = "d MMM"
+        if let ended = sub.cancelledOn {
+            return "Cancelled \(f.string(from: ended))"
+        }
         let days = sub.daysUntilDue
         let prefix = days <= 0 ? "Due today" : (days == 1 ? "Tomorrow" : "\(days) days")
         return "\(prefix) · \(f.string(from: sub.nextDue))"
     }
 
-    private var isSoon: Bool { sub.daysUntilDue <= 3 }
+    private var isSoon: Bool { sub.isActive && sub.daysUntilDue <= 3 }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -439,10 +507,30 @@ struct SubscriptionEditSheet: View {
                 }
 
                 Section {
-                    DatePicker("Started", selection: $startedOn, displayedComponents: .date)
-                    DatePicker("Last paid", selection: $lastChargedOn, displayedComponents: .date)
+                    DatePicker("Subscribed on", selection: $startedOn,
+                               displayedComponents: .date)
+
+                    // A new plan bills on from the day it started, so there is
+                    // nothing else to ask. An existing one may already be part
+                    // way through its cycle, so that gets the extra field.
+                    if subscription != nil {
+                        DatePicker("Last payment", selection: $lastChargedOn,
+                                   displayedComponents: .date)
+                    }
                 } footer: {
-                    Text("The next payment is worked out from the last payment and the billing cycle.")
+                    Text(subscription == nil
+                         ? "Payments are scheduled forward from this date, every \(cycle.rawValue.lowercased().replacingOccurrences(of: "ly", with: "")) period, until you cancel."
+                         : "The next payment is worked out from the last payment and the billing cycle.")
+                }
+
+                if let existing = subscription, !existing.isActive,
+                   let ended = existing.cancelledOn {
+                    Section {
+                        Label("Cancelled on \(ended.formatted(date: .abbreviated, time: .omitted))",
+                              systemImage: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 14))
+                    }
                 }
             }
             .navigationTitle(subscription == nil ? "Add Subscription" : "Edit Subscription")
@@ -462,14 +550,17 @@ struct SubscriptionEditSheet: View {
 
     private func save() {
         guard let value = Double(amount), value > 0 else { return }
+        let isNew = subscription == nil
         var result = subscription ?? Subscription(name: trimmedName, amount: value,
                                                   startedOn: startedOn,
-                                                  lastChargedOn: lastChargedOn)
+                                                  lastChargedOn: startedOn)
         result.name = trimmedName
         result.amount = value
         result.cycle = cycle
         result.startedOn = startedOn
-        result.lastChargedOn = lastChargedOn
+        // A new plan's first payment is the day it started; the schedule runs
+        // forward from there on its own.
+        result.lastChargedOn = isNew ? startedOn : lastChargedOn
         // Editing a detected entry pins it: the user's figures win from now on.
         result.isDetected = false
         onSave(result)

@@ -170,6 +170,10 @@ struct Subscription: Identifiable, Codable, Equatable {
     var startedOn: Date
     /// The most recent charge seen; the next due date is derived from it.
     var lastChargedOn: Date
+    /// Set when the user cancels the plan. The record is kept — what you used
+    /// to pay for is worth remembering — but it stops counting towards the
+    /// next payment and the totals.
+    var cancelledOn: Date? = nil
     /// True when it came from imported spending rather than being typed in.
     var isDetected: Bool = false
     /// How many charges the detector matched. One means the cycle is a guess.
@@ -178,18 +182,27 @@ struct Subscription: Identifiable, Codable, Equatable {
     /// A stable key for a detected subscription, so hiding one sticks.
     var detectionKey: String { name.lowercased() }
 
+    /// Still running, so it still has a next payment.
+    var isActive: Bool { cancelledOn == nil }
+
     var brand: SubscriptionBrand {
         SubscriptionBrand.match(name) ?? SubscriptionBrand.generic(named: name)
     }
 
     /// Next payment date, rolled forward past any charge we never saw imported.
+    ///
+    /// Every step is measured from the last payment rather than from the step
+    /// before it. Adding a month to the 31st lands on the 28th, so advancing
+    /// one month at a time would walk a plan billed on the 31st back to the
+    /// 28th permanently; anchoring on the original date restores the 31st in
+    /// every month long enough to have one.
     var nextDue: Date {
         let today = Calendar.current.startOfDay(for: Date())
-        var next = cycle.advance(lastChargedOn)
-        var guard_ = 0
-        while next < today && guard_ < 400 {
-            next = cycle.advance(next)
-            guard_ += 1
+        var periods = 1
+        var next = cycle.advance(lastChargedOn, by: periods)
+        while next < today && periods < 400 {
+            periods += 1
+            next = cycle.advance(lastChargedOn, by: periods)
         }
         return next
     }
@@ -208,12 +221,12 @@ struct Subscription: Identifiable, Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, amount, currencyCode, cycle, startedOn, lastChargedOn,
-             isDetected, chargeCount
+             cancelledOn, isDetected, chargeCount
     }
 
     init(id: UUID = UUID(), name: String, amount: Double, currencyCode: String = "",
          cycle: BillingCycle = .monthly, startedOn: Date, lastChargedOn: Date,
-         isDetected: Bool = false, chargeCount: Int = 1) {
+         cancelledOn: Date? = nil, isDetected: Bool = false, chargeCount: Int = 1) {
         self.id = id
         self.name = name
         self.amount = amount
@@ -221,6 +234,7 @@ struct Subscription: Identifiable, Codable, Equatable {
         self.cycle = cycle
         self.startedOn = startedOn
         self.lastChargedOn = lastChargedOn
+        self.cancelledOn = cancelledOn
         self.isDetected = isDetected
         self.chargeCount = chargeCount
     }
@@ -234,6 +248,7 @@ struct Subscription: Identifiable, Codable, Equatable {
         cycle         = try c.decodeIfPresent(BillingCycle.self, forKey: .cycle) ?? .monthly
         startedOn     = try c.decodeIfPresent(Date.self,         forKey: .startedOn) ?? Date()
         lastChargedOn = try c.decodeIfPresent(Date.self,         forKey: .lastChargedOn) ?? Date()
+        cancelledOn   = try c.decodeIfPresent(Date.self,         forKey: .cancelledOn)
         isDetected    = try c.decodeIfPresent(Bool.self,         forKey: .isDetected) ?? false
         chargeCount   = try c.decodeIfPresent(Int.self,          forKey: .chargeCount) ?? 1
     }

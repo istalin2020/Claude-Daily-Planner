@@ -819,7 +819,7 @@ class PlannerViewModel: ObservableObject {
     /// needed. A manual entry of the same service wins — editing a detected one
     /// pins it, so the user's own figures stop being recalculated underneath
     /// them — and anything they stopped tracking is dropped.
-    var allSubscriptions: [Subscription] {
+    private var mergedSubscriptions: [Subscription] {
         let hidden = Set(settings.hiddenSubscriptionKeys)
         let manual = settings.manualSubscriptions
         let manualKeys = Set(manual.map(\.detectionKey))
@@ -827,13 +827,51 @@ class PlannerViewModel: ObservableObject {
         let detected = SubscriptionDetector.detect(from: entries)
             .filter { !manualKeys.contains($0.detectionKey) }
 
-        return (manual + detected)
-            .filter { !hidden.contains($0.detectionKey) }
-            .sorted { $0.nextDue < $1.nextDue }
+        return (manual + detected).filter { !hidden.contains($0.detectionKey) }
+    }
+
+    /// Running subscriptions, soonest payment first. A cancelled plan keeps its
+    /// record but stops appearing here, so it no longer shows a next payment or
+    /// counts towards the totals.
+    var allSubscriptions: [Subscription] {
+        mergedSubscriptions.filter(\.isActive).sorted { $0.nextDue < $1.nextDue }
+    }
+
+    /// Cancelled plans, most recently cancelled first — kept as a record of
+    /// what was being paid for.
+    var cancelledSubscriptions: [Subscription] {
+        mergedSubscriptions.filter { !$0.isActive }
+            .sorted { ($0.cancelledOn ?? .distantPast) > ($1.cancelledOn ?? .distantPast) }
     }
 
     /// The payment the My Schedule tile advertises.
     var nextSubscription: Subscription? { allSubscriptions.first }
+
+    /// Marks a plan cancelled from a date, keeping it on record.
+    ///
+    /// A detected plan is written into storage first — detection reruns from
+    /// spending every time, so without a stored copy the cancellation would be
+    /// forgotten the moment the view refreshed.
+    func cancelSubscription(_ sub: Subscription, on date: Date = Date()) {
+        var stored = sub
+        stored.cancelledOn = date
+        stored.isDetected = false
+        saveSubscription(stored)
+    }
+
+    /// Puts a cancelled plan back into service, billing on from today.
+    func resumeSubscription(_ sub: Subscription) {
+        var stored = sub
+        stored.cancelledOn = nil
+        stored.lastChargedOn = Date()
+        stored.isDetected = false
+        saveSubscription(stored)
+    }
+
+    /// Removes a plan outright, record and all.
+    func deleteSubscription(_ sub: Subscription) {
+        hideSubscription(sub)
+    }
 
     func saveSubscription(_ sub: Subscription) {
         var list = settings.manualSubscriptions
