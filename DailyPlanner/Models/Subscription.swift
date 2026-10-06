@@ -222,7 +222,27 @@ struct Subscription: Identifiable, Codable, Equatable {
     var detectionKey: String { sourceKey ?? name.lowercased() }
 
     /// Still running, so it still has a next payment.
-    var isActive: Bool { cancelledOn == nil }
+    var isActive: Bool { cancelledOn == nil && lapsedOn == nil }
+
+    /// When an App Store plan ran out without being cancelled by email.
+    ///
+    /// Apple emails a receipt on every renewal, so a renewal date that passed a
+    /// week ago with no new receipt means the plan expired — the way the
+    /// user's LinkedIn, Canva and Lightroom plans did. Without this the
+    /// schedule rolled forward forever and expired plans sat under Active.
+    ///
+    /// Only App Store plans the user hasn't edited: bank-detected plans can
+    /// have gaps simply because a month was never synced, and an edited plan
+    /// is the user's call.
+    var lapsedOn: Date? {
+        guard viaApple, isDetected, cancelledOn == nil else { return nil }
+        let expected = cycle.advance(lastChargedOn)
+        let grace = Calendar.current.date(byAdding: .day, value: 7, to: expected) ?? expected
+        return grace < Calendar.current.startOfDay(for: Date()) ? expected : nil
+    }
+
+    /// Cancelled or expired, whichever applies — for sorting the Inactive list.
+    var endedOn: Date? { cancelledOn ?? lapsedOn }
 
     var brand: SubscriptionBrand {
         if let known = SubscriptionBrand.match(name) { return known }

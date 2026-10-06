@@ -249,7 +249,7 @@ struct SubscriptionsView: View {
                 withAnimation(.snappy) { showCancelled.toggle() }
             } label: {
                 HStack(spacing: 6) {
-                    Text("CANCELLED")
+                    Text("INACTIVE")
                         .font(.system(size: 11, weight: .heavy))
                         .tracking(1.1)
                     Text("\(cancelled.count)")
@@ -506,6 +506,9 @@ private struct SubscriptionRow: View {
         let f = DateFormatter(); f.dateFormat = "d MMM"
         if let ended = sub.cancelledOn {
             return "Cancelled \(f.string(from: ended))"
+        }
+        if let ran = sub.lapsedOn {
+            return "Expired \(f.string(from: ran))"
         }
         let days = sub.daysUntilDue
         let prefix = days <= 0 ? "Due today" : (days == 1 ? "Tomorrow" : "\(days) days")

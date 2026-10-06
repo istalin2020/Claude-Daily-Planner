@@ -876,7 +876,7 @@ class PlannerViewModel: ObservableObject {
     var cancelledSubscriptions: [Subscription] {
         mergedSubscriptions.filter { !$0.isActive }
             .sorted { a, b in
-                let ca = a.cancelledOn ?? .distantPast, cb = b.cancelledOn ?? .distantPast
+                let ca = a.endedOn ?? .distantPast, cb = b.endedOn ?? .distantPast
                 return ca != cb ? ca > cb
                                 : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
             }
