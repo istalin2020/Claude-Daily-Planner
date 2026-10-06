@@ -861,14 +861,25 @@ class PlannerViewModel: ObservableObject {
     /// record but stops appearing here, so it no longer shows a next payment or
     /// counts towards the totals.
     var allSubscriptions: [Subscription] {
-        mergedSubscriptions.filter(\.isActive).sorted { $0.nextDue < $1.nextDue }
+        // Ties are broken by name. Two plans due the same day otherwise swap
+        // places on every redraw, because detection builds its list from an
+        // unordered dictionary.
+        mergedSubscriptions.filter(\.isActive).sorted { a, b in
+            a.nextDue != b.nextDue
+                ? a.nextDue < b.nextDue
+                : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        }
     }
 
     /// Cancelled plans, most recently cancelled first — kept as a record of
     /// what was being paid for.
     var cancelledSubscriptions: [Subscription] {
         mergedSubscriptions.filter { !$0.isActive }
-            .sorted { ($0.cancelledOn ?? .distantPast) > ($1.cancelledOn ?? .distantPast) }
+            .sorted { a, b in
+                let ca = a.cancelledOn ?? .distantPast, cb = b.cancelledOn ?? .distantPast
+                return ca != cb ? ca > cb
+                                : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
     }
 
     /// The payment the My Schedule tile advertises.

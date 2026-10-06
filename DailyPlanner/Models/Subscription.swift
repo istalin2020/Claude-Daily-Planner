@@ -342,47 +342,65 @@ enum SubscriptionDetector {
 
         return byService.compactMap { key, charges in
             let sorted = charges.sorted { $0.date < $1.date }
-            guard let last = sorted.last, let first = sorted.first else { return nil }
+            // Price, schedule and start date all come from the plan's own
+            // charges, so a one-off charge from the same company (API credits,
+            // a top-up) can't distort any of them.
+            let plan = planCharges(sorted.map { (date: $0.date, amount: $0.amount) })
+            guard let last = plan.last, let first = plan.first else { return nil }
             var sub = Subscription(
                 name: displayName[key] ?? key.capitalized,
-                amount: planAmount(sorted.map { ($0.date, $0.amount) }),
-                cycle: inferCycle(from: sorted.map(\.date)),
+                amount: last.amount,
+                cycle: inferCycle(from: plan.map(\.date)),
                 startedOn: first.date,
                 lastChargedOn: last.date,
                 isDetected: true,
-                chargeCount: sorted.count)
+                chargeCount: plan.count)
             sub.sourceKey = key
             return sub
         }
     }
 
-    /// The plan's price, read from the most recent charges.
+    /// The charges that belong to the plan itself, oldest first.
     ///
-    /// The latest charge alone can be a one-off add-on or top-up — Higgsfield
-    /// showed a USD 5 card charge beside the OMR 19.411 plan — so the most
-    /// frequent of the last three wins, ties going to the newest. Looking back
-    /// only three charges still lets a genuine price rise show through.
-    private static func planAmount(_ charges: [(Date, Double)]) -> Double {
-        let recent = charges.suffix(3)
-        var counts: [Double: (count: Int, latest: Date)] = [:]
-        for (date, amount) in recent {
-            let key = (amount * 1000).rounded() / 1000
-            let prior = counts[key] ?? (0, .distantPast)
-            counts[key] = (prior.count + 1, max(prior.latest, date))
+    /// Charges within 3% of each other are treated as one plan: a USD plan
+    /// billed to an OMR card lands a few baisa apart each month as the rate
+    /// moves ($20 shows as 7.69, then 7.70). Matching to the exact baisa, as
+    /// before, meant no two charges ever agreed, so the newest won — and for
+    /// OpenAI that was a one-off OMR 40.357 charge, not the $20 plan.
+    ///
+    /// A group that recurs beats any one-off. Among recurring groups, the one
+    /// charged most recently wins, so a genuine price rise shows once it has
+    /// repeated.
+    private static func planCharges(_ charges: [(date: Date, amount: Double)])
+        -> [(date: Date, amount: Double)] {
+        var groups: [[(date: Date, amount: Double)]] = []
+        for c in charges {
+            if let i = groups.firstIndex(where: { abs($0[0].amount - c.amount) <= $0[0].amount * 0.03 }) {
+                groups[i].append(c)
+            } else {
+                groups.append([c])
+            }
         }
-        return counts.max { a, b in
-            a.value.count != b.value.count ? a.value.count < b.value.count
-                                           : a.value.latest < b.value.latest
-        }?.key ?? (charges.last?.1 ?? 0)
+        let recurring = groups.filter { $0.count >= 2 }
+        let pool = recurring.isEmpty ? groups : recurring
+        let best = pool.max { a, b in
+            let la = a.last!.date, lb = b.last!.date
+            // Same day: prefer the smaller charge, the likelier base plan.
+            return la != lb ? la < lb : a.last!.amount > b.last!.amount
+        }
+        return best ?? charges
     }
 
-    /// Infers the billing period from the gaps between charges.
+    /// Infers the billing period from the gaps between the plan's charges.
     ///
-    /// Gaps under 20 days are ignored: two charges that close together are an
-    /// add-on, a top-up or a charge and its reversal, not the billing period.
-    /// Counting them made Higgsfield "Weekly" from a 3-day gap. Weekly is only
-    /// believed with three or more charges spaced about a week apart, and
-    /// anything unclear is assumed monthly, the overwhelmingly common case.
+    /// A plan billed on the same day each month leaves gaps of whole months,
+    /// and when a month was never synced the gap simply doubles or triples.
+    /// The median gap read those as "Quarterly" — Ooredoo, paid around the 10th
+    /// of every month, came out quarterly. So the shortest real gap decides,
+    /// and quarterly is only believed when at least two gaps are each about
+    /// three months. Gaps under 20 days (an add-on, or a charge and its
+    /// reversal) are ignored, weekly needs three evenly spaced charges, and
+    /// anything unclear is monthly.
     private static func inferCycle(from dates: [Date]) -> BillingCycle {
         guard dates.count >= 2 else { return .monthly }
         let cal = Calendar.current
@@ -395,11 +413,14 @@ enum SubscriptionDetector {
 
         if dates.count >= 3, gaps.allSatisfy({ (6...8).contains($0) }) { return .weekly }
 
-        let periodGaps = gaps.filter { $0 >= 20 }.sorted()
-        guard !periodGaps.isEmpty else { return .monthly }
-        let median = periodGaps[periodGaps.count / 2]
-        let candidates: [BillingCycle] = [.monthly, .quarterly, .yearly]
-        return candidates.min(by: { abs($0.days - median) < abs($1.days - median) }) ?? .monthly
+        let periodGaps = gaps.filter { $0 >= 20 }
+        guard let shortest = periodGaps.min() else { return .monthly }
+
+        if shortest >= 330 { return .yearly }
+        if periodGaps.count >= 2, periodGaps.allSatisfy({ (80...100).contains($0) }) {
+            return .quarterly
+        }
+        return .monthly
     }
 
     /// Strips the noise banks add so the same merchant groups together.
