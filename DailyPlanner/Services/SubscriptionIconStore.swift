@@ -124,7 +124,7 @@ final class SubscriptionIconStore: @unchecked Sendable {
         // The local storefront first (Omantel isn't in the US store), then US.
         let local = Locale.current.region?.identifier.lowercased() ?? "us"
         for country in local == "us" ? ["us"] : [local, "us"] {
-            if let url = await search(search.term, sellers: search.sellers, country: country) {
+            if let url = await searchStore(search.term, sellers: search.sellers, country: country) {
                 let snapshot: [String: String] = lock.withLock {
                     lookups[brand] = url
                     return lookups
@@ -148,7 +148,7 @@ final class SubscriptionIconStore: @unchecked Sendable {
         let results: [App]
     }
 
-    private func search(_ term: String, sellers: [String], country: String) async -> String? {
+    private func searchStore(_ term: String, sellers: [String], country: String) async -> String? {
         var parts = URLComponents(string: "https://itunes.apple.com/search")!
         parts.queryItems = [
             URLQueryItem(name: "term", value: term),
