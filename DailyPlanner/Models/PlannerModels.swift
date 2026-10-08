@@ -1100,9 +1100,11 @@ struct AppSettings: Codable {
     /// Detection keys the user chose to stop tracking, so a recurring charge
     /// they don't consider a subscription stays hidden.
     var hiddenSubscriptionKeys: [String] = []
-    /// App names learned from Apple receipts that state them, keyed by plan
-    /// name or icon, so older receipts naming only the plan can be resolved.
-    var appStoreAliases: [String: String] = [:]
+    /// What Apple's emails said about App Store subscriptions — receipts,
+    /// confirmations, renewal notices, expiry notices, refunds. The App Store
+    /// list is worked out from all of them together (see AppStoreLedger),
+    /// never from any one email alone.
+    var appStoreRecords: [AppStoreRecord] = []
 
     // MARK: - Smart Food Analysis (PRO)
     /// When on, PRO users' food photos are sent to the Daily Planner analysis
@@ -1233,7 +1235,7 @@ struct AppSettings: Codable {
         dismissedSMSHashes        = try c.decodeIfPresent(Set<String>.self,          forKey: .dismissedSMSHashes)         ?? []
         manualSubscriptions       = try c.decodeIfPresent([Subscription].self,       forKey: .manualSubscriptions)        ?? []
         hiddenSubscriptionKeys    = try c.decodeIfPresent([String].self,             forKey: .hiddenSubscriptionKeys)     ?? []
-        appStoreAliases           = try c.decodeIfPresent([String: String].self,     forKey: .appStoreAliases)            ?? [:]
+        appStoreRecords           = try c.decodeIfPresent([AppStoreRecord].self,     forKey: .appStoreRecords)            ?? []
         cloudFoodAnalysisEnabled  = try c.decodeIfPresent(Bool.self,                 forKey: .cloudFoodAnalysisEnabled)   ?? true
         gmailConnectedEmail       = try c.decodeIfPresent(String.self,               forKey: .gmailConnectedEmail)        ?? ""
         gmailLastSyncEpoch        = try c.decodeIfPresent(Double.self,               forKey: .gmailLastSyncEpoch)         ?? 0

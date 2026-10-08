@@ -259,15 +259,20 @@ enum SubscriptionCategory: String, Codable, CaseIterable, Identifiable {
             (.cloud,         ["icloud", "google one", "dropbox", "storage", "apple one", "2 tb"]),
             (.ai,            ["openai", "chatgpt", "anthropic", "claude", "grok", "gemini",
                               "perplexity", "grammarly", "notion", "wispr", "keyboard",
-                              "higgsfield", "copilot", "microsoft 365", "ai assistant"]),
+                              "higgsfield", "copilot", "microsoft 365", "ai assistant",
+                              "google ai", "ask ai", "notee", "note taker", "planner",
+                              "dailyquote"]),
             (.photoVideo,    ["photo", "video", "inshot", "lightroom", "canva", "b612",
-                              "creator studio", "adobe", "capcut", "camera"]),
+                              "creator studio", "adobe", "capcut", "camera", "fonts",
+                              "stickers", "collage"]),
             (.entertainment, ["netflix", "disney", "prime video", "amazon prime", "youtube",
-                              "spotify", "zee5", "liv", "hotstar", "shahid", "osn", "anghami",
+                              "spotify", "zee5", "sony liv", "sonyliv", "liv premium",
+                              "lionsgate", "hotstar", "shahid", "osn", "anghami",
                               "premium hd", "music", "tv", "movies"]),
             (.social,        ["whatsapp", "linkedin", "x premium", "telegram", "instagram",
                               "snapchat", "facebook"]),
-            (.education,     ["coloring", "typing", "kids", "learn", "duolingo", "school"]),
+            (.education,     ["coloring", "typing", "kids", "learn", "duolingo", "school",
+                              "abcmouse"]),
             (.finance,       ["moneycontrol", "equitymaster", "stock", "market", "news",
                               "finance", "invest"]),
             (.health,        ["daylio", "mood", "journal", "fitness", "health", "sleep",
@@ -319,9 +324,13 @@ struct Subscription: Identifiable, Codable, Equatable {
     var accountEmail: String? = nil
     /// Chosen by the user; otherwise worked out from the name.
     var category: SubscriptionCategory? = nil
-    /// Set while a receipt is being read: it named only the plan, so the app
-    /// still has to be looked up from what other receipts taught us. Not stored.
-    var nameIsPlanOnly: Bool = false
+    /// For a plan that was cancelled but is paid up: the day it stops.
+    /// Worked out from email each time, so not stored.
+    var endsOn: Date? = nil
+    /// Every key this plan has been known by — app names, plan names, icon,
+    /// subscription group — so removing it holds whichever one the next email
+    /// uses. Worked out each time, so not stored.
+    var matchKeys: [String] = []
 
     /// The category shown and grouped by.
     var effectiveCategory: SubscriptionCategory {

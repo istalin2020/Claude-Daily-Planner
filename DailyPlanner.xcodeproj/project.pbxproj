@@ -52,6 +52,7 @@
 		AA780000000000000000004A /* SubscriptionEmailParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000004A /* SubscriptionEmailParser.swift */; };
 		AA780000000000000000005A /* AppleReceiptParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000005A /* AppleReceiptParser.swift */; };
 		AA780000000000000000006A /* SubscriptionIconStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000006A /* SubscriptionIconStore.swift */; };
+		AA780000000000000000007A /* AppStoreLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000007A /* AppStoreLedger.swift */; };
 		AA700000000000000000001B /* CurrencyConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001B /* CurrencyConverter.swift */; };
 		AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001C /* LiquidGlassTheme.swift */; };
 		AA700000000000000000001D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001D /* KeychainHelper.swift */; };
@@ -116,6 +117,7 @@
 		AA790000000000000000004A /* SubscriptionEmailParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionEmailParser.swift; sourceTree = "<group>"; };
 		AA790000000000000000005A /* AppleReceiptParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleReceiptParser.swift; sourceTree = "<group>"; };
 		AA790000000000000000006A /* SubscriptionIconStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionIconStore.swift; sourceTree = "<group>"; };
+		AA790000000000000000007A /* AppStoreLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStoreLedger.swift; sourceTree = "<group>"; };
 		AA710000000000000000001B /* CurrencyConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyConverter.swift; sourceTree = "<group>"; };
 		AA710000000000000000001C /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
 		AA710000000000000000001D /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -220,6 +222,7 @@
 				AA790000000000000000004A /* SubscriptionEmailParser.swift */,
 				AA790000000000000000005A /* AppleReceiptParser.swift */,
 				AA790000000000000000006A /* SubscriptionIconStore.swift */,
+				AA790000000000000000007A /* AppStoreLedger.swift */,
 				AA710000000000000000001B /* CurrencyConverter.swift */,
 				AA710000000000000000001D /* KeychainHelper.swift */,
 				AA710000000000000000001E /* GmailSyncService.swift */,
@@ -507,6 +510,7 @@
 				AA780000000000000000004A /* SubscriptionEmailParser.swift in Sources */,
 				AA780000000000000000005A /* AppleReceiptParser.swift in Sources */,
 				AA780000000000000000006A /* SubscriptionIconStore.swift in Sources */,
+				AA780000000000000000007A /* AppStoreLedger.swift in Sources */,
 				AA700000000000000000001B /* CurrencyConverter.swift in Sources */,
 				AA700000000000000000001C /* LiquidGlassTheme.swift in Sources */,
 				AA700000000000000000001D /* KeychainHelper.swift in Sources */,

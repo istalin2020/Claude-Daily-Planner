@@ -57,6 +57,25 @@ enum AppleReceiptParser {
         return found
     }
 
+    /// The lines of a credit note — a refund. Same layouts as a receipt, but
+    /// with no renewal date, since nothing renews.
+    static func creditNoteItems(html: String) -> [AppleReceiptItem] {
+        let account = accountEmail(in: html)
+        var found: [AppleReceiptItem] = []
+        for row in captures(#"(?s)<tr[^>]*class="[^"]*subscription-lockup(?!__)[^"]*"[^>]*>(.*?)</tr>"#, in: html) {
+            let texts = captures(#"(?s)<p[^>]*>(.*?)</p>"#, in: row).map(plainText).filter { !$0.isEmpty }
+            guard let (amount, code) = texts.lazy.compactMap(priceOnly).first else { continue }
+            let planIdx = texts.firstIndex { $0.contains("(") }
+            let planLine = planIdx.map { texts[$0] } ?? texts.first ?? ""
+            let app = (planIdx ?? 0) > 0 ? texts[planIdx! - 1] : nil
+            found.append(AppleReceiptItem(
+                appName: app.flatMap(usableName), planName: stripPeriods(planLine),
+                cycle: period(in: planLine) ?? .monthly, amount: amount, currencyCode: code,
+                renewal: Date(), iconURL: appIcon(in: row), accountEmail: account))
+        }
+        return found
+    }
+
     // MARK: - Modern layout
 
     private static func modernItems(_ html: String) -> [AppleReceiptItem] {

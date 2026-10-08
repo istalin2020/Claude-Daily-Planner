@@ -8,11 +8,15 @@ enum SubscriptionEvent {
     /// A plan was cancelled on the service's own website or app. Carries the
     /// same identity fields as a charge so it lands on the same row.
     case cancelled(Subscription, on: Date)
+    /// Something an Apple email said about an App Store plan. Kept as a record
+    /// and weighed with the others — see AppStoreLedger.
+    case appStore(AppStoreRecord)
 
     var date: Date {
         switch self {
         case .charged(let sub):         return sub.lastChargedOn
         case .cancelled(_, let on):     return on
+        case .appStore(let record):     return record.date
         }
     }
 }
@@ -78,7 +82,8 @@ enum SubscriptionEmailParser {
         // failed or pending payments
         "payment failed", "payment was declined", "was declined", "payment declined",
         "unable to process", "couldn't process", "could not process",
-        "update your payment", "payment method has expired",
+        "update your payment", "payment method has expired", "was unsuccessful",
+        "access has been paused", "weren't able to charge", "were not able to charge",
         // the user's own inbox housekeeping
         "subscription to our newsletter", "newsletter subscription",
         "email subscription", "unsubscribe from this", "cancel your order",
@@ -154,78 +159,41 @@ enum SubscriptionEmailParser {
 
         let lower = (subject + "\n" + body).lowercased()
         if isFromApple(sender: sender, lowerBody: lower) {
-            if AppleReceiptParser.isInvoice(html) {
-                return AppleReceiptParser.items(html: html).map(charged(from:))
-            }
-            // Confirmations, renewal reminders and cancellations come from
-            // Apple's transactional address. Its marketing ("3 months of Apple
-            // Music free") comes from elsewhere and talks about subscriptions.
-            guard sender.lowercased().contains("email.apple.com") else { return [] }
-            return appleNotice(body: body, subject: subject,
-                               recipients: recipients, receivedOn: date).map { [$0] } ?? []
+            return appleRecords(html: html, sender: sender, subject: subject,
+                                recipients: recipients, receivedOn: date).map(SubscriptionEvent.appStore)
         }
         return otherReceipt(body: body, sender: sender, subject: subject,
                             receivedOn: date).map { [$0] } ?? []
     }
 
-    private static func charged(from item: AppleReceiptItem) -> SubscriptionEvent {
-        let last = item.cycle.advance(item.renewal, by: -1)
-        var sub = Subscription(name: item.appName ?? item.planName, amount: item.amount,
-                               currencyCode: item.currencyCode, cycle: item.cycle,
-                               startedOn: last, lastChargedOn: last, isDetected: true)
-        sub.viaApple = true
-        sub.planName = item.planName
-        sub.iconURL = item.iconURL
-        sub.accountEmail = item.accountEmail
-        sub.nameIsPlanOnly = item.appName == nil
-        return .charged(sub)
-    }
+    /// What an Apple email records. Only Apple's transactional addresses
+    /// count: its marketing ("3 months of Apple Music free", "Get the most
+    /// out of your new MacBook Air") talks about subscriptions too.
+    private static func appleRecords(html: String, sender: String, subject: String,
+                                     recipients: String, receivedOn date: Date) -> [AppStoreRecord] {
+        guard sender.lowercased().contains("email.apple.com") else { return [] }
 
-    /// "Subscription Confirmed", "Your Subscription Renewal" and cancellation
-    /// notices: flattened text, labelled fields.
-    private static func appleNotice(body: String, subject: String, recipients: String,
-                                    receivedOn date: Date) -> SubscriptionEvent? {
-        let combined = subject + "\n" + body
-        let lower = combined.lowercased()
-        guard recurringMarkers.contains(where: { lower.contains($0) }) else { return nil }
-
-        var app = appleAppName(from: combined)
-        // Renewal reminders print the app, then "<app> Plan" as a heading:
-        //     ChatGPT
-        //     ChatGPT Plan
-        //     ChatGPT Go (1 month)
-        if let a = app, a.hasSuffix(" Plan") {
-            let base = String(a.dropLast(" Plan".count))
-            let lines = combined.components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-            if lines.contains(base) { app = base }
+        // A credit note refunds a charge; it carries the plan like a receipt.
+        if html.range(of: "credit note", options: .caseInsensitive) != nil,
+           AppleReceiptParser.isInvoice(html) {
+            return AppleReceiptParser.creditNoteItems(html: html).map { item in
+                AppStoreRecord(kind: .refund, date: date, account: item.accountEmail,
+                               app: item.appName, plan: item.planName, amount: item.amount,
+                               currency: item.currencyCode, cycle: item.cycle)
+            }
         }
-        let plan = applePlanName(from: combined)
-        guard let name = app ?? plan else { return nil }
-
-        var sub = Subscription(name: name, amount: 0, cycle: cycle(in: combined) ?? .monthly,
-                               startedOn: date, lastChargedOn: date, isDetected: true)
-        sub.viaApple = true
-        sub.planName = plan
-        sub.nameIsPlanOnly = app == nil
-        sub.accountEmail = recipients.lowercased()
-
-        if cancelMarkers.contains(where: { lower.contains($0) }) {
-            return .cancelled(sub, on: date)
+        if AppleReceiptParser.isInvoice(html) {
+            // Only lines with a renewal date: a ₹2,000 Apple Account top-up
+            // or a one-off purchase has none.
+            return AppleReceiptParser.items(html: html).map { item in
+                AppStoreRecord(kind: .receipt, date: date, account: item.accountEmail,
+                               app: item.appName, plan: item.planName, amount: item.amount,
+                               currency: item.currencyCode, cycle: item.cycle,
+                               renewal: item.renewal, iconURL: item.iconURL)
+            }
         }
-
-        // A confirmation or a "will renew soon" reminder: the plan is running.
-        let running = ["confirms your subscription", "subscription confirmed",
-                       "automatically renews", "will renew soon", "subscription renewal"]
-        guard running.contains(where: { lower.contains($0) }),
-              let (amount, currency) = chargedAmount(in: combined) else { return nil }
-        sub.amount = amount
-        sub.currencyCode = currency
-        if let renewal = renewalDate(in: combined) {
-            sub.lastChargedOn = sub.cycle.advance(renewal, by: -1)
-            sub.startedOn = sub.lastChargedOn
-        }
-        return .charged(sub)
+        return AppleNoticeParser.record(html: html, subject: subject, recipients: recipients,
+                                        receivedOn: date).map { [$0] } ?? []
     }
 
     /// Everything that isn't Apple: a service's own receipt or cancellation.
@@ -233,10 +201,33 @@ enum SubscriptionEmailParser {
                                      receivedOn date: Date) -> SubscriptionEvent? {
         let combined = subject + "\n" + body
         let lower = combined.lowercased()
+        let subjectLower = subject.lowercased()
+        if isNewsletter(sender: sender) { return nil }
+
+        // A cancellation says so in its subject, and is read before the
+        // marketing filters: Wispr Flow's ends "Come back anytime —
+        // Resubscribe today", which on its own reads as a promotion.
+        let subjectSaysEnded = ["cancel", "has ended", "expired", "ending"]
+            .contains { subjectLower.contains($0) }
+        if subjectSaysEnded, cancelMarkers.contains(where: { lower.contains($0) }),
+           !lower.contains("order cancel"),
+           let name = serviceName(sender: sender, subject: subject, body: body, viaApple: false) {
+            let sub = Subscription(name: name, amount: 0, cycle: cycle(in: combined) ?? .monthly,
+                                   startedOn: date, lastChargedOn: date, isDetected: true)
+            return .cancelled(sub, on: date)
+        }
 
         if notAnEvent.contains(where: { lower.contains($0) }) { return nil }
         if BankSMSParser.isMarketing(lower) { return nil }
         guard recurringMarkers.contains(where: { lower.contains($0) }) else { return nil }
+        // The subject must be about a payment or a plan. A newsletter body
+        // mentions subscriptions, receipts and prices in passing; its subject
+        // ("$250 Discount / Last Chance…") is about something else — which is
+        // how a Substack author, "Michael Simmons", became a subscription.
+        let aboutBilling = ["receipt", "invoice", "payment", "renew", "subscription",
+                            "membership", "charged", "billing", "cancel", "your plan",
+                            "order"].contains { subjectLower.contains($0) }
+        guard aboutBilling else { return nil }
         guard let name = serviceName(sender: sender, subject: subject,
                                      body: body, viaApple: false) else { return nil }
 
@@ -260,6 +251,15 @@ enum SubscriptionEmailParser {
         return .charged(sub)
     }
 
+    /// Newsletter platforms. A paid newsletter's real receipt comes from the
+    /// payment processor, not from the author's mailing address.
+    private static func isNewsletter(sender: String) -> Bool {
+        let s = sender.lowercased()
+        return ["substack.com", "beehiiv.com", "mailchimp", "convertkit", "ghost.io",
+                "medium.com", "mailerlite", "newsletter", "digest@", "news@", "insider@"]
+            .contains { s.contains($0) }
+    }
+
     // MARK: - Cycle
 
     /// Reads the billing period out of the wording, most specific first.
@@ -281,26 +281,6 @@ enum SubscriptionEmailParser {
 
     // MARK: - Who
 
-    /// The plan on an Apple notice: the labelled "Subscription" field on a
-    /// confirmation, otherwise the line carrying the period, e.g.
-    /// "ChatGPT Go (1 month)" → "ChatGPT Go".
-    private static func applePlanName(from text: String) -> String? {
-        let patterns = [
-            #"(?m)^[ \t]*Subscription[ \t]*[:\t ][ \t]*([^\n]{2,40})$"#,
-            #"(?im)^[ \t]*([^\n(]{2,40}?)[ \t]*\((?:monthly|yearly|annual|weekly|quarterly|\d+\s*(?:month|year|week)s?)\)"#,
-        ]
-        for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
-            let range = NSRange(text.startIndex..<text.endIndex, in: text)
-            for m in regex.matches(in: text, range: range) {
-                guard let r = Range(m.range(at: 1), in: text) else { continue }
-                let c = String(text[r]).trimmingCharacters(in: .whitespacesAndNewlines)
-                if isUsableName(c) { return c }
-            }
-        }
-        return nil
-    }
-
     private static func isFromApple(sender: String, lowerBody: String) -> Bool {
         let s = sender.lowercased()
         return s.contains("@apple.com") || s.contains(".apple.com")
@@ -315,16 +295,6 @@ enum SubscriptionEmailParser {
     /// body, which mentions other brands too freely.
     private static func serviceName(sender: String, subject: String,
                                     body: String, viaApple: Bool) -> String? {
-        if viaApple {
-            if let app = appleAppName(from: subject + "\n" + body) {
-                return SubscriptionBrand.canonicalName(app)
-            }
-            // Apple's tax-invoice receipt does not name the app in text at
-            // all — only its icon does — so there is nothing better to call
-            // it. The user can rename it; the match key survives a rename.
-            return "App Store subscription"
-        }
-
         if let brand = SubscriptionBrand.match(sender + " " + subject) {
             return brand.name
         }
@@ -371,63 +341,6 @@ enum SubscriptionEmailParser {
         guard labels.count >= 2 else { return nil }
         let label = labels[labels.count - 2]
         return label.count >= 2 ? label : nil
-    }
-
-    /// The app on an Apple email, from the two layouts Apple actually sends.
-    ///
-    /// "Your Subscription is Confirmed" labels it outright:
-    ///
-    ///     App           WhatsApp Messenger
-    ///     Subscription  Whatsapp Plus
-    ///
-    /// "Your receipt from Apple" (the tax invoice) prints the plan twice —
-    /// "Monthly" then "Monthly (Monthly)" — and leaves the app to its icon.
-    /// A captured name that is only a billing word is therefore rejected
-    /// rather than shown as a subscription called "Monthly".
-    private static func appleAppName(from text: String) -> String? {
-        let patterns = [
-            // Labelled field, value on the same line or the next.
-            #"(?m)^[ \t]*App[ \t]*[:\t ][ \t]*([^\n]{2,40})$"#,
-            #"(?m)^[ \t]*App[ \t]*:?[ \t]*\n[ \t]*([^\n]{2,40})$"#,
-            // Cancellation and expiry notices.
-            #"(?i)subscription\s+(?:to|for)\s+([A-Za-z0-9][A-Za-z0-9 .:+&'’\-]{1,40}?)(?:\s+(?:has|was|will|is)\b|[.,\n])"#,
-            // The receipt prints the app, then its plan with the period in
-            // brackets, so the app is the line above:
-            //     iCloud+
-            //     iCloud+ with 2 TB of storage (Monthly)
-            #"(?im)^[ \t]*([^\n(]{1,40}?)[ \t]*\n[^\n]*\((?:monthly|yearly|annual|weekly|quarterly|\d+\s*(?:month|year|week)s?)[^)]*\)"#,
-            // Otherwise the plan line itself: "Disney+ (Monthly)".
-            #"(?im)^\s*([A-Za-z0-9][A-Za-z0-9 .:+&'’\-]{1,40}?)\s*\((?:monthly|yearly|annual|weekly|quarterly|\d+\s*(?:month|year|week)s?)[^)]*\)"#,
-        ]
-        for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
-            let range = NSRange(text.startIndex..<text.endIndex, in: text)
-            for m in regex.matches(in: text, range: range) {
-                guard let r = Range(m.range(at: 1), in: text) else { continue }
-                let candidate = String(text[r])
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                    .trimmingCharacters(in: CharacterSet(charactersIn: ".,-–—:"))
-                if isUsableName(candidate) { return candidate }
-            }
-        }
-        return nil
-    }
-
-    /// Rejects captures that are a billing period or a label, not a name.
-    private static func isUsableName(_ name: String) -> Bool {
-        // A single character is allowed: "X" is a real app.
-        guard !name.isEmpty, name.rangeOfCharacter(from: .alphanumerics) != nil else { return false }
-        let lower = name.lowercased()
-        let notNames: Set<String> = ["monthly", "yearly", "annual", "annually", "weekly",
-                                     "quarterly", "subscription", "plan", "store",
-                                     "app store", "premium", "renewal", "1 month",
-                                     "1 year", "trial"]
-        if notNames.contains(lower) { return false }
-        if lower.hasPrefix("store") || lower.hasPrefix("account") { return false }
-        // A line that is only a period in brackets, e.g. "Monthly (Monthly)".
-        if lower.range(of: #"^(monthly|yearly|annual|weekly)\b"#,
-                       options: .regularExpression) != nil { return false }
-        return true
     }
 
     // MARK: - When

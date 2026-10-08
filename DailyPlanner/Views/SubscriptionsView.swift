@@ -336,7 +336,7 @@ struct SubscriptionsView: View {
                 withAnimation(.easeInOut(duration: 0.2)) { showCancelled.toggle() }
             } label: {
                 HStack(spacing: 6) {
-                    Text("INACTIVE")
+                    Text("CANCELLED & EXPIRED")
                         .font(.system(size: 11, weight: .heavy))
                         .tracking(1.1)
                     Text("\(cancelled.count)")
@@ -744,6 +744,10 @@ private struct SubscriptionRow: View {
     }
 
     private func dueText(next: Date, days: Int) -> String {
+        // Cancelled but paid up: it still works until then, and won't renew.
+        if let ends = sub.endsOn, ends >= Calendar.current.startOfDay(for: Date()) {
+            return "Ends \(Fmt.dayMonth.string(from: ends))"
+        }
         if let ended = sub.cancelledOn {
             return "Cancelled \(Fmt.dayMonth.string(from: ended))"
         }
