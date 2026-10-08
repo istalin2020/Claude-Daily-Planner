@@ -47,7 +47,17 @@ struct SmartMealSheet: View {
     /// What the user typed, for `.typed`. Stays editable after results so they
     /// can correct a name and search again.
     @State private var typedName = ""
+    /// How many — "2" dosa. Sent with the dish so the figures cover them all.
+    @State private var quantity = 1
     @FocusState private var nameFocused: Bool
+
+    /// Tells the analysis how many were eaten. The dish name itself stays
+    /// plain, so the corrected spelling that comes back can be adopted.
+    private var quantityNote: String {
+        quantity > 1
+        ? "Quantity: they ate \(quantity) of this (\(quantity) pieces or servings, as fits the dish). Give the figures for all \(quantity) together, and say the count in each item's portion."
+        : ""
+    }
 
     /// question.id → the answer the user picked or typed.
     @State private var answers: [UUID: String] = [:]
@@ -196,13 +206,16 @@ struct SmartMealSheet: View {
                 .font(.system(size: 17, weight: .bold))
 
             HStack(spacing: 8) {
-                TextField("e.g. Valaikkai bajji, Chicken biryani…", text: $typedName)
+                TextField("e.g. Dosa, Chicken biryani…", text: $typedName)
                     .focused($nameFocused)
                     .submitLabel(.search)
                     .autocorrectionDisabled()
                     .onSubmit { runAnalysis() }
                     .padding(.horizontal, 13).padding(.vertical, 12)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color(.tertiarySystemFill)))
+
+                QuantityStepper(quantity: $quantity, color: .orange)
+                    .disabled(isBusy)
 
                 Button(action: runAnalysis) {
                     Group {
@@ -260,7 +273,7 @@ struct SmartMealSheet: View {
         HStack(spacing: 10) {
             Image(systemName: "sparkles")
                 .foregroundColor(.orange)
-            Text("Type any dish — home cooking, a restaurant plate, a packet — and it'll be broken down into calories and nutrition.")
+            Text("Type any dish, set how many with − / +, then tap search — it's broken down into calories and nutrition. For ready-made dishes, use Choose on the meal.")
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -671,7 +684,8 @@ struct SmartMealSheet: View {
         if let image = source.image {
             CloudFoodAnalyzer.analyze(image: image, mealName: mealName, completion: handle)
         } else {
-            CloudFoodAnalyzer.analyze(dishName: dish, mealName: mealName, completion: handle)
+            CloudFoodAnalyzer.analyze(dishName: dish, mealName: mealName,
+                                      note: quantityNote, completion: handle)
         }
     }
 
@@ -700,7 +714,8 @@ struct SmartMealSheet: View {
                                       answers: payload, completion: finish)
         } else {
             CloudFoodAnalyzer.analyze(dishName: typedName.trimmingCharacters(in: .whitespacesAndNewlines),
-                                      mealName: mealName, answers: payload, completion: finish)
+                                      mealName: mealName, answers: payload,
+                                      note: quantityNote, completion: finish)
         }
     }
 

@@ -15,6 +15,8 @@ struct FoodTrackerView: View {
     /// can open the on-device sheet instead.
     @State private var fallbackToTyped = false
     @State private var selectedMeal  = "breakfast"
+    /// The "Choose" sheet of ready-made dishes.
+    @State private var showPresets = false
     @State private var editingItem: MealItem? = nil
     @State private var editingMealKey: String = ""
     @State private var showCamera = false
@@ -68,11 +70,23 @@ struct FoodTrackerView: View {
                     } onCamera: {
                         selectedMeal = meal.key
                         showCamera = true
+                    } onChoose: {
+                        selectedMeal = meal.key
+                        showPresets = true
                     }
                     .padding(.horizontal, 16).padding(.top, 10)
                 }
 
                 Spacer(minLength: 40)
+            }
+        }
+        // Ready-made dishes by cuisine, already worked out.
+        .sheet(isPresented: $showPresets) {
+            let section = mealSections.first(where: { $0.key == selectedMeal })
+            MealPresetPicker(mealKey: selectedMeal,
+                             mealName: section?.name ?? "Meal",
+                             color: section?.color ?? .orange) { items in
+                for item in items { vm.addMealItem(item, to: selectedMeal) }
             }
         }
         // Free tier typed entry, and the PRO typed fallback: on-device only.
@@ -310,6 +324,8 @@ struct MealSection: View {
     let onDelete: (MealItem) -> Void
     let onEdit  : (MealItem) -> Void
     var onCamera: (() -> Void)? = nil
+    /// Opens the ready-made dishes for this meal.
+    var onChoose: (() -> Void)? = nil
 
     private var sectionCalories: Int { items.reduce(0) { $0 + $1.calories } }
 
@@ -324,6 +340,21 @@ struct MealSection: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 Text(meal.name)
                     .font(.system(size: 14, weight: .bold))
+                if canEdit, let onChoose = onChoose {
+                    Button(action: onChoose) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "list.bullet.rectangle.portrait.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text("Choose")
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundColor(meal.color)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Capsule().fill(meal.color.opacity(0.14)))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.leading, 4)
+                }
                 Spacer()
                 if sectionCalories > 0 {
                     Text("\(sectionCalories) cal")
@@ -426,6 +457,8 @@ struct AddMealItemSheet: View {
 
     // Phase 1
     @State private var foodName      = ""
+    /// How many — 2 dosa, 3 idli. Every figure is multiplied by it.
+    @State private var quantity      = 1
     @FocusState private var focused : Bool
 
     // Phase 2 – clarification
@@ -502,15 +535,17 @@ struct AddMealItemSheet: View {
             Text("What did you eat?")
                 .font(.headline)
 
-            HStack(spacing: 10) {
-                TextField("e.g. Banana, Grilled chicken…", text: $foodName)
+            HStack(spacing: 8) {
+                TextField("e.g. Dosa, Banana…", text: $foodName)
                     .focused($focused)
                     .autocapitalization(.sentences)
-                    .submitLabel(.done)
+                    .submitLabel(.search)
                     .onSubmit { analyzeFood() }
                     .padding(12)
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
+
+                QuantityStepper(quantity: $quantity, color: AppSection.foodTracker.color)
 
                 Button(action: analyzeFood) {
                     Image(systemName: "sparkle.magnifyingglass")
@@ -523,7 +558,7 @@ struct AddMealItemSheet: View {
                 .disabled(foodName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
 
-            Text("Tap \(Image(systemName: "sparkle.magnifyingglass")) to auto-estimate calories, or answer the questions below.")
+            Text("Set how many with − / +, then tap \(Image(systemName: "sparkle.magnifyingglass")) to work out the calories.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -580,8 +615,14 @@ struct AddMealItemSheet: View {
             if selections.count == questions.count {
                 HStack {
                     Image(systemName: "flame.fill").foregroundColor(.orange)
-                    Text("Estimated total: **\(estimatedCalories) cal**")
-                        .font(.subheadline)
+                    // Literal strings, so the **bold** markdown renders.
+                    if quantity > 1 {
+                        Text("Estimated total: **\(estimatedCalories * quantity) cal** (× \(quantity))")
+                            .font(.subheadline)
+                    } else {
+                        Text("Estimated total: **\(estimatedCalories) cal**")
+                            .font(.subheadline)
+                    }
                     Spacer()
                 }
                 .padding(12)
@@ -602,7 +643,8 @@ struct AddMealItemSheet: View {
                     .font(.subheadline).foregroundColor(.secondary)
             }
 
-            Text("Enter calories manually (optional)")
+            Text(quantity > 1 ? "Enter calories for one (optional) — it's multiplied by \(quantity)"
+                              : "Enter calories manually (optional)")
                 .font(.subheadline).fontWeight(.semibold)
 
             HStack {
@@ -627,11 +669,19 @@ struct AddMealItemSheet: View {
         guard !name.isEmpty else { return }
         focused = false
 
+        // A ready-made dish has full figures — use them first.
+        if let preset = MealPresetLibrary.match(name) {
+            onSave(preset.item(quantity: quantity))
+            dismiss()
+            return
+        }
+
         switch CalorieEstimator.shared.estimate(for: name) {
 
         case .known(let calories, let portion):
             // Save immediately – no questions needed
-            onSave(MealItem(name: name, calories: calories, portion: portion))
+            onSave(MealItem(name: name, calories: calories * quantity,
+                            portion: portionText(portion)))
             dismiss()
 
         case .needsClarification(let qs):
@@ -651,16 +701,22 @@ struct AddMealItemSheet: View {
             break
 
         case .clarifying:
-            let cal     = estimatedCalories
-            let portion = selectedPortion
-            onSave(MealItem(name: name, calories: cal, portion: portion))
+            let cal     = estimatedCalories * quantity
+            onSave(MealItem(name: name, calories: cal, portion: portionText(selectedPortion)))
             dismiss()
 
         case .unknown:
-            let cal = Int(manualCalText) ?? 0
-            onSave(MealItem(name: name, calories: cal, portion: ""))
+            // Typed per one; the quantity multiplies it like everywhere else.
+            let cal = (Int(manualCalText) ?? 0) * quantity
+            onSave(MealItem(name: name, calories: cal, portion: quantity > 1 ? "× \(quantity)" : ""))
             dismiss()
         }
+    }
+
+    /// "2 × 1 medium piece"
+    private func portionText(_ portion: String) -> String {
+        guard quantity > 1 else { return portion }
+        return portion.isEmpty ? "× \(quantity)" : "\(quantity) × \(portion)"
     }
 }
 

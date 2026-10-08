@@ -21,6 +21,7 @@
 		AA240000000000000000001A /* HealthFitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA230000000000000000001A /* HealthFitnessView.swift */; };
 		AA260000000000000000001A /* WaterTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA250000000000000000001A /* WaterTrackerView.swift */; };
 		AA280000000000000000001A /* FoodTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA270000000000000000001A /* FoodTrackerView.swift */; };
+		AA780000000000000000009A /* MealPresetPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000009A /* MealPresetPicker.swift */; };
 		AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA290000000000000000001A /* DailyScheduleView.swift */; };
 		AA2C0000000000000000001A /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B0000000000000000001A /* AppointmentsView.swift */; };
 		AA2E0000000000000000001A /* NotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2D0000000000000000001A /* NotesView.swift */; };
@@ -29,6 +30,7 @@
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
 		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
 		AA440000000000000000001A /* CalorieEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA430000000000000000001A /* CalorieEstimator.swift */; };
+		AA780000000000000000008A /* MealPresets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000008A /* MealPresets.swift */; };
 		AA780000000000000000003A /* Subscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000003A /* Subscription.swift */; };
 		AA420000000000000000001A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA410000000000000000001A /* SettingsView.swift */; };
 		AA470000000000000000001A /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA460000000000000000001A /* HealthKitManager.swift */; };
@@ -84,6 +86,7 @@
 		AA230000000000000000001A /* HealthFitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthFitnessView.swift; sourceTree = "<group>"; };
 		AA250000000000000000001A /* WaterTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterTrackerView.swift; sourceTree = "<group>"; };
 		AA270000000000000000001A /* FoodTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTrackerView.swift; sourceTree = "<group>"; };
+		AA790000000000000000009A /* MealPresetPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPresetPicker.swift; sourceTree = "<group>"; };
 		AA290000000000000000001A /* DailyScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScheduleView.swift; sourceTree = "<group>"; };
 		AA2B0000000000000000001A /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
 		AA2D0000000000000000001A /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
@@ -93,6 +96,7 @@
 		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		AA430000000000000000001A /* CalorieEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieEstimator.swift; sourceTree = "<group>"; };
+		AA790000000000000000008A /* MealPresets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPresets.swift; sourceTree = "<group>"; };
 		AA790000000000000000003A /* Subscription.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subscription.swift; sourceTree = "<group>"; };
 		AA410000000000000000001A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AA460000000000000000001A /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
@@ -199,6 +203,7 @@
 				AA110000000000000000001A /* PlannerModels.swift */,
 				AA3F0000000000000000001A /* NotificationManager.swift */,
 				AA430000000000000000001A /* CalorieEstimator.swift */,
+				AA790000000000000000008A /* MealPresets.swift */,
 				AA790000000000000000003A /* Subscription.swift */,
 			);
 			path = Models;
@@ -250,6 +255,7 @@
 				AA230000000000000000001A /* HealthFitnessView.swift */,
 				AA250000000000000000001A /* WaterTrackerView.swift */,
 				AA270000000000000000001A /* FoodTrackerView.swift */,
+				AA790000000000000000009A /* MealPresetPicker.swift */,
 				AA290000000000000000001A /* DailyScheduleView.swift */,
 				AA2B0000000000000000001A /* AppointmentsView.swift */,
 				AA2D0000000000000000001A /* NotesView.swift */,
@@ -471,6 +477,7 @@
 				AA120000000000000000001A /* PlannerModels.swift in Sources */,
 				AA400000000000000000001A /* NotificationManager.swift in Sources */,
 				AA440000000000000000001A /* CalorieEstimator.swift in Sources */,
+				AA780000000000000000008A /* MealPresets.swift in Sources */,
 				AA780000000000000000003A /* Subscription.swift in Sources */,
 				AA140000000000000000001A /* PlannerViewModel.swift in Sources */,
 				AA160000000000000000001A /* ContentView.swift in Sources */,
@@ -484,6 +491,7 @@
 				AA240000000000000000001A /* HealthFitnessView.swift in Sources */,
 				AA260000000000000000001A /* WaterTrackerView.swift in Sources */,
 				AA280000000000000000001A /* FoodTrackerView.swift in Sources */,
+				AA780000000000000000009A /* MealPresetPicker.swift in Sources */,
 				AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */,
 				AA2C0000000000000000001A /* AppointmentsView.swift in Sources */,
 				AA2E0000000000000000001A /* NotesView.swift in Sources */,

@@ -552,6 +552,9 @@ class PlannerViewModel: ObservableObject {
     /// calories, so every add/edit path gets nutrients without duplicating
     /// the estimation logic in the views.
     private func withNutrients(_ item: MealItem) -> MealItem {
+        // Figures that came with the item — a ready-made dish, the PRO
+        // analysis — are better than an estimate from the name; keep them.
+        if item.protein > 0 || item.fiber > 0 || item.iron > 0 { return item }
         var updated = item
         let n = NutrientEstimator.estimate(name: item.name, calories: item.calories)
         updated.protein = n.protein
@@ -576,7 +579,17 @@ class PlannerViewModel: ObservableObject {
 
     func updateMealItem(_ original: MealItem, with updated: MealItem, in meal: String) {
         var e = currentEntry
-        let updated = withNutrients(updated)
+        var edited = updated
+        // Keep the figures the item came with, scaled to the new calories,
+        // rather than replacing a measured breakdown with a guess.
+        if edited.protein == 0, edited.fiber == 0, edited.iron == 0,
+           original.calories > 0, original.protein > 0 || original.fiber > 0 || original.iron > 0 {
+            let r = Double(edited.calories) / Double(original.calories)
+            edited.protein = (original.protein * r * 10).rounded() / 10
+            edited.fiber   = (original.fiber   * r * 10).rounded() / 10
+            edited.iron    = (original.iron    * r * 10).rounded() / 10
+        }
+        let updated = withNutrients(edited)
         switch meal {
         case "breakfast":
             if let i = e.meals.breakfastItems.firstIndex(where: { $0.id == original.id }) {
