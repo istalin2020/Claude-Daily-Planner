@@ -177,12 +177,16 @@ final class GmailSyncService: NSObject, ObservableObject {
             // an expense. The bank alert for the same charge is the expense;
             // booking the receipt too counted every subscription twice, since
             // a USD receipt can't be matched to an OMR alert to the baisa.
-            if let event = SubscriptionEmailParser.event(body: msg.body, sender: msg.sender,
-                                                         subject: msg.subject,
-                                                         receivedOn: msg.date) {
-                events.append(event)
+            let found = SubscriptionEmailParser.events(body: msg.body, html: msg.html,
+                                                       sender: msg.sender, subject: msg.subject,
+                                                       recipients: msg.to, receivedOn: msg.date)
+            if !found.isEmpty {
+                events.append(contentsOf: found)
                 continue
             }
+            // Apple mail is never an expense: the bank alert for the same
+            // charge is. A top-up or one-off purchase simply yields nothing.
+            if msg.sender.lowercased().contains("apple.com") { continue }
 
             if BankSMSParser.looksLikeBankSMS(msg.body),
                let parsed = BankSMSParser.parse(msg.body) {
@@ -234,11 +238,9 @@ final class GmailSyncService: NSObject, ObservableObject {
         var events: [SubscriptionEvent] = []
         for id in ids {
             guard let msg = try? await fetchMessage(id: id) else { continue }
-            if let event = SubscriptionEmailParser.event(body: msg.body, sender: msg.sender,
-                                                         subject: msg.subject,
-                                                         receivedOn: msg.date) {
-                events.append(event)
-            }
+            events += SubscriptionEmailParser.events(body: msg.body, html: msg.html,
+                                                     sender: msg.sender, subject: msg.subject,
+                                                     recipients: msg.to, receivedOn: msg.date)
         }
         return events
     }
@@ -393,6 +395,11 @@ final class GmailSyncService: NSObject, ObservableObject {
         /// is from — the body mentions other brands far too freely.
         let sender: String
         let subject: String
+        /// The HTML part, empty when there is none. Apple invoices are read
+        /// from its structure.
+        let html: String
+        /// The To header — whose plan a Family Sharing notice is about.
+        let to: String
     }
 
     /// Returns the plain-text body, received date, sender and subject.
@@ -409,8 +416,10 @@ final class GmailSyncService: NSObject, ObservableObject {
             headers.first { ($0["name"] as? String)?.lowercased() == name }?["value"] as? String ?? ""
         }
 
+        let html = payload.flatMap { Self.findPart($0, mime: "text/html") } ?? ""
         return FetchedMessage(body: Self.extractBody(from: payload), date: date,
-                              sender: header("from"), subject: header("subject"))
+                              sender: header("from"), subject: header("subject"),
+                              html: html, to: header("to"))
     }
 
     private func authorizedGET(_ url: URL) async throws -> [String: Any] {

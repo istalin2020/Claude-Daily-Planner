@@ -4,13 +4,12 @@ import UIKit
 // MARK: - Subscriptions
 
 /// Every recurring payment in one place: what renews next, what each service
-/// costs, and what it all adds up to over a month and a year.
+/// costs, where the money goes by category, and what it all adds up to.
 ///
-/// Most entries arrive on their own — a subscription is a merchant that keeps
-/// charging, and the app already imports those charges from the bank alerts in
-/// Gmail. Anything the detector misses is added by hand, which is also how App
-/// Store subscriptions get here: Apple gives an app no way to read the ones
-/// bought through other apps, so there is a shortcut to iOS Settings instead.
+/// Entries arrive on their own — App Store plans from Apple's receipts in
+/// Gmail, everything else from receipts and from bank charges that keep
+/// coming back. Anything missed is added by hand; anything wrong is removed
+/// and stays removed.
 struct SubscriptionsView: View {
     @EnvironmentObject var vm: PlannerViewModel
 
@@ -21,31 +20,32 @@ struct SubscriptionsView: View {
     @State private var showCancelled = false
     @State private var scanning = false
     @State private var scanResult: String? = nil
+    /// A category tapped in the breakdown narrows the list to it.
+    @State private var focus: SubscriptionCategory? = nil
 
     private var sym: String { vm.settings.currency.symbol }
 
-    private var subscriptions: [Subscription] { vm.allSubscriptions }
-    private var cancelled: [Subscription] { vm.cancelledSubscriptions }
-
-    private var next: Subscription? { subscriptions.first }
-
-    private var monthlyTotal: Double { subscriptions.reduce(0) { $0 + $1.monthlyCost } }
-    private var yearlyTotal : Double { subscriptions.reduce(0) { $0 + $1.yearlyCost } }
-
     var body: some View {
+        // Read once per redraw. The view model caches the lists, and every
+        // section below works from these copies rather than asking again.
+        let active = vm.allSubscriptions
+        let inactive = vm.cancelledSubscriptions
+        let groups = CategoryGroup.build(from: active)
+
         ScrollView {
-            VStack(spacing: 14) {
-                if let next = next {
+            LazyVStack(spacing: 14) {
+                if !vm.settings.gmailConnectedEmail.isEmpty { gmailScanRow }
+
+                if let next = active.first {
                     nextUpCard(next)
-                    totalsCard
-                    listSection
+                    totalsCard(active)
+                    if groups.count > 1 { breakdownCard(groups) }
+                    listSection(groups)
                 } else {
                     emptyState
                 }
 
-                if !cancelled.isEmpty { cancelledSection }
-
-                if !vm.settings.gmailConnectedEmail.isEmpty { gmailScanRow }
+                if !inactive.isEmpty { cancelledSection(inactive) }
 
                 appleRow
 
@@ -90,7 +90,7 @@ struct SubscriptionsView: View {
             Button("Keep it", role: .cancel) { pendingDelete = nil }
         } message: {
             if let s = pendingDelete {
-                Text("\(s.name) disappears from this page entirely. Your expenses aren't touched.")
+                Text("\(s.name) disappears from this page and won't come back from your emails or bank charges. You can still add it again yourself. Your expenses aren't touched.")
             }
         }
     }
@@ -104,6 +104,7 @@ struct SubscriptionsView: View {
             if days == 1 { return "Due tomorrow" }
             return "in \(days) days"
         }()
+        let brand = sub.brand
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -120,14 +121,14 @@ struct SubscriptionsView: View {
             }
 
             HStack(spacing: 14) {
-                BrandTile(brand: sub.brand, size: 54, onDark: true)
+                BrandTile(sub: sub, size: 54, onDark: true)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(sub.name)
                         .font(.system(size: 22, weight: .heavy))
                         .foregroundColor(.white)
                         .lineLimit(1)
-                    Text(dueLine(sub))
+                    Text("\(sub.cycle.rawValue) · \(Fmt.weekdayDay.string(from: sub.nextDue))")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.white.opacity(0.85))
                 }
@@ -137,41 +138,36 @@ struct SubscriptionsView: View {
                 Text("\(sym)\(amountText(sub.amount))")
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundColor(.white)
+                    .lineLimit(1).minimumScaleFactor(0.7)
             }
         }
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 22)
-                .fill(LinearGradient(colors: [sub.brand.color,
-                                              sub.brand.color.opacity(0.72)],
+                .fill(LinearGradient(colors: [brand.color, brand.color.opacity(0.72)],
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
         )
-        .shadow(color: sub.brand.color.opacity(0.35), radius: 14, y: 6)
-    }
-
-    private func dueLine(_ sub: Subscription) -> String {
-        let f = DateFormatter(); f.dateFormat = "EEE, d MMM"
-        return "\(sub.cycle.rawValue) · \(f.string(from: sub.nextDue))"
     }
 
     // MARK: - Totals
 
-    private var totalsCard: some View {
-        HStack(spacing: 0) {
-            totalPiece("Per month", monthlyTotal)
+    private func totalsCard(_ active: [Subscription]) -> some View {
+        let monthly = active.reduce(0) { $0 + $1.monthlyCost }
+        return HStack(spacing: 0) {
+            totalPiece("Per month", "\(sym)\(amountText(monthly))")
             Divider().frame(height: 34)
-            totalPiece("Per year", yearlyTotal)
+            totalPiece("Per year", "\(sym)\(amountText(monthly * 12))")
             Divider().frame(height: 34)
-            totalPiece("Active", Double(subscriptions.count), isCount: true)
+            totalPiece("Active", "\(active.count)")
         }
         .padding(.vertical, 14)
         .background(RoundedRectangle(cornerRadius: 18)
             .fill(Color(.secondarySystemGroupedBackground)))
     }
 
-    private func totalPiece(_ title: String, _ value: Double, isCount: Bool = false) -> some View {
+    private func totalPiece(_ title: String, _ value: String) -> some View {
         VStack(spacing: 3) {
-            Text(isCount ? "\(Int(value))" : "\(sym)\(amountText(value))")
+            Text(value)
                 .font(.system(size: 17, weight: .heavy, design: .rounded))
                 .foregroundColor(.primary)
                 .lineLimit(1).minimumScaleFactor(0.7)
@@ -182,43 +178,134 @@ struct SubscriptionsView: View {
         .frame(maxWidth: .infinity)
     }
 
+    // MARK: - Category breakdown
+
+    /// Where the money goes: one bar split by category, then each category's
+    /// monthly cost, share and number of plans, biggest first.
+    private func breakdownCard(_ groups: [CategoryGroup]) -> some View {
+        let total = max(groups.reduce(0) { $0 + $1.monthly }, 0.0001)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("BY CATEGORY")
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(1.1)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("per month")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            GeometryReader { geo in
+                HStack(spacing: 2) {
+                    ForEach(groups) { g in
+                        Rectangle()
+                            .fill(g.category.color)
+                            .frame(width: max(3, (geo.size.width - CGFloat(groups.count - 1) * 2)
+                                                * CGFloat(g.monthly / total)))
+                    }
+                }
+            }
+            .frame(height: 10)
+            .clipShape(Capsule())
+
+            VStack(spacing: 2) {
+                ForEach(groups) { g in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            focus = focus == g.category ? nil : g.category
+                        }
+                    } label: {
+                        breakdownLine(g, share: g.monthly / total)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 18)
+            .fill(Color(.secondarySystemGroupedBackground)))
+    }
+
+    private func breakdownLine(_ g: CategoryGroup, share: Double) -> some View {
+        let selected = focus == g.category
+        return HStack(spacing: 10) {
+            Image(systemName: g.category.symbol)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(g.category.color))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(g.category.rawValue)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+                Text("\(g.subscriptions.count) plan\(g.subscriptions.count == 1 ? "" : "s") · \(Int((share * 100).rounded()))%")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Text("\(sym)\(amountText(g.monthly))")
+                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .foregroundColor(.primary)
+            Image(systemName: selected ? "line.3.horizontal.decrease.circle.fill" : "chevron.right")
+                .font(.system(size: selected ? 15 : 10, weight: .bold))
+                .foregroundColor(selected ? g.category.color : .secondary.opacity(0.6))
+                .frame(width: 16)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .background(RoundedRectangle(cornerRadius: 10)
+            .fill(selected ? g.category.color.opacity(0.10) : Color.clear))
+        .contentShape(Rectangle())
+    }
+
     // MARK: - List
 
-    private var listSection: some View {
-        let appStore = subscriptions.filter(\.viaApple)
-        let others = subscriptions.filter { !$0.viaApple }
+    private func listSection(_ groups: [CategoryGroup]) -> some View {
+        let shown = focus.map { f in groups.filter { $0.category == f } } ?? groups
 
         return VStack(alignment: .leading, spacing: 8) {
-            if !appStore.isEmpty {
-                groupHeader("APP STORE", symbol: "applelogo", count: appStore.count)
-                ForEach(appStore) { sub in row(sub) }
+            if let f = focus {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { focus = nil }
+                } label: {
+                    Label("Showing \(f.rawValue) · show all", systemImage: "xmark.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(f.color)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Capsule().fill(f.color.opacity(0.12)))
+                }
+                .buttonStyle(PlainButtonStyle())
             }
-            if !others.isEmpty {
-                groupHeader(appStore.isEmpty ? "ALL SUBSCRIPTIONS" : "OTHER SUBSCRIPTIONS",
-                            symbol: nil, count: others.count)
-                    .padding(.top, appStore.isEmpty ? 0 : 8)
-                ForEach(others) { sub in row(sub) }
+
+            ForEach(shown) { g in
+                groupHeader(g)
+                ForEach(g.subscriptions) { sub in row(sub) }
             }
         }
     }
 
-    private func groupHeader(_ title: String, symbol: String?, count: Int) -> some View {
+    private func groupHeader(_ g: CategoryGroup) -> some View {
         HStack(spacing: 6) {
-            if let symbol = symbol {
-                Image(systemName: symbol).font(.system(size: 11, weight: .bold))
-            }
-            Text(title)
+            Image(systemName: g.category.symbol)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(g.category.color)
+            Text(g.category.rawValue.uppercased())
                 .font(.system(size: 11, weight: .heavy))
                 .tracking(1.1)
-            Text("\(count)")
+            Text("\(g.subscriptions.count)")
                 .font(.system(size: 11, weight: .heavy))
                 .padding(.horizontal, 6).padding(.vertical, 1)
                 .background(Capsule().fill(Color.secondary.opacity(0.18)))
             Spacer()
+            Text("\(sym)\(amountText(g.monthly))/mo")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
         }
         .foregroundColor(.secondary)
-        .padding(.leading, 4)
-        .padding(.top, 4)
+        .padding(.horizontal, 4)
+        .padding(.top, 8)
     }
 
     private func row(_ sub: Subscription) -> some View {
@@ -236,17 +323,17 @@ struct SubscriptionsView: View {
                 Label("Cancel subscription", systemImage: "xmark.circle")
             }
             Button(role: .destructive) { pendingDelete = sub } label: {
-                Label("Remove from list", systemImage: "trash")
+                Label("Not subscribed — remove", systemImage: "trash")
             }
         }
     }
 
     // MARK: - Cancelled
 
-    private var cancelledSection: some View {
+    private func cancelledSection(_ cancelled: [Subscription]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                withAnimation(.snappy) { showCancelled.toggle() }
+                withAnimation(.easeInOut(duration: 0.2)) { showCancelled.toggle() }
             } label: {
                 HStack(spacing: 6) {
                     Text("INACTIVE")
@@ -268,16 +355,19 @@ struct SubscriptionsView: View {
 
             if showCancelled {
                 ForEach(cancelled) { sub in
-                    SubscriptionRow(sub: sub, sym: sym)
-                        .opacity(0.6)
-                        .contextMenu {
-                            Button { vm.resumeSubscription(sub) } label: {
-                                Label("Resume", systemImage: "arrow.clockwise")
-                            }
-                            Button(role: .destructive) { pendingDelete = sub } label: {
-                                Label("Remove from list", systemImage: "trash")
-                            }
+                    Button { editing = sub } label: {
+                        SubscriptionRow(sub: sub, sym: sym)
+                            .opacity(0.6)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .contextMenu {
+                        Button { vm.resumeSubscription(sub) } label: {
+                            Label("Resume", systemImage: "arrow.clockwise")
                         }
+                        Button(role: .destructive) { pendingDelete = sub } label: {
+                            Label("Remove from list", systemImage: "trash")
+                        }
+                    }
                 }
             }
         }
@@ -365,10 +455,21 @@ struct SubscriptionsView: View {
         defer { scanning = false }
         do {
             let events = try await GmailSyncService.shared.scanForSubscriptions(monthsBack: 13)
-            let changed = vm.applySubscriptionEvents(events)
-            scanResult = changed == 0
-                ? "Nothing new — your list is up to date."
-                : "Updated \(changed) subscription\(changed == 1 ? "" : "s") from your emails."
+            guard !events.isEmpty else {
+                scanResult = "No subscription emails found in the last 13 months."
+                return
+            }
+            // Rebuild what came from email from scratch, so rows an older
+            // reader got wrong ("Pro Monthly Plan", a wallet top-up) are
+            // replaced. Plans typed in or edited, and removals, are kept.
+            let before = Set(vm.allSubscriptions.map(\.detectionKey))
+            vm.prepareSubscriptionRescan()
+            vm.applySubscriptionEvents(events)
+            let after = Set(vm.allSubscriptions.map(\.detectionKey))
+            let added = after.subtracting(before).count
+            scanResult = added == 0
+                ? "Up to date · \(after.count) active subscription\(after.count == 1 ? "" : "s")."
+                : "Found \(added) new · \(after.count) active subscription\(after.count == 1 ? "" : "s")."
         } catch {
             scanResult = "Couldn't search Gmail: \(error.localizedDescription)"
         }
@@ -397,7 +498,7 @@ struct SubscriptionsView: View {
                     Text("App Store subscriptions")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.primary)
-                    Text("Opens iOS Settings · add them here to track")
+                    Text("Opens your Apple subscriptions to cross-check")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -434,8 +535,44 @@ struct SubscriptionsView: View {
         .background(.ultraThinMaterial)
     }
 
-    private func amountText(_ value: Double) -> String {
-        // Three decimals only when the currency actually uses them.
+    private func amountText(_ value: Double) -> String { Fmt.amount(value) }
+}
+
+// MARK: - Grouping
+
+/// The active plans in one category, with what they cost a month together.
+struct CategoryGroup: Identifiable {
+    let category: SubscriptionCategory
+    let subscriptions: [Subscription]
+    let monthly: Double
+    var id: String { category.rawValue }
+
+    /// Biggest spend first; plans keep their soonest-payment order inside.
+    static func build(from subs: [Subscription]) -> [CategoryGroup] {
+        Dictionary(grouping: subs, by: \.effectiveCategory)
+            .map { CategoryGroup(category: $0.key, subscriptions: $0.value,
+                                 monthly: $0.value.reduce(0) { $0 + $1.monthlyCost }) }
+            .sorted { a, b in
+                a.monthly != b.monthly ? a.monthly > b.monthly : a.category.rawValue < b.category.rawValue
+            }
+    }
+}
+
+// MARK: - Formatting
+
+/// Made once. A DateFormatter per row per redraw was part of what made the
+/// list stutter while scrolling.
+private enum Fmt {
+    static let weekdayDay: DateFormatter = make("EEE, d MMM")
+    static let dayMonth: DateFormatter = make("d MMM")
+    static let monthYear: DateFormatter = make("MMM yyyy")
+
+    private static func make(_ format: String) -> DateFormatter {
+        let f = DateFormatter(); f.dateFormat = format; return f
+    }
+
+    /// Three decimals only when the currency actually uses them.
+    static func amount(_ value: Double) -> String {
         let hasThird = abs(value * 100 - (value * 100).rounded()) > 0.0000001
         return String(format: hasThird ? "%.3f" : "%.2f", value)
     }
@@ -443,37 +580,75 @@ struct SubscriptionsView: View {
 
 // MARK: - Brand tile
 
-/// A coloured monogram standing in for the service's logo — our own artwork,
-/// so nothing third-party ships inside the app.
+/// The service's real app icon when one is known — from its App Store receipt,
+/// or looked up from Apple's catalogue — otherwise a coloured glyph or
+/// monogram of our own.
 struct BrandTile: View {
     let brand: SubscriptionBrand
     var size: CGFloat = 44
     var onDark: Bool = false
+    var iconURL: String? = nil
+    /// Catalogue name to look the icon up under, for plans paid by card.
+    var lookupName: String? = nil
+
+    @State private var image: UIImage?
+
+    init(brand: SubscriptionBrand, size: CGFloat = 44, onDark: Bool = false,
+         iconURL: String? = nil, lookupName: String? = nil) {
+        self.brand = brand
+        self.size = size
+        self.onDark = onDark
+        self.iconURL = iconURL
+        self.lookupName = lookupName
+        // Straight from memory when it's there, so a row scrolling back into
+        // view never flashes the placeholder.
+        _image = State(initialValue: SubscriptionIconStore.shared
+            .cachedImage(url: iconURL, brand: lookupName))
+    }
+
+    init(sub: Subscription, size: CGFloat = 44, onDark: Bool = false) {
+        let brand = sub.brand
+        let lookup = SubscriptionIconStore.canLookUp(brand.name) ? brand.name : nil
+        self.init(brand: brand, size: size, onDark: onDark,
+                  iconURL: sub.iconURL, lookupName: lookup)
+    }
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.28)
-                .fill(onDark ? AnyShapeStyle(Color.white.opacity(0.22))
-                             : AnyShapeStyle(LinearGradient(
-                                    colors: [brand.color, brand.color.opacity(0.78)],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing)))
-
-            // A recognised service gets its mark drawn from a system glyph in
-            // the brand's own colour; anything else falls back to initials.
-            // Nothing third-party is bundled — reproducing another company's
-            // logo is a trademark problem and an App Store review risk, and a
-            // glyph reads just as fast at this size.
-            if brand.keywords.isEmpty {
-                Text(brand.monogram)
-                    .font(.system(size: size * 0.38, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
+            if let image = image {
+                Image(uiImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 0.5))
             } else {
-                Image(systemName: brand.symbol)
-                    .font(.system(size: size * 0.42, weight: .semibold))
-                    .foregroundColor(.white)
+                RoundedRectangle(cornerRadius: size * 0.28)
+                    .fill(onDark ? AnyShapeStyle(Color.white.opacity(0.22))
+                                 : AnyShapeStyle(LinearGradient(
+                                        colors: [brand.color, brand.color.opacity(0.78)],
+                                        startPoint: .topLeading, endPoint: .bottomTrailing)))
+
+                if brand.keywords.isEmpty {
+                    Text(brand.monogram)
+                        .font(.system(size: size * 0.38, weight: .heavy, design: .rounded))
+                        .foregroundColor(.white)
+                } else {
+                    Image(systemName: brand.symbol)
+                        .font(.system(size: size * 0.42, weight: .semibold))
+                        .foregroundColor(.white)
+                }
             }
         }
         .frame(width: size, height: size)
+        .task(id: (iconURL ?? "") + "|" + (lookupName ?? "")) {
+            guard iconURL != nil || lookupName != nil else { return }
+            if let loaded = await SubscriptionIconStore.shared.image(url: iconURL, brand: lookupName) {
+                image = loaded
+            }
+        }
     }
 }
 
@@ -483,13 +658,79 @@ private struct SubscriptionRow: View {
     let sub: Subscription
     let sym: String
 
-    private var sinceText: String {
-        let f = DateFormatter(); f.dateFormat = "MMM yyyy"
-        let since = "Since \(f.string(from: sub.startedOn))"
+    var body: some View {
+        // Worked out once per row, not once per text that shows it.
+        let next = sub.nextDue
+        let days = sub.daysUntilDue
+        let isSoon = sub.isActive && days <= 3
+        let brand = sub.brand
+
+        HStack(spacing: 12) {
+            BrandTile(sub: sub, size: 44)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(sub.name)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+
+                    if sub.viaApple {
+                        Image(systemName: "applelogo")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Text(sub.cycle.rawValue)
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Capsule().fill(brand.color.opacity(0.14)))
+                        .foregroundColor(brand.color)
+                }
+
+                Text(detailText)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 6)
+
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("\(sym)\(Fmt.amount(sub.amount))")
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundColor(.primary)
+                Text(dueText(next: next, days: days))
+                    .font(.caption2)
+                    .foregroundColor(isSoon ? .orange : .secondary)
+                    .fontWeight(isSoon ? .semibold : .regular)
+            }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 16)
+            .fill(Color(.secondarySystemGroupedBackground)))
+        .contentShape(Rectangle())
+    }
+
+    /// The plan, whose it is, and since when: "SuperGrok · Family · regina ·
+    /// since Jan 2026 · billed ₹700.00".
+    private var detailText: String {
+        var parts: [String] = []
+        if let plan = sub.planName, !plan.isEmpty,
+           plan.lowercased() != sub.name.lowercased(),
+           !["monthly", "yearly", "annual", "weekly"].contains(plan.lowercased()) {
+            parts.append(plan)
+        }
+        if let member = sub.accountEmail, let local = member.split(separator: "@").first {
+            parts.append("Family · \(local)")
+        }
+        parts.append("since \(Fmt.monthYear.string(from: sub.startedOn))")
         // An Indian App Store account bills in rupees; the list shows the
         // converted figure so totals add up, and the real charge here.
-        guard let original = sub.originalAmount, !sub.currencyCode.isEmpty else { return since }
-        return "\(since) · billed \(Self.symbol(for: sub.currencyCode))\(String(format: "%.2f", original))"
+        if let original = sub.originalAmount, !sub.currencyCode.isEmpty {
+            parts.append("billed \(Self.symbol(for: sub.currencyCode))\(String(format: "%.2f", original))")
+        }
+        return parts.joined(separator: " · ")
     }
 
     private static func symbol(for code: String) -> String {
@@ -502,65 +743,15 @@ private struct SubscriptionRow: View {
         }
     }
 
-    private var dueText: String {
-        let f = DateFormatter(); f.dateFormat = "d MMM"
+    private func dueText(next: Date, days: Int) -> String {
         if let ended = sub.cancelledOn {
-            return "Cancelled \(f.string(from: ended))"
+            return "Cancelled \(Fmt.dayMonth.string(from: ended))"
         }
         if let ran = sub.lapsedOn {
-            return "Expired \(f.string(from: ran))"
+            return "Expired \(Fmt.dayMonth.string(from: ran))"
         }
-        let days = sub.daysUntilDue
         let prefix = days <= 0 ? "Due today" : (days == 1 ? "Tomorrow" : "\(days) days")
-        return "\(prefix) · \(f.string(from: sub.nextDue))"
-    }
-
-    private var isSoon: Bool { sub.isActive && sub.daysUntilDue <= 3 }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            BrandTile(brand: sub.brand, size: 44)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(sub.name)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-
-                    Text(sub.cycle.rawValue)
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Capsule().fill(sub.brand.color.opacity(0.14)))
-                        .foregroundColor(sub.brand.color)
-                }
-
-                Text(sinceText)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 3) {
-                Text("\(sym)\(amountText(sub.amount))")
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
-                    .foregroundColor(.primary)
-                Text(dueText)
-                    .font(.caption2)
-                    .foregroundColor(isSoon ? .orange : .secondary)
-                    .fontWeight(isSoon ? .semibold : .regular)
-            }
-        }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 16)
-            .fill(Color(.secondarySystemGroupedBackground)))
-        .contentShape(Rectangle())
-    }
-
-    private func amountText(_ value: Double) -> String {
-        let hasThird = abs(value * 100 - (value * 100).rounded()) > 0.0000001
-        return String(format: hasThird ? "%.3f" : "%.2f", value)
+        return "\(prefix) · \(Fmt.dayMonth.string(from: next))"
     }
 }
 
@@ -583,6 +774,8 @@ struct SubscriptionEditSheet: View {
     @State private var cycle: BillingCycle
     @State private var startedOn: Date
     @State private var lastChargedOn: Date
+    /// nil follows the automatic guess from the name.
+    @State private var category: SubscriptionCategory?
 
     init(subscription: Subscription?, sym: String,
          onSave: @escaping (Subscription) -> Void,
@@ -595,6 +788,7 @@ struct SubscriptionEditSheet: View {
         _cycle   = State(initialValue: subscription?.cycle ?? .monthly)
         _startedOn = State(initialValue: subscription?.startedOn ?? Date())
         _lastChargedOn = State(initialValue: subscription?.lastChargedOn ?? Date())
+        _category = State(initialValue: subscription?.category)
         if let a = subscription?.amount {
             let hasThird = abs(a * 100 - (a * 100).rounded()) > 0.0000001
             _amount = State(initialValue: String(format: hasThird ? "%.3f" : "%.2f", a))
@@ -605,6 +799,9 @@ struct SubscriptionEditSheet: View {
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
     private var canSave: Bool { !trimmedName.isEmpty && (Double(amount) ?? 0) > 0 }
+    private var autoCategory: SubscriptionCategory {
+        SubscriptionCategory.infer(name: trimmedName, plan: subscription?.planName)
+    }
     private var preview: SubscriptionBrand {
         SubscriptionBrand.match(trimmedName)
             ?? SubscriptionBrand.generic(named: trimmedName.isEmpty ? "New" : trimmedName)
@@ -615,7 +812,8 @@ struct SubscriptionEditSheet: View {
             Form {
                 Section {
                     HStack(spacing: 14) {
-                        BrandTile(brand: preview, size: 52)
+                        BrandTile(brand: preview, size: 52, iconURL: subscription?.iconURL,
+                                  lookupName: SubscriptionIconStore.canLookUp(preview.name) ? preview.name : nil)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(trimmedName.isEmpty ? "New subscription" : trimmedName)
                                 .font(.system(size: 17, weight: .bold))
@@ -641,6 +839,14 @@ struct SubscriptionEditSheet: View {
 
                     Picker("Billing", selection: $cycle) {
                         ForEach(BillingCycle.allCases) { c in Text(c.rawValue).tag(c) }
+                    }
+
+                    Picker("Category", selection: $category) {
+                        Text("Automatic · \(autoCategory.rawValue)")
+                            .tag(SubscriptionCategory?.none)
+                        ForEach(SubscriptionCategory.allCases) { c in
+                            Label(c.rawValue, systemImage: c.symbol).tag(Optional(c))
+                        }
                     }
                 }
 
@@ -720,6 +926,7 @@ struct SubscriptionEditSheet: View {
         result.name = trimmedName
         result.amount = value
         result.cycle = cycle
+        result.category = category
         result.startedOn = startedOn
         // A new plan's first payment is the day it started; the schedule runs
         // forward from there on its own.

@@ -137,7 +137,18 @@ struct SubscriptionBrand: Equatable {
 
     /// Finds the brand a bank description belongs to, longest keyword first so
     /// "amazon prime" wins over a bare "amazon".
+    /// Matching runs for every row on every redraw, and short keywords need a
+    /// regular expression, so results are remembered.
+    private static var matchCache: [String: SubscriptionBrand?] = [:]
+
     static func match(_ text: String) -> SubscriptionBrand? {
+        if let cached = matchCache[text] { return cached }
+        let result = uncachedMatch(text)
+        matchCache[text] = result
+        return result
+    }
+
+    private static func uncachedMatch(_ text: String) -> SubscriptionBrand? {
         let lower = text.lowercased()
         var best: (brand: SubscriptionBrand, length: Int)? = nil
         for brand in catalogue {
@@ -181,9 +192,93 @@ struct SubscriptionBrand: Equatable {
             Color(red: 0.93, green: 0.42, blue: 0.20), Color(red: 0.62, green: 0.31, blue: 0.86),
             Color(red: 0.14, green: 0.58, blue: 0.80), Color(red: 0.85, green: 0.26, blue: 0.45),
         ]
-        let idx = abs(name.lowercased().hashValue) % palette.count
+        // Not `hashValue`: Swift seeds it afresh on every launch, so tiles
+        // changed colour each time the app opened.
+        let idx = name.lowercased().unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF } % palette.count
         return SubscriptionBrand(name: name, keywords: [], color: palette[idx],
                                  symbol: "creditcard.fill")
+    }
+}
+
+// MARK: - Category
+
+/// Where subscription money goes, for the breakdown at the top of the page.
+enum SubscriptionCategory: String, Codable, CaseIterable, Identifiable {
+    case entertainment = "Entertainment"
+    case ai            = "AI & Productivity"
+    case photoVideo    = "Photo & Video"
+    case cloud         = "Cloud & Storage"
+    case social        = "Social & Messaging"
+    case telecom       = "Telecom"
+    case education     = "Education & Kids"
+    case finance       = "Finance & News"
+    case health        = "Health & Lifestyle"
+    case developer     = "Developer"
+    case other         = "Other"
+
+    var id: String { rawValue }
+
+    var symbol: String {
+        switch self {
+        case .entertainment: return "play.tv.fill"
+        case .ai:            return "sparkles"
+        case .photoVideo:    return "camera.fill"
+        case .cloud:         return "icloud.fill"
+        case .social:        return "bubble.left.and.bubble.right.fill"
+        case .telecom:       return "antenna.radiowaves.left.and.right"
+        case .education:     return "graduationcap.fill"
+        case .finance:       return "chart.line.uptrend.xyaxis"
+        case .health:        return "heart.fill"
+        case .developer:     return "hammer.fill"
+        case .other:         return "square.grid.2x2.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .entertainment: return Color(red: 0.90, green: 0.22, blue: 0.27)
+        case .ai:            return Color(red: 0.42, green: 0.36, blue: 0.92)
+        case .photoVideo:    return Color(red: 0.95, green: 0.45, blue: 0.20)
+        case .cloud:         return Color(red: 0.16, green: 0.55, blue: 0.95)
+        case .social:        return Color(red: 0.15, green: 0.70, blue: 0.45)
+        case .telecom:       return Color(red: 0.93, green: 0.60, blue: 0.10)
+        case .education:     return Color(red: 0.95, green: 0.35, blue: 0.60)
+        case .finance:       return Color(red: 0.10, green: 0.60, blue: 0.55)
+        case .health:        return Color(red: 0.85, green: 0.30, blue: 0.45)
+        case .developer:     return Color(red: 0.35, green: 0.40, blue: 0.50)
+        case .other:         return Color(red: 0.55, green: 0.55, blue: 0.60)
+        }
+    }
+
+    /// A best guess from the app and plan names. The user can override it.
+    static func infer(name: String, plan: String?) -> SubscriptionCategory {
+        let t = (name + " " + (plan ?? "")).lowercased()
+        let rules: [(SubscriptionCategory, [String])] = [
+            (.developer,     ["developer program", "apple developer", "github"]),
+            (.telecom,       ["ooredoo", "omantel", "vodafone", "airtel", "jio", "telecom"]),
+            (.cloud,         ["icloud", "google one", "dropbox", "storage", "apple one", "2 tb"]),
+            (.ai,            ["openai", "chatgpt", "anthropic", "claude", "grok", "gemini",
+                              "perplexity", "grammarly", "notion", "wispr", "keyboard",
+                              "higgsfield", "copilot", "microsoft 365", "ai assistant"]),
+            (.photoVideo,    ["photo", "video", "inshot", "lightroom", "canva", "b612",
+                              "creator studio", "adobe", "capcut", "camera"]),
+            (.entertainment, ["netflix", "disney", "prime video", "amazon prime", "youtube",
+                              "spotify", "zee5", "liv", "hotstar", "shahid", "osn", "anghami",
+                              "premium hd", "music", "tv", "movies"]),
+            (.social,        ["whatsapp", "linkedin", "x premium", "telegram", "instagram",
+                              "snapchat", "facebook"]),
+            (.education,     ["coloring", "typing", "kids", "learn", "duolingo", "school"]),
+            (.finance,       ["moneycontrol", "equitymaster", "stock", "market", "news",
+                              "finance", "invest"]),
+            (.health,        ["daylio", "mood", "journal", "fitness", "health", "sleep",
+                              "meditation", "calm", "headspace"]),
+        ]
+        for (category, words) in rules where words.contains(where: { t.contains($0) }) {
+            return category
+        }
+        // "X" alone is too short to search for as a word.
+        if name.trimmingCharacters(in: .whitespaces).lowercased() == "x" { return .social }
+        return .other
     }
 }
 
@@ -213,6 +308,25 @@ struct Subscription: Identifiable, Codable, Equatable {
     /// The amount in the currency it was actually charged in, when that
     /// differs from the user's — an Indian App Store account bills in rupees.
     var originalAmount: Double? = nil
+    /// The plan within the app — "SuperGrok", "Pro Monthly Plan". Shown under
+    /// the app's name, the way Apple's own subscription list does.
+    var planName: String? = nil
+    /// The app's real icon. App Store receipts carry it on Apple's own CDN.
+    var iconURL: String? = nil
+    /// The Apple Account the plan belongs to, or for a renewal notice the To
+    /// line. With Family Sharing the organiser receives every member's mail,
+    /// so this tells the user's own plans from a family member's.
+    var accountEmail: String? = nil
+    /// Chosen by the user; otherwise worked out from the name.
+    var category: SubscriptionCategory? = nil
+    /// Set while a receipt is being read: it named only the plan, so the app
+    /// still has to be looked up from what other receipts taught us. Not stored.
+    var nameIsPlanOnly: Bool = false
+
+    /// The category shown and grouped by.
+    var effectiveCategory: SubscriptionCategory {
+        category ?? SubscriptionCategory.infer(name: name, plan: planName)
+    }
     /// True when it came from imported spending rather than being typed in.
     var isDetected: Bool = false
     /// How many charges the detector matched. One means the cycle is a guess.
@@ -287,6 +401,7 @@ struct Subscription: Identifiable, Codable, Equatable {
     var monthlyCost: Double { yearlyCost / 12 }
 
     private enum CodingKeys: String, CodingKey {
+        case planName, iconURL, accountEmail, category
         case id, name, amount, currencyCode, cycle, startedOn, lastChargedOn,
              cancelledOn, viaApple, sourceKey, originalAmount, isDetected, chargeCount
     }
@@ -319,6 +434,10 @@ struct Subscription: Identifiable, Codable, Equatable {
         viaApple      = try c.decodeIfPresent(Bool.self,         forKey: .viaApple) ?? false
         sourceKey     = try c.decodeIfPresent(String.self,       forKey: .sourceKey)
         originalAmount = try c.decodeIfPresent(Double.self,      forKey: .originalAmount)
+        planName      = try c.decodeIfPresent(String.self,       forKey: .planName)
+        iconURL       = try c.decodeIfPresent(String.self,       forKey: .iconURL)
+        accountEmail  = try c.decodeIfPresent(String.self,       forKey: .accountEmail)
+        category      = try c.decodeIfPresent(SubscriptionCategory.self, forKey: .category)
         isDetected    = try c.decodeIfPresent(Bool.self,         forKey: .isDetected) ?? false
         chargeCount   = try c.decodeIfPresent(Int.self,          forKey: .chargeCount) ?? 1
     }

@@ -5,7 +5,7 @@ import WidgetKit
 
 class PlannerViewModel: ObservableObject {
     @Published var selectedDate: Date = Calendar.current.startOfDay(for: Date())
-    @Published var entries: [String: DailyEntry] = [:]
+    @Published var entries: [String: DailyEntry] = [:] { didSet { subscriptionRevision &+= 1 } }
     @Published var selectedSection: AppSection = .overview {
         didSet {
             if selectedSection == .overview && oldValue != .overview {
@@ -22,7 +22,14 @@ class PlannerViewModel: ObservableObject {
     /// When set, the Overview slot shows that group's hub page (its sections
     /// as cards) instead of the main tile dashboard.
     @Published var activeHub: HomeTileGroup? = nil
-    @Published var settings: AppSettings = AppSettings()
+    @Published var settings: AppSettings = AppSettings() { didSet { subscriptionRevision &+= 1 } }
+    /// Bumped whenever spending or settings change. The subscription lists are
+    /// derived from both, and rebuilding them meant re-running detection over
+    /// every expense ever recorded — several times per frame while scrolling,
+    /// which is what made the Subscriptions page stutter.
+    private var subscriptionRevision = 0
+    private var subscriptionCacheKey = -1
+    private var subscriptionCache: (active: [Subscription], inactive: [Subscription]) = ([], [])
     @Published var iCloudAvailable = false
     @Published var highlightedTaskID: UUID? = nil
     /// Cached medication log for today — updated on toggle and on day change.
@@ -813,13 +820,70 @@ class PlannerViewModel: ObservableObject {
 
     // MARK: - Subscriptions
 
-    /// Every tracked subscription, soonest payment first.
-    ///
-    /// Detection runs over spending already imported, so no new permission is
-    /// needed. A manual entry of the same service wins — editing a detected one
-    /// pins it, so the user's own figures stop being recalculated underneath
-    /// them — and anything they stopped tracking is dropped.
-    private var mergedSubscriptions: [Subscription] {
+    /// Who an App Store plan belongs to, if not the user. With Family Sharing
+    /// the organiser receives every member's receipts and renewal notices, so
+    /// these must not be mistaken for — or merged into — the user's own plans:
+    /// a ChatGPT Go reminder addressed to another family member had been
+    /// overwriting the user's own $20 OpenAI plan.
+    private func familyMember(from raw: String?) -> String? {
+        guard let raw = raw, !raw.isEmpty else { return nil }
+        let me = settings.gmailConnectedEmail.lowercased()
+        let pattern = #"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let ns = raw as NSString
+        let emails = regex.matches(in: raw, range: NSRange(location: 0, length: ns.length))
+            .map { ns.substring(with: $0.range).lowercased() }
+        return emails.first { $0 != me && !me.isEmpty }
+    }
+
+    /// The key an App Store plan is stored and matched under. Kept apart from
+    /// bank-detected keys: an App Store "ChatGPT" and a card-billed OpenAI plan
+    /// are different subscriptions even though they're the same company.
+    private func appStoreKey(_ name: String, member: String?) -> String {
+        "appstore|\(member ?? "")|\(name.lowercased())"
+    }
+
+    /// Other names one plan can arrive under — its plan name and its icon —
+    /// so removing it holds however the next receipt names it.
+    private func aliasKeys(for sub: Subscription) -> [String] {
+        guard sub.viaApple else { return [] }
+        var keys: [String] = []
+        let member = sub.accountEmail ?? ""
+        if let plan = sub.planName { keys.append("appstore|\(member)|plan:\(plan.lowercased())") }
+        if let icon = sub.iconURL.flatMap(AppleReceiptParser.iconKey(from:)) {
+            keys.append("appstore|\(member)|icon:\(icon)")
+        }
+        return keys
+    }
+
+    /// Everything tracked, active and inactive, worked out once per change.
+    private var subscriptionLists: (active: [Subscription], inactive: [Subscription]) {
+        // The day is part of the key: next-due dates and expiry depend on it.
+        let day = Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0
+        let key = subscriptionRevision &* 31 &+ day
+        if key == subscriptionCacheKey { return subscriptionCache }
+
+        let merged = buildMergedSubscriptions()
+        let active = merged.filter(\.isActive).sorted { a, b in
+            // Ties are broken by name. Two plans due the same day otherwise
+            // swap places on every redraw.
+            a.nextDue != b.nextDue
+                ? a.nextDue < b.nextDue
+                : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        }
+        let inactive = merged.filter { !$0.isActive }.sorted { a, b in
+            let ca = a.endedOn ?? .distantPast, cb = b.endedOn ?? .distantPast
+            return ca != cb ? ca > cb
+                            : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        }
+        subscriptionCache = (active, inactive)
+        subscriptionCacheKey = key
+        return subscriptionCache
+    }
+
+    /// Stored plans (manual, edited, and everything read from email) plus
+    /// those detected from bank charges.
+    private func buildMergedSubscriptions() -> [Subscription] {
         let hidden = Set(settings.hiddenSubscriptionKeys)
         var stored = settings.manualSubscriptions
         let storedKeys = Set(stored.map(\.detectionKey))
@@ -829,9 +893,8 @@ class PlannerViewModel: ObservableObject {
                                        uniquingKeysWith: { a, _ in a })
 
         // A plan known from a receipt is still being paid through the bank
-        // each month. Take its latest bank charge, so the schedule keeps
-        // moving between receipts. Only for plans the user hasn't edited —
-        // their figures are pinned.
+        // each month: take its latest bank charge so the schedule keeps moving
+        // between receipts. Not for plans the user edited — those are pinned.
         for i in stored.indices where stored[i].isDetected && stored[i].isActive {
             if let bank = detectedByKey[stored[i].detectionKey],
                bank.lastChargedOn > stored[i].lastChargedOn {
@@ -839,48 +902,28 @@ class PlannerViewModel: ObservableObject {
             }
         }
 
-        // App Store plans arrive by name from Apple's receipts, while the bank
-        // only ever sees "APPLE.COM/BILL". Once any receipt is on file, that
-        // generic Apple row is the same money counted again, so it goes.
+        // The bank only ever sees "APPLE.COM/BILL". Once App Store plans are on
+        // file by name, that generic row is the same money counted again.
         let hasAppStorePlans = stored.contains { $0.viaApple }
-
         let detected = detectedAll.filter { sub in
             !storedKeys.contains(sub.detectionKey)
                 && !(hasAppStorePlans && sub.detectionKey == "apple")
         }
 
-        return (stored + detected).filter { !hidden.contains($0.detectionKey) }
-    }
-
-    /// App Store plans, listed apart on the Subscriptions page.
-    var appStoreSubscriptions: [Subscription] {
-        allSubscriptions.filter(\.viaApple)
-    }
-
-    /// Running subscriptions, soonest payment first. A cancelled plan keeps its
-    /// record but stops appearing here, so it no longer shows a next payment or
-    /// counts towards the totals.
-    var allSubscriptions: [Subscription] {
-        // Ties are broken by name. Two plans due the same day otherwise swap
-        // places on every redraw, because detection builds its list from an
-        // unordered dictionary.
-        mergedSubscriptions.filter(\.isActive).sorted { a, b in
-            a.nextDue != b.nextDue
-                ? a.nextDue < b.nextDue
-                : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        return (stored + detected).filter { sub in
+            !hidden.contains(sub.detectionKey)
+                && !aliasKeys(for: sub).contains(where: hidden.contains)
         }
     }
 
-    /// Cancelled plans, most recently cancelled first — kept as a record of
-    /// what was being paid for.
-    var cancelledSubscriptions: [Subscription] {
-        mergedSubscriptions.filter { !$0.isActive }
-            .sorted { a, b in
-                let ca = a.endedOn ?? .distantPast, cb = b.endedOn ?? .distantPast
-                return ca != cb ? ca > cb
-                                : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
-            }
-    }
+    /// Running subscriptions, soonest payment first.
+    var allSubscriptions: [Subscription] { subscriptionLists.active }
+
+    /// Cancelled or expired plans, most recent first.
+    var cancelledSubscriptions: [Subscription] { subscriptionLists.inactive }
+
+    /// App Store plans.
+    var appStoreSubscriptions: [Subscription] { allSubscriptions.filter(\.viaApple) }
 
     /// The payment the My Schedule tile advertises.
     var nextSubscription: Subscription? { allSubscriptions.first }
@@ -911,31 +954,85 @@ class PlannerViewModel: ObservableObject {
         hideSubscription(sub)
     }
 
+    /// Clears everything that was read from email so a full scan can rebuild
+    /// it from scratch. Plans the user typed in or edited, and everything they
+    /// removed, are kept.
+    ///
+    /// Run before every 13-month scan. Rows written by earlier versions of the
+    /// reader — named after a plan ("Pro Monthly Plan"), a wallet top-up, a
+    /// family member's reminder — would otherwise sit there for good, because
+    /// nothing re-reads an email that has already been applied.
+    func prepareSubscriptionRescan() {
+        settings.manualSubscriptions.removeAll { $0.isDetected }
+        settings.appStoreAliases = [:]
+    }
+
     /// Applies what subscription emails said happened — charges and
     /// cancellations — oldest first, so a later email always has the last word.
     ///
-    /// Stored rather than re-derived: unlike a bank charge, a receipt or a
-    /// cancellation notice arrives once and will not be seen again. Every rule
-    /// below is safe to repeat, so re-running a sync or a 13-month scan over the
-    /// same emails changes nothing.
-    ///
-    /// Returns how many plans were added or changed, for the page to report.
+    /// Every rule is safe to repeat: re-running a sync or a scan over the same
+    /// emails changes nothing. Returns how many plans were added or changed.
     @discardableResult
     func applySubscriptionEvents(_ events: [SubscriptionEvent]) -> Int {
         guard !events.isEmpty else { return 0 }
         let hidden = Set(settings.hiddenSubscriptionKeys)
         var list = settings.manualSubscriptions
+        var aliases = settings.appStoreAliases
         var changed = 0
         let local = settings.currency.rawValue
 
+        // Normalise ownership, and learn app names from every receipt that
+        // states one — so an older receipt naming only the plan, or only
+        // showing the icon, can be resolved to the app.
+        var normalised: [(SubscriptionEvent, Subscription)] = []
         for event in events.sorted(by: { $0.date < $1.date }) {
+            var sub: Subscription
             switch event {
-            case .charged(var sub):
-                let key = SubscriptionBrand.canonicalName(sub.name).lowercased()
-                guard !hidden.contains(key) else { continue }
+            case .charged(let s):      sub = s
+            case .cancelled(let s, _): sub = s
+            }
+            guard sub.viaApple else { normalised.append((event, sub)); continue }
+            sub.accountEmail = familyMember(from: sub.accountEmail)
+            if !sub.nameIsPlanOnly {
+                if let icon = sub.iconURL.flatMap(AppleReceiptParser.iconKey(from:)) {
+                    aliases["icon|\(icon)"] = sub.name
+                }
+                if let plan = sub.planName, plan.lowercased() != sub.name.lowercased() {
+                    aliases["plan|\(plan.lowercased())"] = sub.name
+                }
+            }
+            normalised.append((event, sub))
+        }
 
-                // Store in the user's currency so totals add up; keep the
-                // original for display.
+        for (event, original) in normalised {
+            var sub = original
+            let key: String
+            if sub.viaApple {
+                if sub.nameIsPlanOnly {
+                    let icon = sub.iconURL.flatMap(AppleReceiptParser.iconKey(from:))
+                    let plan = sub.planName?.lowercased()
+                    if let name = icon.flatMap({ aliases["icon|\($0)"] })
+                        ?? plan.flatMap({ aliases["plan|\($0)"] }) {
+                        sub.name = name
+                    } else if let plan = sub.planName,
+                              !["monthly", "yearly", "annual", "weekly"].contains(plan.lowercased()) {
+                        sub.name = plan
+                    } else {
+                        sub.name = "App Store subscription"
+                    }
+                    sub.nameIsPlanOnly = false
+                }
+                key = appStoreKey(sub.name, member: sub.accountEmail)
+            } else {
+                key = SubscriptionBrand.canonicalName(sub.name).lowercased()
+            }
+            sub.sourceKey = key
+            if hidden.contains(key) || aliasKeys(for: sub).contains(where: hidden.contains) { continue }
+
+            switch event {
+            case .charged:
+                // Stored in the user's currency so totals add up; the original
+                // is kept for display.
                 if CurrencyConverter.needsConversion(detected: sub.currencyCode, local: local),
                    let converted = CurrencyConverter.convert(amount: sub.amount,
                                                              from: sub.currencyCode, to: local) {
@@ -946,17 +1043,24 @@ class PlannerViewModel: ObservableObject {
                 if let idx = list.firstIndex(where: { $0.detectionKey == key }) {
                     var existing = list[idx]
                     if let ended = existing.cancelledOn {
-                        // Only a charge AFTER the cancellation means they
-                        // subscribed again. An older receipt seen by a re-scan
-                        // must not undo the cancellation.
+                        // Only a charge after the cancellation means they
+                        // subscribed again; an older receipt seen by a re-scan
+                        // must not undo it.
                         guard sub.lastChargedOn > ended else { continue }
                         existing.cancelledOn = nil
                     } else if sub.lastChargedOn <= existing.lastChargedOn {
+                        // Older news — but it may still carry what's missing.
+                        if existing.iconURL == nil { existing.iconURL = sub.iconURL }
+                        if existing.planName == nil { existing.planName = sub.planName }
+                        existing.startedOn = min(existing.startedOn, sub.startedOn)
+                        list[idx] = existing
                         continue
                     }
                     existing.lastChargedOn = sub.lastChargedOn
                     existing.startedOn = min(existing.startedOn, sub.startedOn)
                     existing.viaApple = existing.viaApple || sub.viaApple
+                    existing.iconURL = sub.iconURL ?? existing.iconURL
+                    existing.planName = sub.planName ?? existing.planName
                     // A plan the user edited keeps their figures.
                     if existing.isDetected {
                         existing.amount = sub.amount
@@ -966,22 +1070,19 @@ class PlannerViewModel: ObservableObject {
                     }
                     list[idx] = existing
                 } else {
-                    sub.sourceKey = key
                     list.append(sub)
                 }
                 changed += 1
 
-            case .cancelled(let name, let on):
-                let key = SubscriptionBrand.canonicalName(name).lowercased()
-                guard !hidden.contains(key) else { continue }
-
+            case .cancelled(_, let on):
                 if let idx = list.firstIndex(where: { $0.detectionKey == key }) {
-                    // Ignore a notice older than the latest payment: the user
+                    // Ignore a notice older than the latest payment: they
                     // resumed or resubscribed after it.
                     guard list[idx].isActive, on >= list[idx].lastChargedOn else { continue }
                     list[idx].cancelledOn = on
                     changed += 1
-                } else if var detected = SubscriptionDetector.detect(from: entries)
+                } else if !sub.viaApple,
+                          var detected = SubscriptionDetector.detect(from: entries)
                             .first(where: { $0.detectionKey == key }),
                           on >= detected.lastChargedOn {
                     // Known only from bank charges: store it, cancelled, so the
@@ -994,6 +1095,7 @@ class PlannerViewModel: ObservableObject {
         }
 
         settings.manualSubscriptions = list
+        settings.appStoreAliases = aliases
         saveSettings()
         return changed
     }
@@ -1009,16 +1111,21 @@ class PlannerViewModel: ObservableObject {
             list.append(sub)
         }
         settings.manualSubscriptions = list
-        // Saving un-hides it, so editing something previously dismissed brings
-        // it back rather than silently doing nothing.
-        settings.hiddenSubscriptionKeys.removeAll { $0 == sub.detectionKey }
+        // Adding a plan by hand is how a removed one comes back, so saving
+        // lifts any removal recorded against its names.
+        let keys = Set([sub.detectionKey] + aliasKeys(for: sub))
+        settings.hiddenSubscriptionKeys.removeAll { keys.contains($0) }
         saveSettings()
     }
 
+    /// Removes a plan and remembers it under every name it can arrive with —
+    /// its key, its plan name and its icon — so no later sync, under whatever
+    /// name the next receipt uses, brings it back.
     func hideSubscription(_ sub: Subscription) {
-        settings.manualSubscriptions.removeAll { $0.id == sub.id }
-        if !settings.hiddenSubscriptionKeys.contains(sub.detectionKey) {
-            settings.hiddenSubscriptionKeys.append(sub.detectionKey)
+        settings.manualSubscriptions.removeAll { $0.id == sub.id || $0.detectionKey == sub.detectionKey }
+        for key in [sub.detectionKey] + aliasKeys(for: sub)
+            where !settings.hiddenSubscriptionKeys.contains(key) {
+            settings.hiddenSubscriptionKeys.append(key)
         }
         saveSettings()
     }
