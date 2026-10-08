@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject var vm: PlannerViewModel
@@ -6,11 +7,26 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showSearch   = false
     @State private var showUpgrade  = false
+    /// Bottom bar: To-Do opens the new-task page; Health, Finance, Schedule
+    /// and Journal open their quick actions.
+    @State private var showQuickTodo = false
+    @State private var quickTab: HomeTab? = nil
+    /// A quick action picked on that page, run once the page has closed so
+    /// its form or section can open cleanly.
+    @State private var pendingAction: QuickAction? = nil
+    @State private var activeForm: QuickForm? = nil
+    /// The bar steps aside while typing, instead of riding up on the keyboard.
+    @State private var keyboardShown = false
+
+    /// The front page draws its own header.
+    private var isHome: Bool { vm.selectedSection == .overview && vm.activeHub == nil }
 
     var body: some View {
         VStack(spacing: 0) {
             // App Header
-            AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
+            if !isHome {
+                AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
+            }
 
             // The front page is a clean tile dashboard. Hub pages and every
             // section get a back bar above a compact date picker — the
@@ -34,6 +50,34 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.25), value: vm.selectedSection)
         }
         .background { GlassAppBackground() }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !keyboardShown {
+                HomeBottomBar(active: HomeTab.current(section: vm.selectedSection, hub: vm.activeHub)) { tab in
+                    select(tab)
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardShown = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardShown = false
+        }
+        .sheet(isPresented: $showQuickTodo) {
+            QuickTodoSheet()
+                .environmentObject(vm)
+                .environmentObject(pro)
+        }
+        .sheet(item: $quickTab, onDismiss: runPendingAction) { tab in
+            QuickActionsSheet(tab: tab) { pendingAction = $0 }
+                .environmentObject(vm)
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $activeForm) { form in
+            quickForm(form)
+                .environmentObject(vm)
+                .environmentObject(pro)
+        }
         .sheet(isPresented: $showSettings) {
             SettingsView().environmentObject(pro)
         }
@@ -46,6 +90,52 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showUpgrade) {
             ProUpgradeView().environmentObject(pro)
+        }
+    }
+
+    // MARK: Bottom bar
+
+    private func select(_ tab: HomeTab) {
+        switch tab {
+        case .home:
+            withAnimation(.easeInOut(duration: 0.25)) {
+                vm.activeHub = nil
+                vm.selectedSection = .overview
+            }
+        case .todo:
+            showQuickTodo = true
+        default:
+            quickTab = tab
+        }
+    }
+
+    private func runPendingAction() {
+        guard let action = pendingAction else { return }
+        pendingAction = nil
+        switch action {
+        case .open(let section):
+            withAnimation(.easeInOut(duration: 0.25)) { vm.selectedSection = section }
+        case .form(let form):
+            activeForm = form
+        case .addWater:
+            break
+        }
+    }
+
+    @ViewBuilder
+    private func quickForm(_ form: QuickForm) -> some View {
+        let sym = vm.settings.currency.symbol
+        switch form {
+        case .expense:
+            AddTransactionSheet(mode: .expense, currencySymbol: sym) { vm.addExpense($0) }
+        case .income:
+            AddTransactionSheet(mode: .income, currencySymbol: sym) { vm.addExpense($0) }
+        case .saving:
+            AddTransactionSheet(mode: .savings, currencySymbol: sym) { vm.addExpense($0) }
+        case .appointment:
+            AddAppointmentSheet { vm.addAppointment($0) }
+        case .timeBlock:
+            AddScheduleBlockSheet { vm.addScheduleBlock($0) }
         }
     }
 
@@ -133,7 +223,8 @@ struct ContentView: View {
                     GroupHubView(group: hub)
                 }
             } else {
-                HomeDashboardView()
+                HomeFrontPage(onSearch: { showSearch = true },
+                              onSettings: { showSettings = true })
             }
         case .topPriorities:   TopPrioritiesView()
         case .toDoLists:       ToDoListsView()

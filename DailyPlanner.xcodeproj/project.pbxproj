@@ -64,6 +64,7 @@
 		AA780000000000000000002C /* CloudFoodSecrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000002C /* CloudFoodSecrets.swift */; };
 		AA700000000000000000001F /* GmailSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA710000000000000000001F /* GmailSyncView.swift */; };
 		AA760000000000000000001F /* HomeDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000001F /* HomeDashboardView.swift */; };
+		AA78000000000000000000AA /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79000000000000000000AA /* HomeScreen.swift */; };
 		AA760000000000000000002B /* SmartMealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000002B /* SmartMealSheet.swift */; };
 		AA760000000000000000003B /* SubscriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA770000000000000000003B /* SubscriptionsView.swift */; };
 		BB200000000000000000001A /* DailyPlannerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100000000000000000001A /* DailyPlannerWidget.swift */; };
@@ -131,6 +132,7 @@
 		AA790000000000000000002C /* CloudFoodSecrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFoodSecrets.swift; sourceTree = "<group>"; };
 		AA710000000000000000001F /* GmailSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailSyncView.swift; sourceTree = "<group>"; };
 		AA770000000000000000001F /* HomeDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardView.swift; sourceTree = "<group>"; };
+		AA79000000000000000000AA /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		AA770000000000000000002B /* SmartMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartMealSheet.swift; sourceTree = "<group>"; };
 		AA770000000000000000003B /* SubscriptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionsView.swift; sourceTree = "<group>"; };
 		BB100000000000000000001A /* DailyPlannerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPlannerWidget.swift; sourceTree = "<group>"; };
@@ -243,6 +245,7 @@
 			children = (
 				AA710000000000000000001F /* GmailSyncView.swift */,
 				AA770000000000000000001F /* HomeDashboardView.swift */,
+				AA79000000000000000000AA /* HomeScreen.swift */,
 				AA770000000000000000002B /* SmartMealSheet.swift */,
 				AA770000000000000000003B /* SubscriptionsView.swift */,
 				AA150000000000000000001A /* ContentView.swift */,
@@ -528,6 +531,7 @@
 				AA780000000000000000002C /* CloudFoodSecrets.swift in Sources */,
 				AA700000000000000000001F /* GmailSyncView.swift in Sources */,
 				AA760000000000000000001F /* HomeDashboardView.swift in Sources */,
+				AA78000000000000000000AA /* HomeScreen.swift in Sources */,
 				AA760000000000000000002B /* SmartMealSheet.swift in Sources */,
 				AA760000000000000000003B /* SubscriptionsView.swift in Sources */,
 			);
