@@ -860,16 +860,18 @@ class PlannerViewModel: ObservableObject {
         let hidden = Set(settings.hiddenSubscriptionKeys)
         let local = settings.currency.rawValue
 
-        // App Store rows written by earlier versions are superseded by the
-        // ledger once it has records; only ones the user edited (no longer
-        // "detected") stay. Until the first full scan, the old rows show.
-        let useLedger = !settings.appStoreRecords.isEmpty
-        var stored = settings.manualSubscriptions.filter { !(useLedger && $0.viaApple && $0.isDetected) }
+        // App Store plans come from the ledger; a stored copy is kept only
+        // when the user edited it. Family members' plans are left out
+        // altogether: with Family Sharing their receipts reach the
+        // organiser's inbox, but they aren't the user's subscriptions.
+        var stored = settings.manualSubscriptions.filter {
+            !($0.viaApple && ($0.isDetected || $0.accountEmail != nil))
+        }
         let storedKeys = Set(stored.map(\.detectionKey))
 
         var appStore = AppStoreLedger.subscriptions(from: settings.appStoreRecords,
                                                     me: settings.gmailConnectedEmail)
-            .filter { !storedKeys.contains($0.detectionKey) }
+            .filter { $0.accountEmail == nil && !storedKeys.contains($0.detectionKey) }
         for i in appStore.indices {
             // Stored in the user's currency so totals add up; the charge as
             // billed is kept for display.
@@ -2048,7 +2050,31 @@ class PlannerViewModel: ObservableObject {
               let decoded = try? JSONDecoder().decode(AppSettings.self, from: data)
         else { return }
         settings = decoded
+        migrateSubscriptionsIfNeeded()
     }
+
+    /// The subscription reader this build writes.
+    private static let subscriptionDataVersion = 2
+
+    /// Clears subscription rows saved by an older version of the email reader
+    /// — "Family", "Flow Pro", "Pro Monthly Plan", a newsletter author, an
+    /// Apple Account top-up — once. They were saved, so a better reader alone
+    /// never removed them. Everything is rebuilt from Gmail by the next scan,
+    /// which the Subscriptions page starts by itself. Plans the user typed in,
+    /// and everything they removed, are kept.
+    func migrateSubscriptionsIfNeeded() {
+        guard settings.subscriptionDataVersion < Self.subscriptionDataVersion else { return }
+        // Detected rows are rebuilt from email and spending; App Store rows
+        // only ever came from email.
+        settings.manualSubscriptions.removeAll { $0.isDetected || $0.viaApple }
+        settings.appStoreRecords = []
+        settings.subscriptionDataVersion = Self.subscriptionDataVersion
+        saveSettings()
+    }
+
+    /// Set once the Subscriptions page has started its automatic scan this
+    /// launch, so it doesn't run again every time the page opens.
+    var didAutoScanSubscriptions = false
 
     private func setupAutoSave() {
         // Write entries to disk immediately on every change.
@@ -2191,6 +2217,7 @@ class PlannerViewModel: ObservableObject {
         if let data = try? Data(contentsOf: cloudSettings),
            let decoded = try? JSONDecoder().decode(AppSettings.self, from: data) {
             settings = decoded
+            migrateSubscriptionsIfNeeded()
         }
     }
 

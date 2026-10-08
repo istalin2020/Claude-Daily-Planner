@@ -1105,6 +1105,12 @@ struct AppSettings: Codable {
     /// list is worked out from all of them together (see AppStoreLedger),
     /// never from any one email alone.
     var appStoreRecords: [AppStoreRecord] = []
+    /// Bumped when the way subscriptions are read from email changes, so
+    /// rows saved by an older reader are cleared once (see
+    /// PlannerViewModel.migrateSubscriptionsIfNeeded).
+    /// A fresh install starts current; a file saved before this field
+    /// existed decodes as 0.
+    var subscriptionDataVersion: Int = 2
 
     // MARK: - Smart Food Analysis (PRO)
     /// When on, PRO users' food photos are sent to the Daily Planner analysis
@@ -1236,6 +1242,7 @@ struct AppSettings: Codable {
         manualSubscriptions       = try c.decodeIfPresent([Subscription].self,       forKey: .manualSubscriptions)        ?? []
         hiddenSubscriptionKeys    = try c.decodeIfPresent([String].self,             forKey: .hiddenSubscriptionKeys)     ?? []
         appStoreRecords           = try c.decodeIfPresent([AppStoreRecord].self,     forKey: .appStoreRecords)            ?? []
+        subscriptionDataVersion   = try c.decodeIfPresent(Int.self,                  forKey: .subscriptionDataVersion)    ?? 0
         cloudFoodAnalysisEnabled  = try c.decodeIfPresent(Bool.self,                 forKey: .cloudFoodAnalysisEnabled)   ?? true
         gmailConnectedEmail       = try c.decodeIfPresent(String.self,               forKey: .gmailConnectedEmail)        ?? ""
         gmailLastSyncEpoch        = try c.decodeIfPresent(Double.self,               forKey: .gmailLastSyncEpoch)         ?? 0

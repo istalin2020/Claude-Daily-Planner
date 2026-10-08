@@ -56,6 +56,16 @@ struct SubscriptionsView: View {
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .safeAreaInset(edge: .bottom) { addBar }
+        .task {
+            // The App Store list is built from a full read of Gmail. Start it
+            // without waiting for a tap when it hasn't been done yet — after
+            // an update cleared the old rows, or on first use.
+            guard !vm.settings.gmailConnectedEmail.isEmpty,
+                  vm.settings.appStoreRecords.isEmpty,
+                  !vm.didAutoScanSubscriptions, !scanning else { return }
+            vm.didAutoScanSubscriptions = true
+            await scanGmail()
+        }
         .sheet(isPresented: $showAdd) {
             SubscriptionEditSheet(subscription: nil, sym: sym,
                                   onSave: { vm.saveSubscription($0) })
