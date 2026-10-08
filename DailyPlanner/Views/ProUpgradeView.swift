@@ -31,6 +31,7 @@ struct ProUpgradeView: View {
         ("chart.bar.fill",           "Spending Trends",        "Visual charts of your expense history"),
         ("paintpalette.fill",        "Color Themes",           "8 beautiful accent colors for the app"),
         ("pill.fill",                "Medication Reminders",   "Never miss a dose with smart reminders"),
+        ("repeat.circle.fill",       "Subscription Schedule",  "Every renewal from Gmail, by category"),
     ]
 
     var body: some View {

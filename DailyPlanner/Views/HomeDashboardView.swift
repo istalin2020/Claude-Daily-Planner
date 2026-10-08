@@ -288,7 +288,11 @@ struct GroupHubView: View {
 /// glance. Two per row.
 struct GroupHubTile: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     let section: AppSection
+
+    /// PRO sections show what they offer instead of live data until unlocked.
+    private var locked: Bool { section == .subscriptions && !pro.isPro }
 
     /// (big number/value, small unit, secondary detail) for this section today.
     private var metric: (value: String, unit: String, detail: String) {
@@ -318,6 +322,7 @@ struct GroupHubTile: View {
                                   : ("\(done)/\(habits.count)", "done", "habits today")
 
         case .subscriptions:
+            if locked { return ("Every renewal", "", "from Gmail") }
             let subs = vm.allSubscriptions
             guard let next = subs.first else {
                 return ("None", "tracked", "tap to add")
@@ -439,9 +444,19 @@ struct GroupHubTile: View {
 
                     Spacer(minLength: 4)
 
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white.opacity(0.7))
+                    if locked {
+                        HStack(spacing: 4) {
+                            Image(systemName: "crown.fill").font(.system(size: 10, weight: .bold))
+                            Text("PRO").font(.system(size: 11, weight: .heavy))
+                        }
+                        .foregroundColor(Color(red: 0.55, green: 0.32, blue: 0.0))
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(Capsule().fill(Color(red: 1.0, green: 0.82, blue: 0.25)))
+                    } else {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
