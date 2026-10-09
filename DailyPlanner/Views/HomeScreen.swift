@@ -69,29 +69,46 @@ struct HomeFrontPage: View {
     @State private var showUpgrade = false
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 16) {
-                HomeHeader(onPro: { showUpgrade = true }, onSearch: onSearch, onSettings: onSettings)
-                HomeDateCard()
+        GeometryReader { geo in
+            // Everything is sized to the screen so the page sits still. Only
+            // when a phone is too short for the minimum sizes does it scroll,
+            // and even then it doesn't bounce once the content fits.
+            let spacing: CGFloat = 12
+            let header: CGFloat = 58
+            let dateCard: CGFloat = 112
+            let free = geo.size.height - header - dateCard - spacing * 4 - 8
+            let rows = max(free, 480)
+            let row1 = rows * 0.40
+            let row2 = rows * 0.34
+            let row3 = rows - row1 - row2
 
-                HStack(alignment: .top, spacing: 14) {
-                    TodoTile { open(.tasks) }
-                    HealthTile(open: { open(.health) }, openSection: openSection)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: spacing) {
+                    HomeHeader(onPro: { showUpgrade = true }, onSearch: onSearch, onSettings: onSettings)
+                        .frame(height: header)
+                    HomeDateCard()
+                        .frame(height: dateCard)
+
+                    HStack(spacing: spacing) {
+                        TodoTile { open(.tasks) }
+                        HealthTile(open: { open(.health) }, openSection: openSection)
+                    }
+                    .frame(height: row1)
+
+                    HStack(spacing: spacing) {
+                        FinanceTile { open(.finance) }
+                        ScheduleTile { open(.schedule) }
+                    }
+                    .frame(height: row2)
+
+                    JournalTile { open(.journal) }
+                        .frame(height: row3)
                 }
-                .frame(height: 230)
-
-                HStack(alignment: .top, spacing: 14) {
-                    FinanceTile { open(.finance) }
-                    ScheduleTile { open(.schedule) }
-                }
-                .frame(height: 178)
-
-                JournalTile { open(.journal) }
-                    .frame(height: 118)
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 4)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 6)
-            .padding(.bottom, 20)
+            .scrollBounceBehavior(.basedOnSize)
         }
         .background(HomeBackground().ignoresSafeArea())
         .sheet(isPresented: $showUpgrade) {
@@ -151,28 +168,29 @@ struct HomeHeader: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text("Daily Planner")
-                    .font(.system(size: 32, weight: .heavy))
+                    .font(.system(size: 28, weight: .heavy))
                     .foregroundColor(.primary)
                     .lineLimit(1).minimumScaleFactor(0.7)
                 Text("\(greeting.0) \(greeting.1)")
-                    .font(.system(size: 17, weight: .medium))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
             Spacer(minLength: 4)
 
             Button(action: onPro) {
-                HStack(spacing: 5) {
+                HStack(spacing: 4) {
                     Image(systemName: "crown.fill")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                     Text(pro.isPro ? "PRO" : "Go PRO")
-                        .font(.system(size: 15, weight: .heavy))
+                        .font(.system(size: 14, weight: .heavy))
                         .lineLimit(1)
                 }
                 .foregroundColor(Color.rgb(232, 160, 0))
-                .padding(.horizontal, 13).padding(.vertical, 9)
+                .padding(.horizontal, 11).padding(.vertical, 8)
                 .background(Capsule().fill(Color.adaptive(
                     light: UIColor(red: 1.0, green: 0.96, blue: 0.84, alpha: 1),
                     dark: UIColor(red: 0.30, green: 0.24, blue: 0.08, alpha: 1))))
@@ -182,17 +200,16 @@ struct HomeHeader: View {
             circleButton("magnifyingglass", action: onSearch)
             circleButton("gearshape.fill", action: onSettings)
         }
-        .padding(.top, 4)
     }
 
     private func circleButton(_ symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.primary)
-                .frame(width: 46, height: 46)
+                .frame(width: 40, height: 40)
                 .background(Circle().fill(HomeStyle.card))
-                .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
+                .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
         }
         .buttonStyle(TilePressStyle())
     }
@@ -203,6 +220,10 @@ struct HomeHeader: View {
 struct HomeDateCard: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showCalendar = false
+    @State private var showMonthWheel = false
+    /// Bumped by Today, so the strip re-centres even when today was already
+    /// selected but scrolled out of view.
+    @State private var recenter = 0
 
     private let cal = Calendar.current
 
@@ -222,15 +243,15 @@ struct HomeDateCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                Button { showCalendar = true } label: {
-                    HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Button { showMonthWheel = true } label: {
+                    HStack(spacing: 6) {
                         Text(Self.monthFormat.string(from: vm.selectedDate))
-                            .font(.system(size: 22, weight: .heavy))
+                            .font(.system(size: 18, weight: .heavy))
                             .foregroundColor(.primary)
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 15, weight: .heavy))
+                            .font(.system(size: 12, weight: .heavy))
                             .foregroundColor(.primary)
                     }
                 }
@@ -238,28 +259,31 @@ struct HomeDateCard: View {
 
                 Spacer()
 
-                Button { withAnimation(.spring(response: 0.3)) { vm.selectToday() } } label: {
+                Button {
+                    withAnimation(.spring(response: 0.3)) { vm.selectToday() }
+                    recenter += 1
+                } label: {
                     Text("Today")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundColor(HomeStyle.blue)
-                        .padding(.horizontal, 16).padding(.vertical, 9)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(HomeStyle.softBlue))
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(HomeStyle.softBlue))
                 }
                 .buttonStyle(TilePressStyle())
 
                 Button { showCalendar = true } label: {
                     Image(systemName: "calendar")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(HomeStyle.blue)
-                        .frame(width: 40, height: 38)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(HomeStyle.softBlue))
+                        .frame(width: 32, height: 29)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(HomeStyle.softBlue))
                 }
                 .buttonStyle(TilePressStyle())
             }
 
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 2) {
                         ForEach(days, id: \.self) { day in
                             dayCell(day)
                                 .id(cal.component(.day, from: day))
@@ -268,28 +292,38 @@ struct HomeDateCard: View {
                                 }
                         }
                     }
-                    .padding(.vertical, 2)
                 }
                 .onAppear { scroll(proxy, animated: false) }
                 .onChange(of: vm.selectedDate) { _, _ in scroll(proxy, animated: true) }
+                .onChange(of: recenter) { _, _ in scroll(proxy, animated: true) }
             }
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 24).fill(HomeStyle.card))
-        .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 20).fill(HomeStyle.card))
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
         .sheet(isPresented: $showCalendar) {
             HomeCalendarSheet()
                 .environmentObject(vm)
                 .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showMonthWheel) {
+            MonthYearWheel()
+                .environmentObject(vm)
+                .presentationDetents([.height(320)])
+        }
     }
 
+    /// Puts the selected day in the middle of the strip. Waits a beat so a
+    /// month change has laid out its new days first.
     private func scroll(_ proxy: ScrollViewProxy, animated: Bool) {
         let target = cal.component(.day, from: vm.selectedDate)
-        if animated {
-            withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo(target, anchor: .center) }
-        } else {
-            DispatchQueue.main.async { proxy.scrollTo(target, anchor: .center) }
+        DispatchQueue.main.async {
+            if animated {
+                withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(target, anchor: .center) }
+            } else {
+                proxy.scrollTo(target, anchor: .center)
+            }
         }
     }
 
@@ -298,32 +332,98 @@ struct HomeDateCard: View {
         let today = cal.isDateInToday(day)
         let hasData = vm.entries[vm.dateKey(for: day)]?.hasData ?? false
 
-        return VStack(spacing: 6) {
+        return VStack(spacing: 3) {
             Text(Self.weekdayFormat.string(from: day))
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(selected ? .white.opacity(0.9) : .secondary)
             Text("\(cal.component(.day, from: day))")
-                .font(.system(size: 21, weight: .semibold, design: .rounded))
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundColor(selected ? .white : .primary)
             Circle()
                 .fill(selected ? Color.white : HomeStyle.blue)
-                .frame(width: 5, height: 5)
+                .frame(width: 4, height: 4)
                 .opacity(hasData || selected ? 1 : 0)
         }
-        .frame(width: 50, height: 82)
+        .frame(width: 34, height: 56)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(selected
                       ? AnyShapeStyle(LinearGradient(colors: [Color.rgb(40, 140, 255), Color.rgb(10, 100, 235)],
                                                      startPoint: .top, endPoint: .bottom))
                       : AnyShapeStyle(Color.clear))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(HomeStyle.blue.opacity(today && !selected ? 0.35 : 0), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(HomeStyle.blue.opacity(today && !selected ? 0.4 : 0), lineWidth: 1.3)
         )
-        .shadow(color: selected ? HomeStyle.blue.opacity(0.35) : .clear, radius: 8, y: 4)
         .contentShape(Rectangle())
+    }
+}
+
+/// Month and year on two wheels, opened from the month title.
+private struct MonthYearWheel: View {
+    @EnvironmentObject var vm: PlannerViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var month = 1
+    @State private var year = 2026
+
+    private let cal = Calendar.current
+    private var years: [Int] {
+        let now = cal.component(.year, from: Date())
+        return Array((now - 10)...(now + 1))
+    }
+
+    var body: some View {
+        NavigationView {
+            HStack(spacing: 0) {
+                Picker("Month", selection: $month) {
+                    ForEach(1...12, id: \.self) { m in
+                        Text(DateFormatter().standaloneMonthSymbols[m - 1]).tag(m)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+
+                Picker("Year", selection: $year) {
+                    ForEach(years, id: \.self) { y in
+                        Text(String(y)).tag(y)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(width: 120)
+            }
+            .padding(.horizontal, 16)
+            .navigationTitle("Choose month")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { apply() }.fontWeight(.semibold)
+                }
+            }
+        }
+        .onAppear {
+            month = cal.component(.month, from: vm.selectedDate)
+            year = cal.component(.year, from: vm.selectedDate)
+        }
+    }
+
+    /// Keeps the day of the month where it can — the 31st becomes the 30th
+    /// in a 30-day month. The current month opens on today.
+    private func apply() {
+        let now = Date()
+        if month == cal.component(.month, from: now), year == cal.component(.year, from: now) {
+            vm.selectToday()
+        } else {
+            var c = DateComponents(year: year, month: month, day: 1)
+            if let first = cal.date(from: c), let range = cal.range(of: .day, in: .month, for: first) {
+                c.day = min(cal.component(.day, from: vm.selectedDate), range.count)
+                if let date = cal.date(from: c) { vm.select(date: date) }
+            }
+        }
+        dismiss()
     }
 }
 
@@ -362,62 +462,91 @@ private struct HomeCalendarSheet: View {
 
 // MARK: - Tile chrome
 
-/// The shared tile frame: pastel wash, icon disc, title, subtitle, chevron.
-private struct HomeTile<Content: View>: View {
+/// The shared tile frame: pastel wash with a soft wave, icon disc, title,
+/// subtitle, chevron. `art` sits behind the content in the bottom corner.
+private struct HomeTile<Content: View, Art: View>: View {
     let theme: HomeTileTheme
     let icon: String
     let title: String
     let subtitle: String
     let action: () -> Void
     @ViewBuilder let content: Content
+    @ViewBuilder let art: Art
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(LinearGradient(colors: [theme.accent, theme.accentDeep],
-                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 48, height: 48)
-                            .shadow(color: theme.accent.opacity(0.4), radius: 6, y: 3)
-                        Image(systemName: icon)
-                            .font(.system(size: 21, weight: .bold))
-                            .foregroundColor(.white)
+            ZStack(alignment: .bottomTrailing) {
+                LinearGradient(colors: theme.wash, startPoint: .topLeading, endPoint: .bottomTrailing)
+
+                // A soft hill along the bottom, as on the design.
+                TileWave()
+                    .fill(theme.accent.opacity(0.10))
+                    .frame(height: 70)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+
+                art
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [theme.accent, theme.accentDeep],
+                                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 40, height: 40)
+                                .shadow(color: theme.accent.opacity(0.35), radius: 5, y: 2)
+                            Image(systemName: icon)
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(title)
+                                .font(.system(size: 16, weight: .heavy))
+                                .foregroundColor(.primary)
+                                .lineLimit(1).minimumScaleFactor(0.65)
+                            Text(subtitle)
+                                .font(.system(size: 11.5))
+                                .foregroundColor(.secondary)
+                                .lineLimit(2).minimumScaleFactor(0.85)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .heavy))
+                            .foregroundColor(theme.accentDeep.opacity(0.8))
+                            .padding(.top, 3)
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
-                            .font(.system(size: 19, weight: .heavy))
-                            .foregroundColor(.primary)
-                            .lineLimit(1).minimumScaleFactor(0.7)
-                        Text(subtitle)
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                            .lineLimit(2).minimumScaleFactor(0.85)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    content
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 15, weight: .heavy))
-                        .foregroundColor(theme.accentDeep.opacity(0.8))
-                        .padding(.top, 4)
                 }
-                content
+                .padding(12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(LinearGradient(colors: theme.wash, startPoint: .topLeading, endPoint: .bottomTrailing))
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 22))
             .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .strokeBorder(theme.accent.opacity(0.35), lineWidth: 1.2)
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(theme.accent.opacity(0.35), lineWidth: 1.1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 24))
-            .shadow(color: theme.accent.opacity(0.16), radius: 12, y: 5)
+            .shadow(color: theme.accent.opacity(0.14), radius: 10, y: 4)
         }
         .buttonStyle(TilePressStyle())
+    }
+}
+
+/// Two gentle hills, for the bottom of each tile.
+private struct TileWave: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: 0, y: rect.height * 0.55))
+        p.addCurve(to: CGPoint(x: rect.width * 0.55, y: rect.height * 0.45),
+                   control1: CGPoint(x: rect.width * 0.18, y: rect.height * 0.05),
+                   control2: CGPoint(x: rect.width * 0.36, y: rect.height * 0.75))
+        p.addCurve(to: CGPoint(x: rect.width, y: rect.height * 0.25),
+                   control1: CGPoint(x: rect.width * 0.75, y: rect.height * 0.15),
+                   control2: CGPoint(x: rect.width * 0.9, y: rect.height * 0.15))
+        p.addLine(to: CGPoint(x: rect.width, y: rect.height))
+        p.addLine(to: CGPoint(x: 0, y: rect.height))
+        p.closeSubpath()
+        return p
     }
 }
 
@@ -425,15 +554,23 @@ private struct HomeTile<Content: View>: View {
 private struct TileArt: View {
     let symbol: String
     let color: Color
-    var size: CGFloat = 76
+    var size: CGFloat = 70
     var rotation: Double = -8
 
     var body: some View {
         Image(systemName: symbol)
             .font(.system(size: size, weight: .semibold))
-            .foregroundColor(color.opacity(0.22))
+            .foregroundStyle(LinearGradient(colors: [color.opacity(0.30), color.opacity(0.14)],
+                                            startPoint: .top, endPoint: .bottom))
             .rotationEffect(.degrees(rotation))
             .allowsHitTesting(false)
+    }
+}
+
+/// Inner white card used inside tiles.
+private extension View {
+    func tileInset() -> some View {
+        background(RoundedRectangle(cornerRadius: 14).fill(HomeStyle.innerCard))
     }
 }
 
@@ -452,15 +589,15 @@ private struct TodoTile: View {
 
         HomeTile(theme: theme, icon: "checklist", title: "To-Do List",
                  subtitle: "Stay on top of your tasks", action: action) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(total == 0 ? "No tasks yet" : "\(done) of \(total) done")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.primary)
                         .lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 4)
                     Text("\(Int((share * 100).rounded()))%")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.secondary)
                 }
                 GeometryReader { geo in
@@ -469,18 +606,24 @@ private struct TodoTile: View {
                         Capsule()
                             .fill(LinearGradient(colors: [theme.accent, theme.accentDeep],
                                                  startPoint: .leading, endPoint: .trailing))
-                            .frame(width: max(share > 0 ? 8 : 0, geo.size.width * CGFloat(share)))
+                            .frame(width: max(share > 0 ? 6 : 0, geo.size.width * CGFloat(share)))
                     }
                 }
-                .frame(height: 8)
+                .frame(height: 7)
             }
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 16).fill(HomeStyle.innerCard))
-
-            Spacer(minLength: 0)
-            HStack {
-                Spacer()
-                TileArt(symbol: "list.clipboard.fill", color: theme.accentDeep, size: 64)
+            .padding(10)
+            .tileInset()
+        } art: {
+            ZStack(alignment: .bottomTrailing) {
+                // Leaves on the left, a clipboard on the right.
+                HStack(spacing: -14) {
+                    Ellipse().fill(theme.accent.opacity(0.18)).frame(width: 34, height: 64).rotationEffect(.degrees(-25))
+                    Ellipse().fill(theme.accent.opacity(0.13)).frame(width: 30, height: 54).rotationEffect(.degrees(20))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .offset(x: 6, y: 14)
+                TileArt(symbol: "list.clipboard.fill", color: theme.accentDeep, size: 56)
+                    .padding(.trailing, 14).padding(.bottom, 10)
             }
         }
     }
@@ -507,23 +650,23 @@ private struct HealthTile: View {
         HomeTile(theme: theme, icon: "heart.fill", title: "Health Tracker",
                  subtitle: "Build healthier habits", action: open) {
             Button { openSection(.healthFitness) } label: {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Image(systemName: "shoeprints.fill")
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundColor(theme.accent)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(Self.number.string(from: NSNumber(value: steps)) ?? "\(steps)")
-                            .font(.system(size: 24, weight: .heavy, design: .rounded))
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
                             .foregroundColor(theme.accentDeep)
                             .lineLimit(1).minimumScaleFactor(0.7)
                         Text("steps today")
-                            .font(.system(size: 13))
+                            .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 12).padding(.vertical, 9)
-                .background(RoundedRectangle(cornerRadius: 16).fill(HomeStyle.innerCard))
+                .padding(.horizontal, 10).padding(.vertical, 7)
+                .tileInset()
             }
             .buttonStyle(TilePressStyle())
 
@@ -535,24 +678,28 @@ private struct HealthTile: View {
                 mini("pills.fill", .rgb(40, 200, 120),
                      active == 0 ? "0" : "\(taken)/\(active)", "meds", .medications)
             }
+        } art: {
+            TileArt(symbol: "heart.fill", color: theme.accent, size: 46, rotation: 12)
+                .padding(.trailing, 8).padding(.bottom, 70)
+                .opacity(0.6)
         }
     }
 
     private func mini(_ symbol: String, _ color: Color, _ value: String, _ label: String,
                       _ section: AppSection) -> some View {
         Button { openSection(section) } label: {
-            VStack(spacing: 3) {
+            VStack(spacing: 2) {
                 Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundColor(color)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 30, height: 30)
                     .background(Circle().fill(HomeStyle.innerCard))
                 Text(value)
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
                     .foregroundColor(.primary)
                     .lineLimit(1).minimumScaleFactor(0.6)
                 Text(label)
-                    .font(.system(size: 10))
+                    .font(.system(size: 9.5))
                     .foregroundColor(.secondary)
             }
             .frame(maxWidth: .infinity)
@@ -588,31 +735,32 @@ private struct FinanceTile: View {
 
         HomeTile(theme: theme, icon: "dollarsign", title: "Finance Tracker",
                  subtitle: "Track your income and expenses", action: action) {
-            HStack(alignment: .bottom, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .bottom, spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(spent > 0 ? "\(sym)\(Self.amount(spent))" : "No spending yet")
-                        .font(.system(size: 16, weight: .heavy))
+                        .font(.system(size: 14, weight: .heavy))
                         .foregroundColor(.primary)
                         .lineLimit(1).minimumScaleFactor(0.6)
                     Text(spent > 0 ? "spent this month" : "This month")
-                        .font(.system(size: 12))
+                        .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
                 Spacer(minLength: 0)
-                HStack(alignment: .bottom, spacing: 4) {
+                HStack(alignment: .bottom, spacing: 3) {
                     ForEach(0..<3, id: \.self) { i in
-                        let h: CGFloat = spent > 0 ? max(10, CGFloat(weeks[i] / peak) * 44) : [20, 32, 44][i]
-                        RoundedRectangle(cornerRadius: 4)
+                        let h: CGFloat = spent > 0 ? max(8, CGFloat(weeks[i] / peak) * 34) : [16, 25, 34][i]
+                        RoundedRectangle(cornerRadius: 3)
                             .fill(LinearGradient(colors: [theme.accent, theme.accentDeep],
                                                  startPoint: .top, endPoint: .bottom))
-                            .opacity(spent > 0 ? 1 : 0.55)
-                            .frame(width: 11, height: h)
+                            .opacity(spent > 0 ? 1 : 0.6)
+                            .frame(width: 9, height: h)
                     }
                 }
             }
-            .padding(12)
-            .frame(maxHeight: .infinity, alignment: .bottom)
-            .background(RoundedRectangle(cornerRadius: 16).fill(HomeStyle.innerCard))
+            .padding(10)
+            .tileInset()
+        } art: {
+            EmptyView()
         }
     }
 
@@ -645,24 +793,21 @@ private struct ScheduleTile: View {
 
         HomeTile(theme: theme, icon: "calendar", title: "My Schedule",
                  subtitle: "Plan your day with ease", action: action) {
-            ZStack(alignment: .bottomTrailing) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(count == 0 ? "All clear" : "\(count) upcoming")
-                        .font(.system(size: 16, weight: .heavy))
-                        .foregroundColor(.primary)
-                    Text(next)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .frame(maxHeight: .infinity, alignment: .bottom)
-                .background(RoundedRectangle(cornerRadius: 16).fill(HomeStyle.innerCard))
-
-                TileArt(symbol: "calendar", color: theme.accentDeep, size: 44, rotation: 8)
-                    .padding(8)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(count == 0 ? "All clear" : "\(count) upcoming")
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundColor(.primary)
+                Text(next)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .tileInset()
+        } art: {
+            TileArt(symbol: "calendar", color: theme.accentDeep, size: 40, rotation: 8)
+                .padding(.trailing, 12).padding(.bottom, 8)
         }
     }
 }
@@ -683,14 +828,13 @@ private struct JournalTile: View {
             return nil
         }()
 
-        ZStack(alignment: .trailing) {
-            HomeTile(theme: theme, icon: "square.and.pencil", title: "Notes & Journal",
-                     subtitle: status ?? "Capture thoughts, ideas and memories", action: action) {
-                EmptyView()
-            }
-            TileArt(symbol: "doc.plaintext.fill", color: theme.accentDeep, size: 70, rotation: 10)
-                .padding(.trailing, 44)
-                .padding(.top, 20)
+        HomeTile(theme: theme, icon: "square.and.pencil", title: "Notes & Journal",
+                 subtitle: status ?? "Capture thoughts, ideas and memories", action: action) {
+            EmptyView()
+        } art: {
+            TileArt(symbol: "doc.plaintext.fill", color: theme.accentDeep, size: 62, rotation: 10)
+                .padding(.trailing, 40)
+                .offset(y: 14)
         }
     }
 }
