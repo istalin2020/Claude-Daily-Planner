@@ -75,12 +75,18 @@ struct HomeFrontPage: View {
             // and even then it doesn't bounce once the content fits.
             let spacing: CGFloat = 12
             let header: CGFloat = 58
+            let headerTop: CGFloat = 18     // the header sits a little lower
             let dateCard: CGFloat = 112
-            let free = geo.size.height - header - dateCard - spacing * 4 - 8
-            let rows = max(free, 480)
-            let row1 = rows * 0.40
-            let row2 = rows * 0.34
-            let row3 = rows - row1 - row2
+            let free = geo.size.height - headerTop - header - dateCard - spacing * 4 - 4
+            let rows = max(free, 470)
+            let row1 = rows * 0.42
+            let row2 = rows * 0.37
+            let row3 = rows - row1 - row2   // Notes & Journal, the shortest
+            // One title size for every tile: the largest at which the longest
+            // name ("Finance Tracker") still fits a half-width tile.
+            let tileWidth = (geo.size.width - 32 - spacing) / 2
+            // tile padding 22, icon 36, two gaps of 7, chevron 9
+            let titleSize = min(17, max(12, (tileWidth - 81) / 8.6))
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: spacing) {
@@ -105,8 +111,9 @@ struct HomeFrontPage: View {
                         .frame(height: row3)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 4)
+                .padding(.top, headerTop)
                 .padding(.bottom, 4)
+                .environment(\.homeTileTitleSize, titleSize)
             }
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -464,7 +471,20 @@ private struct HomeCalendarSheet: View {
 
 /// The shared tile frame: pastel wash with a soft wave, icon disc, title,
 /// subtitle, chevron. `art` sits behind the content in the bottom corner.
+private struct HomeTileTitleSizeKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 15
+}
+
+extension EnvironmentValues {
+    /// The title size shared by every front-page tile.
+    var homeTileTitleSize: CGFloat {
+        get { self[HomeTileTitleSizeKey.self] }
+        set { self[HomeTileTitleSizeKey.self] = newValue }
+    }
+}
+
 private struct HomeTile<Content: View, Art: View>: View {
+    @Environment(\.homeTileTitleSize) private var titleSize
     let theme: HomeTileTheme
     let icon: String
     let title: String
@@ -487,29 +507,31 @@ private struct HomeTile<Content: View, Art: View>: View {
                 art
 
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .top, spacing: 8) {
+                    HStack(alignment: .top, spacing: 7) {
                         ZStack {
                             Circle()
                                 .fill(LinearGradient(colors: [theme.accent, theme.accentDeep],
                                                      startPoint: .topLeading, endPoint: .bottomTrailing))
-                                .frame(width: 40, height: 40)
+                                .frame(width: 36, height: 36)
                                 .shadow(color: theme.accent.opacity(0.35), radius: 5, y: 2)
                             Image(systemName: icon)
-                                .font(.system(size: 17, weight: .bold))
+                                .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(.white)
                         }
                         VStack(alignment: .leading, spacing: 1) {
+                            // Same size on every tile — no per-tile shrinking.
                             Text(title)
-                                .font(.system(size: 16, weight: .heavy))
+                                .font(.system(size: titleSize, weight: .heavy))
                                 .foregroundColor(.primary)
-                                .lineLimit(1).minimumScaleFactor(0.65)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)   // only on the smallest phones
                             Text(subtitle)
                                 .font(.system(size: 11.5))
                                 .foregroundColor(.secondary)
                                 .lineLimit(2).minimumScaleFactor(0.85)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .heavy))
                             .foregroundColor(theme.accentDeep.opacity(0.8))
@@ -518,7 +540,7 @@ private struct HomeTile<Content: View, Art: View>: View {
                     content
                     Spacer(minLength: 0)
                 }
-                .padding(12)
+                .padding(11)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .clipShape(RoundedRectangle(cornerRadius: 22))
