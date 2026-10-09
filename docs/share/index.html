@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Planner – Shared Task List</title>
+    <meta name="description" content="Someone shared their Daily Planner task list with you.">
+    <!-- Prevent search engines indexing individual share pages -->
+    <meta name="robots" content="noindex, nofollow">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(145deg, #7340d8 0%, #4a1f9e 60%, #2d1066 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 24px 16px 40px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 32px 28px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+            margin-top: 8px;
+        }
+
+        /* ── Header ── */
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .app-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #7340d8, #4a1f9e);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 14px;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+        }
+        .header .meta {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .header .meta strong { color: #7340d8; }
+
+        /* ── Live badge ── */
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0fff4;
+            border: 1px solid #86efac;
+            color: #16a34a;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin: 12px auto 0;
+        }
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        /* ── Section pill ── */
+        .section-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f5f0ff;
+            border: 1px solid #d8b4fe;
+            color: #7340d8;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin: 16px 0 0;
+        }
+
+        /* ── Task list preview ── */
+        .task-section {
+            margin: 20px 0;
+            background: #fafafa;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #efefef;
+        }
+        .task-section-header {
+            background: linear-gradient(90deg, #7340d8, #5b2dba);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .task-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 11px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #2d2d2d;
+        }
+        .task-item:last-child { border-bottom: none; }
+        .task-check {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #c4b5fd;
+            border-radius: 5px;
+            flex-shrink: 0;
+            margin-top: 1px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .task-check.done {
+            background: #7340d8;
+            border-color: #7340d8;
+            color: #fff;
+            font-size: 11px;
+        }
+        .task-text { flex: 1; line-height: 1.4; }
+        .task-text.done { text-decoration: line-through; color: #999; }
+        .tasks-hidden {
+            padding: 12px 16px;
+            font-size: 13px;
+            color: #888;
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* ── Buttons ── */
+        .btn-primary {
+            display: block;
+            background: linear-gradient(135deg, #7340d8, #5228b0);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 15px 24px;
+            border-radius: 14px;
+            text-decoration: none;
+            text-align: center;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.15s;
+            margin-bottom: 12px;
+            letter-spacing: 0.2px;
+        }
+        .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
+
+        /* ── Divider ── */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            color: #ccc;
+            font-size: 12px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-top: 1px solid #eee;
+        }
+
+        /* ── App Store ── */
+        .appstore-section { text-align: center; }
+        .appstore-section p {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .appstore-btn img { height: 44px; }
+
+        /* ── How it works ── */
+        .how-it-works {
+            margin-top: 22px;
+            background: #f8f4ff;
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .how-it-works h3 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #7340d8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #444;
+            line-height: 1.5;
+        }
+        .step:last-child { margin-bottom: 0; }
+        .step-num {
+            width: 20px;
+            height: 20px;
+            background: #7340d8;
+            color: #fff;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* ── Spinner (opening state) ── */
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 3px solid #ede8fb;
+            border-top-color: #7340d8;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── States ── */
+        #state-opening { display: block; text-align: center; padding: 20px 0; }
+        #state-main    { display: none; }
+        #state-notoken { display: none; text-align: center; padding: 12px 0; }
+
+        /* ── Error ── */
+        .error-icon { font-size: 48px; margin-bottom: 16px; }
+        .error-title { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+        .error-sub   { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 24px; }
+    </style>
+</head>
+<body>
+<div class="card">
+
+    <!-- STATE: Opening app -->
+    <div id="state-opening">
+        <div class="spinner"></div>
+        <div class="header">
+            <h1>Opening Daily Planner…</h1>
+            <p class="meta">Connecting you to the shared task list.</p>
+        </div>
+    </div>
+
+    <!-- STATE: Main (shown when app didn't open or user tapped manually) -->
+    <div id="state-main">
+        <div class="header">
+            <div class="app-icon">📋</div>
+            <h1 id="shareTitle">Shared Task List</h1>
+            <p class="meta" id="shareMeta">Someone has shared their Daily Planner list with you.</p>
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                Live Sync — updates automatically
+            </div>
+            <div class="section-pill" id="sectionPill" style="display:none">
+                <span>📂</span>
+                <span id="sectionName"></span>
+            </div>
+        </div>
+
+        <!-- Task preview (populated from legacy base64 data if available) -->
+        <div id="taskPreview" style="display:none">
+            <div class="task-section">
+                <div class="task-section-header">
+                    <span>📋</span>
+                    <span id="taskSectionLabel">Shared Tasks</span>
+                </div>
+                <div id="taskList"></div>
+            </div>
+        </div>
+
+        <!-- No-preview notice for token-based shares -->
+        <div id="tokenNotice" style="display:none" class="task-section">
+            <div class="task-section-header">
+                <span>🔄</span>
+                <span>Live Tasks — sync via app</span>
+            </div>
+            <p class="tasks-hidden">Tasks will appear inside Daily Planner and update in real time whenever the sender makes changes.</p>
+        </div>
+
+        <a id="openAppBtn" href="#" class="btn-primary">
+            ✅ &nbsp;Add to My Daily Planner
+        </a>
+
+        <div class="divider">Don't have the app yet?</div>
+
+        <div class="appstore-section">
+            <p>Download Daily Planner – My Day to view and sync this task list:</p>
+            <a class="appstore-btn" href="https://apps.apple.com/app/daily-planner/id6736770987" target="_blank">
+                <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                     alt="Download on the App Store">
+            </a>
+        </div>
+
+        <div class="how-it-works">
+            <h3>How it works</h3>
+            <div class="step">
+                <span class="step-num">1</span>
+                <span>Tap <strong>Add to My Daily Planner</strong> — the app opens automatically.</span>
+            </div>
+            <div class="step">
+                <span class="step-num">2</span>
+                <span>The shared list appears in your <strong>Received</strong> section.</span>
+            </div>
+            <div class="step">
+                <span class="step-num">3</span>
+                <span>Tasks <strong>update in real time</strong> whenever the sender changes them.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATE: No token — invalid / expired link -->
+    <div id="state-notoken">
+        <p class="error-icon">🔗</p>
+        <p class="error-title">Link not recognised</p>
+        <p class="error-sub">This share link appears to be invalid or has expired.<br>Ask the sender to share a new link from the Daily Planner app.</p>
+        <a class="appstore-btn" href="https://apps.apple.com/app/daily-planner/id6736770987" target="_blank">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                 alt="Download on the App Store">
+        </a>
+    </div>
+
+</div><!-- /card -->
+
+<script>
+(function () {
+    'use strict';
+
+    var params  = new URLSearchParams(window.location.search);
+    var token   = params.get('token');
+    var data    = params.get('data');
+    var name    = decodeParam(params.get('name'));
+    var section = decodeParam(params.get('section'));
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function decodeParam(val) {
+        if (!val) return '';
+        try { return decodeURIComponent(val); } catch(e) { return val; }
+    }
+
+    function show(id) {
+        ['state-opening', 'state-main', 'state-notoken'].forEach(function(s) {
+            document.getElementById(s).style.display = (s === id) ? '' : 'none';
+        });
+    }
+
+    function sectionEmoji(s) {
+        var map = {
+            'Top Priorities': '⭐', 'To-Do Lists': '✅', 'Personal List': '👤',
+            'Calls & Emails': '📞', 'Food Tracker': '🍽️', 'Water Tracker': '💧',
+            'Medications': '💊', 'Habit Tracker': '🔁', 'Sleep Tracker': '😴',
+            'Appointments': '📅', 'Expense Tracker': '💰', 'Notes': '📝',
+            'Entire To-Do List': '📋'
+        };
+        return (map[s] || '📂') + ' ';
+    }
+
+    // ── No payload → show error state ────────────────────────────────────────
+    if (!token && !data) {
+        show('state-notoken');
+        return;
+    }
+
+    // ── Build deep link ───────────────────────────────────────────────────────
+    var deepLink;
+    if (token) {
+        var q = 'token=' + encodeURIComponent(token);
+        if (name)    q += '&name='    + encodeURIComponent(name);
+        if (section) q += '&section=' + encodeURIComponent(section);
+        deepLink = 'dailyplanner://accept-share?' + q;
+    } else {
+        deepLink = 'dailyplanner://accept-share?data=' + encodeURIComponent(data);
+    }
+
+    document.getElementById('openAppBtn').href = deepLink;
+
+    // ── Personalise UI ────────────────────────────────────────────────────────
+    if (name) {
+        document.getElementById('shareTitle').textContent = name + ' shared a list with you';
+        document.getElementById('shareMeta').innerHTML =
+            '<strong>' + escapeHtml(name) + '</strong> wants you to see their task list in Daily Planner.';
+    }
+    if (section) {
+        var pill = document.getElementById('sectionPill');
+        pill.style.display = 'inline-flex';
+        pill.querySelector('span').textContent = sectionEmoji(section);
+        document.getElementById('sectionName').textContent = section;
+    }
+
+    // ── Try to decode legacy base64 tasks ────────────────────────────────────
+    if (data) {
+        try {
+            var decoded = JSON.parse(atob(data));
+            var tasks   = decoded.tasks || [];
+            if (tasks.length > 0) {
+                renderTaskPreview(tasks, section || decoded.section || 'Shared Tasks');
+            }
+        } catch(e) { /* silently ignore — just skip task preview */ }
+    }
+
+    // For token-based (CloudKit) shares, show the "tasks via app" notice
+    if (token) {
+        document.getElementById('tokenNotice').style.display = '';
+        if (section) {
+            document.getElementById('taskSectionLabel').textContent = sectionEmoji(section) + section;
+        }
+    }
+
+    // ── Attempt to open the app ───────────────────────────────────────────────
+    window.location.href = deepLink;
+
+    // Show the main UI after 2.5 s if the app didn't open (user still on page)
+    setTimeout(function () { show('state-main'); }, 2500);
+
+    // Also show main UI immediately on any user interaction
+    // (iOS sometimes keeps the page visible after launching the app)
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+            setTimeout(function () { show('state-main'); }, 500);
+        }
+    }, { once: true });
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function escapeHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderTaskPreview(tasks, sectionLabel) {
+        var container = document.getElementById('taskList');
+        var MAX_PREVIEW = 8;
+
+        tasks.slice(0, MAX_PREVIEW).forEach(function (t) {
+            var div   = document.createElement('div');
+            div.className = 'task-item';
+
+            var check = document.createElement('div');
+            check.className = 'task-check' + (t.isCompleted ? ' done' : '');
+            if (t.isCompleted) check.textContent = '✓';
+
+            var text  = document.createElement('div');
+            text.className = 'task-text' + (t.isCompleted ? ' done' : '');
+            text.textContent = t.title || t.text || '';
+
+            div.appendChild(check);
+            div.appendChild(text);
+            container.appendChild(div);
+        });
+
+        if (tasks.length > MAX_PREVIEW) {
+            var more = document.createElement('p');
+            more.className = 'tasks-hidden';
+            more.textContent = '+ ' + (tasks.length - MAX_PREVIEW) + ' more tasks — open app to see all';
+            container.appendChild(more);
+        }
+
+        document.getElementById('taskSectionLabel').textContent =
+            sectionEmoji(sectionLabel) + sectionLabel;
+        document.getElementById('taskPreview').style.display = '';
+    }
+})();
+</script>
+</body>
+</html>
