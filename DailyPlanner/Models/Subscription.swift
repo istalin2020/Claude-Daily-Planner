@@ -649,21 +649,36 @@ enum SubscriptionDetector {
                 let theirs = snapshot[brandKey] ?? []
                 var best: Int? = nil
                 for b in theirs {
-                    for c in charges where c.currency == b.currency
-                        && abs(c.amount - b.amount) <= b.amount * 0.03 {
-                        let gap = abs(cal.component(.day, from: c.date) - cal.component(.day, from: b.date))
+                    for c in charges {
+                        guard c.currency == b.currency else { continue }
+                        let priceGap: Double = abs(c.amount - b.amount)
+                        guard priceGap <= b.amount * 0.03 else { continue }
+                        let theirDay: Int = cal.component(.day, from: b.date)
+                        let ourDay: Int = cal.component(.day, from: c.date)
+                        let gap: Int = abs(ourDay - theirDay)
                         if gap <= 3 { best = min(best ?? gap, gap) }
                     }
                 }
                 guard let dayGap = best else { return nil }
-                let named = theirs.contains { b in
-                    b.descriptor.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
-                        .contains { String($0) == key }
+                var named = false
+                for b in theirs {
+                    let words = b.descriptor.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+                    if words.contains(where: { String($0) == key }) { named = true; break }
                 }
-                return (named ? 0 : 100) + dayGap
+                let base: Int = named ? 0 : 100
+                return base + dayGap
             }
-            let target = branded.compactMap { k in fit(k).map { (k, $0) } }
-                .min { $0.1 != $1.1 ? $0.1 < $1.1 : $0.0 < $1.0 }?.0
+            // The best-fitting named service; ties go to the name first in
+            // alphabetical order so the choice never changes between runs.
+            var target: String? = nil
+            var targetScore = Int.max
+            for brandKey in branded.sorted() {
+                guard let score = fit(brandKey) else { continue }
+                if score < targetScore {
+                    target = brandKey
+                    targetScore = score
+                }
+            }
             if let target = target {
                 byService[target, default: []].append(contentsOf: charges)
                 byService[key] = nil
