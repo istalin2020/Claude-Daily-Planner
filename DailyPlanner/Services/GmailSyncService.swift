@@ -232,15 +232,25 @@ final class GmailSyncService: NSObject, ObservableObject {
         let general = "after:\(after) \(Self.subscriptionQueryArm) "
                     + "-category:social -category:forums"
         let apple   = "after:\(after) from:apple.com"
-        // Card alerts for charges billed abroad or by AI services — how
-        // Higgsfield, OpenAI, Anthropic and ElevenLabs plans show up.
-        let cards   = "after:\(after) (\"used for\" OR \"was used\" OR debited OR spent OR charged) "
+        // Card alerts for charges billed abroad, by AI services or by
+        // streaming and audio services — and the bank's auto-debits
+        // (e-mandates, standing instructions), which are subscriptions by
+        // definition: how Netflix (HDFC e-mandate), Disney+ (debit card)
+        // and Audible (Amazon standing instruction) are paid.
+        let cards   = "after:\(after) ((\"used for\" OR \"was used\" OR debited OR spent OR charged OR paid OR utilised) "
                     + "(USD OR EUR OR GBP OR SUBSCR OR SUBSCRIPTION OR OPENAI OR ANTHROPIC OR CLAUDE "
-                    + "OR HIGGSFIELD OR ELEVENLABS OR PERPLEXITY OR MIDJOURNEY OR INVIDEO OR GEMINI)"
+                    + "OR HIGGSFIELD OR ELEVENLABS OR PERPLEXITY OR MIDJOURNEY OR INVIDEO OR GEMINI "
+                    + "OR NETFLIX OR AUDIBLE OR AMAZON OR DISNEY OR SPOTIFY OR SHAHID OR OSN OR ANGHAMI "
+                    + "OR HOTSTAR OR YOUTUBE OR \"PRIME VIDEO\" OR ZEE5 OR SONYLIV OR STARZPLAY OR CRUNCHYROLL)) "
+                    + "OR \"e-mandate\" OR \"auto payment\" OR autopay OR \"standing instruction\""
+        // A service's own "new period" notice — Audible's monthly credit —
+        // names the Amazon charge that paid for it.
+        let notices = "after:\(after) (subject:\"new credit\" OR subject:\"membership renewed\" "
+                    + "OR subject:\"membership has been renewed\" OR subject:\"thanks for renewing\")"
 
         var seen = Set<String>()
         var ids: [String] = []
-        for query in [apple, general, cards] {
+        for query in [apple, general, cards, notices] {
             for id in try await listMessageIDs(query: query) where seen.insert(id).inserted {
                 ids.append(id)
             }

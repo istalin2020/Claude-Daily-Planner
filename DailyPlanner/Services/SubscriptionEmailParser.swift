@@ -14,6 +14,8 @@ enum SubscriptionEvent {
     /// A card charge from a bank alert that may be a subscription — kept as
     /// a record and weighed by SubscriptionDetector with the others.
     case cardCharge(CardChargeRecord)
+    /// A service's "new period began" notice, with no amount.
+    case renewalNotice(RenewalNoticeRecord)
 
     var date: Date {
         switch self {
@@ -21,6 +23,7 @@ enum SubscriptionEvent {
         case .cancelled(_, let on):     return on
         case .appStore(let record):     return record.date
         case .cardCharge(let record):   return record.date
+        case .renewalNotice(let record): return record.date
         }
     }
 }
@@ -210,6 +213,18 @@ enum SubscriptionEmailParser {
         let combined = subject + "\n" + body
         let lower = combined.lowercased()
         let subjectLower = subject.lowercased()
+
+        // Read before the newsletter filter: Audible's monthly credit notice
+        // comes from newsletters@audible.in, and it is the only sign which
+        // Amazon charge paid for Audible.
+        let periodNotices = ["your new credit is here", "new credit has arrived",
+                             "your credit has arrived", "membership has been renewed",
+                             "membership renewed", "thanks for renewing"]
+        if periodNotices.contains(where: { subjectLower.contains($0) }),
+           let brand = SubscriptionBrand.match(sender + " " + subject) {
+            return .renewalNotice(RenewalNoticeRecord(date: date, service: brand.name))
+        }
+
         if isNewsletter(sender: sender) { return nil }
 
         // A cancellation says so in its subject, and is read before the

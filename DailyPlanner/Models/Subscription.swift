@@ -90,6 +90,28 @@ struct SubscriptionBrand: Equatable {
               color: Color(red: 0.85, green: 0.16, blue: 0.40), symbol: "play.tv.fill"),
         .init(name: "Anghami",        keywords: ["anghami"],
               color: Color(red: 0.49, green: 0.25, blue: 0.85), symbol: "music.note"),
+        .init(name: "Audible",        keywords: ["audible"],
+              color: Color(red: 0.97, green: 0.60, blue: 0.10), symbol: "headphones"),
+        .init(name: "StarzPlay",      keywords: ["starzplay", "starz play"],
+              color: Color(red: 0.10, green: 0.10, blue: 0.12), symbol: "play.tv.fill"),
+        .init(name: "TOD (beIN)",     keywords: ["bein connect", "tod tv", "tod.tv", "bein sports"],
+              color: Color(red: 0.45, green: 0.15, blue: 0.55), symbol: "sportscourt.fill"),
+        .init(name: "JioHotstar",     keywords: ["hotstar", "jiohotstar", "jiocinema"],
+              color: Color(red: 0.05, green: 0.20, blue: 0.45), symbol: "play.tv.fill"),
+        .init(name: "SonyLIV",        keywords: ["sonyliv", "sony liv"],
+              color: Color(red: 0.05, green: 0.05, blue: 0.08), symbol: "play.tv.fill"),
+        .init(name: "ZEE5",           keywords: ["zee5"],
+              color: Color(red: 0.50, green: 0.10, blue: 0.60), symbol: "play.tv.fill"),
+        .init(name: "Crunchyroll",    keywords: ["crunchyroll"],
+              color: Color(red: 0.96, green: 0.45, blue: 0.10), symbol: "play.tv.fill"),
+        .init(name: "Paramount+",     keywords: ["paramount"],
+              color: Color(red: 0.00, green: 0.35, blue: 0.85), symbol: "play.tv.fill"),
+        .init(name: "Max",            keywords: ["hbo max", "hbomax", "max.com"],
+              color: Color(red: 0.00, green: 0.15, blue: 0.75), symbol: "play.tv.fill"),
+        .init(name: "Amazon Music",   keywords: ["amazon music"],
+              color: Color(red: 0.10, green: 0.75, blue: 0.85), symbol: "music.note"),
+        .init(name: "Deezer",         keywords: ["deezer"],
+              color: Color(red: 0.60, green: 0.20, blue: 0.85), symbol: "music.note"),
 
         // AI & developer
         .init(name: "OpenAI",         keywords: ["openai", "chatgpt"],
@@ -321,7 +343,9 @@ enum SubscriptionCategory: String, Codable, CaseIterable, Identifiable {
             (.entertainment, ["netflix", "disney", "prime video", "amazon prime", "youtube",
                               "spotify", "zee5", "sony liv", "sonyliv", "liv premium",
                               "lionsgate", "hotstar", "shahid", "osn", "anghami",
-                              "premium hd", "music", "tv", "movies"]),
+                              "premium hd", "music", "tv", "movies", "audible", "starz",
+                              "bein", "crunchyroll", "paramount", "hbo", "deezer",
+                              "hotstar", "sonyliv"]),
             (.social,        ["whatsapp", "linkedin", "x premium", "telegram", "instagram",
                               "snapchat", "facebook"]),
             (.education,     ["coloring", "typing", "kids", "learn", "duolingo", "school",
@@ -559,8 +583,11 @@ enum SubscriptionDetector {
     ///     as expenses, and replace an imported expense for the same charge.
     ///   - localCurrency: the user's currency, which card charges are
     ///     converted to.
+    ///   - notices: "new period began" notices with no amount, used to name
+    ///     a payment processor's charge after the service it paid for.
     static func detect(from entries: [String: DailyEntry],
                        cardCharges: [CardChargeRecord] = [],
+                       notices: [RenewalNoticeRecord] = [],
                        localCurrency: String = "") -> [Subscription] {
         let cal = Calendar.current
         var byService: [String: [Charge]] = [:]
@@ -577,6 +604,8 @@ enum SubscriptionDetector {
                 guard !text.isEmpty else { continue }
 
                 let brand = SubscriptionBrand.match(text)
+                // A rental or a one-off order is not a plan ("Prime Video Rentals").
+                if text.lowercased().contains("rental") { continue }
 
                 // The gate. Everything else is an ordinary purchase.
                 guard brand != nil || expense.isSubscription else { continue }
@@ -594,7 +623,7 @@ enum SubscriptionDetector {
 
         for card in cardCharges where CardChargeParser.isCandidate(card, localCurrency: localCurrency) {
             let brand = SubscriptionBrand.match(card.merchant)
-            let key = brand?.name.lowercased() ?? normalise(card.merchant)
+            let key = brand?.name.lowercased() ?? processorKey(normalise(card.merchant))
             guard key.count >= 2 else { continue }
             let converts = CurrencyConverter.needsConversion(detected: card.currency, local: localCurrency)
             let local = converts
@@ -612,17 +641,27 @@ enum SubscriptionDetector {
                 list.remove(at: i)
                 byService[key] = list
             }
+            // One charge, two alerts — HDFC sends both "Your Amazon bill …
+            // E-mandate … paid" and "Rs.199.00 is debited … at AMAZON INDIA
+            // CYBS SI". Count it once.
+            let already = (byService[key] ?? []).contains { c in
+                c.fromCard && cal.isDate(c.date, inSameDayAs: day)
+                    && abs(c.amount - local) <= max(local * 0.01, 0.01)
+            }
+            if already { continue }
             byService[key, default: []].append(
                 Charge(date: day, amount: local, original: converts ? card.amount : nil,
                        currency: card.currency, fromCard: true,
                        descriptor: card.merchant.lowercased()))
             if brand != nil { branded.insert(key) }
-            if displayName[key] == nil { displayName[key] = brand?.name ?? titleCased(card.merchant) }
+            if displayName[key] == nil { displayName[key] = brand?.name ?? titleCased(key) }
             if brand == nil && !CardChargeParser.looksLikeSubscription(card.merchant) {
                 foreignOnly.insert(key)
             }
         }
 
+        nameProcessorCharges(in: &byService, notices: notices, branded: &branded,
+                             displayName: &displayName, foreignOnly: &foreignOnly)
         mergeBareDescriptors(into: &byService, branded: branded, foreignOnly: &foreignOnly)
 
         return byService.compactMap { key, charges in
@@ -651,6 +690,53 @@ enum SubscriptionDetector {
             sub.originalAmount = last.original
             sub.sourceKey = key
             return sub
+        }
+    }
+
+    /// "AMAZON INDIA CYBS SI", "Amazon (e-mandate)" → "amazon": the bank's
+    /// words for the same payee, so both alerts land on one service.
+    private static func processorKey(_ normalised: String) -> String {
+        let noise: Set<String> = ["india", "cybs", "si", "e", "mandate", "emandate", "pvt", "ltd",
+                                  "private", "limited", "inc", "llc", "com", "the", "payments",
+                                  "payment", "pay", "bill", "autopay", "auto"]
+        let words = normalised.split(separator: " ").map(String.init).filter { !noise.contains($0) }
+        return words.isEmpty ? normalised : words.joined(separator: " ")
+    }
+
+    /// A payment processor's charge is named after the service it paid for
+    /// when that service's own "new period" notices land on the same days.
+    /// Audible bills through Amazon ("AMAZON INDIA CYBS SI", ₹199 on the
+    /// 25th) and sends "Your new credit is here!" the same day each month.
+    private static func nameProcessorCharges(in byService: inout [String: [Charge]],
+                                             notices: [RenewalNoticeRecord],
+                                             branded: inout Set<String>,
+                                             displayName: inout [String: String],
+                                             foreignOnly: inout Set<String>) {
+        guard !notices.isEmpty else { return }
+        let processors: Set<String> = ["amazon", "google", "paypal", "apple", "microsoft", "stripe"]
+        var noticeDays: [String: [Date]] = [:]
+        for n in notices { noticeDays[n.service, default: []].append(n.date) }
+
+        for key in Array(byService.keys) where processors.contains(key) {
+            guard let charges = byService[key] else { continue }
+            for (service, days) in noticeDays {
+                var matched: [Charge] = []
+                var rest: [Charge] = []
+                for c in charges {
+                    let near = days.contains { abs($0.timeIntervalSince(c.date)) <= 2.5 * 86_400 }
+                    if near { matched.append(c) } else { rest.append(c) }
+                }
+                // Twice at least, unless there's only the one charge.
+                guard matched.count >= min(2, charges.count), !matched.isEmpty else { continue }
+                let brand = SubscriptionBrand.match(service)
+                let target = brand?.name.lowercased() ?? service.lowercased()
+                byService[target, default: []].append(contentsOf: matched)
+                displayName[target] = brand?.name ?? service
+                branded.insert(target)
+                foreignOnly.remove(target)
+                byService[key] = rest.isEmpty ? nil : rest
+                break
+            }
         }
     }
 

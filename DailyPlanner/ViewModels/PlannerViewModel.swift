@@ -898,6 +898,7 @@ class PlannerViewModel: ObservableObject {
 
         let detectedAll = SubscriptionDetector.detect(from: entries,
                                                       cardCharges: settings.cardChargeRecords,
+                                                      notices: settings.renewalNotices,
                                                       localCurrency: local)
         let detectedByKey = Dictionary(detectedAll.map { ($0.detectionKey, $0) },
                                        uniquingKeysWith: { a, _ in a })
@@ -971,6 +972,7 @@ class PlannerViewModel: ObservableObject {
         settings.manualSubscriptions.removeAll { $0.isDetected }
         settings.appStoreRecords = []
         settings.cardChargeRecords = []
+        settings.renewalNotices = []
     }
 
     /// Takes in what subscription emails said. Apple's are kept as records and
@@ -988,6 +990,8 @@ class PlannerViewModel: ObservableObject {
         var seen = Set(records.map(\.signature))
         var cards = settings.cardChargeRecords
         var seenCards = Set(cards.map(\.signature))
+        var notices = settings.renewalNotices
+        var seenNotices = Set(notices.map(\.signature))
         var changed = 0
         let local = settings.currency.rawValue
 
@@ -1005,6 +1009,12 @@ class PlannerViewModel: ObservableObject {
                       seenCards.insert(charge.signature).inserted else { continue }
                 cards.append(charge)
                 changed += 1
+
+            case .renewalNotice(let notice):
+                if seenNotices.insert(notice.signature).inserted {
+                    notices.append(notice)
+                    changed += 1
+                }
 
             case .charged(var sub):
                 let key = SubscriptionBrand.canonicalName(sub.name).lowercased()
@@ -1058,7 +1068,7 @@ class PlannerViewModel: ObservableObject {
                     list[idx].cancelledOn = on
                     changed += 1
                 } else if var detected = SubscriptionDetector.detect(from: entries, cardCharges: cards,
-                                                                     localCurrency: local)
+                                                                     notices: notices, localCurrency: local)
                             .first(where: { $0.detectionKey == key }),
                           on >= detected.lastChargedOn {
                     // Known only from bank charges: store it, cancelled, so the
@@ -1074,10 +1084,12 @@ class PlannerViewModel: ObservableObject {
         let cutoff = Calendar.current.date(byAdding: .month, value: -15, to: Date()) ?? .distantPast
         records.removeAll { $0.date < cutoff }
         cards.removeAll { $0.date < cutoff }
+        notices.removeAll { $0.date < cutoff }
 
         settings.manualSubscriptions = list
         settings.appStoreRecords = records
         settings.cardChargeRecords = cards
+        settings.renewalNotices = notices
         saveSettings()
         return changed
     }
@@ -2082,7 +2094,7 @@ class PlannerViewModel: ObservableObject {
     }
 
     /// The subscription reader this build writes.
-    private static let subscriptionDataVersion = 3
+    private static let subscriptionDataVersion = 4
 
     /// Clears subscription rows saved by an older version of the email reader
     /// — "Family", "Flow Pro", "Pro Monthly Plan", a newsletter author, an
@@ -2097,10 +2109,12 @@ class PlannerViewModel: ObservableObject {
             // rows only ever came from email.
             settings.manualSubscriptions.removeAll { $0.isDetected || $0.viaApple }
         }
-        // Version 3 also reads card charges from bank alerts. Emptying the
-        // records makes the Subscriptions page run its full scan again.
+        // Each version reads more from email (3: card alerts; 4: e-mandates,
+        // debit-card descriptions, renewal notices). Emptying the records
+        // makes the Subscriptions page run its full scan again.
         settings.appStoreRecords = []
         settings.cardChargeRecords = []
+        settings.renewalNotices = []
         settings.subscriptionDataVersion = Self.subscriptionDataVersion
         saveSettings()
     }

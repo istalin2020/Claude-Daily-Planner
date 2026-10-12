@@ -1108,12 +1108,14 @@ struct AppSettings: Codable {
     /// Card charges from bank alerts that may be subscriptions, read by the
     /// Gmail scan whether or not they were imported as expenses.
     var cardChargeRecords: [CardChargeRecord] = []
+    /// "New period began" notices with no amount (Audible's monthly credit).
+    var renewalNotices: [RenewalNoticeRecord] = []
     /// Bumped when the way subscriptions are read from email changes, so
     /// rows saved by an older reader are cleared once (see
     /// PlannerViewModel.migrateSubscriptionsIfNeeded).
     /// A fresh install starts current; a file saved before this field
     /// existed decodes as 0.
-    var subscriptionDataVersion: Int = 3
+    var subscriptionDataVersion: Int = 4
 
     // MARK: - Smart Food Analysis (PRO)
     /// When on, PRO users' food photos are sent to the Daily Planner analysis
@@ -1246,6 +1248,7 @@ struct AppSettings: Codable {
         hiddenSubscriptionKeys    = try c.decodeIfPresent([String].self,             forKey: .hiddenSubscriptionKeys)     ?? []
         appStoreRecords           = try c.decodeIfPresent([AppStoreRecord].self,     forKey: .appStoreRecords)            ?? []
         cardChargeRecords         = try c.decodeIfPresent([CardChargeRecord].self,   forKey: .cardChargeRecords)          ?? []
+        renewalNotices            = try c.decodeIfPresent([RenewalNoticeRecord].self, forKey: .renewalNotices)            ?? []
         subscriptionDataVersion   = try c.decodeIfPresent(Int.self,                  forKey: .subscriptionDataVersion)    ?? 0
         cloudFoodAnalysisEnabled  = try c.decodeIfPresent(Bool.self,                 forKey: .cloudFoodAnalysisEnabled)   ?? true
         gmailConnectedEmail       = try c.decodeIfPresent(String.self,               forKey: .gmailConnectedEmail)        ?? ""
