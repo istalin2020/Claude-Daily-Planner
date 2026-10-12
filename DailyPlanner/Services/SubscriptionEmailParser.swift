@@ -11,12 +11,16 @@ enum SubscriptionEvent {
     /// Something an Apple email said about an App Store plan. Kept as a record
     /// and weighed with the others — see AppStoreLedger.
     case appStore(AppStoreRecord)
+    /// A card charge from a bank alert that may be a subscription — kept as
+    /// a record and weighed by SubscriptionDetector with the others.
+    case cardCharge(CardChargeRecord)
 
     var date: Date {
         switch self {
         case .charged(let sub):         return sub.lastChargedOn
         case .cancelled(_, let on):     return on
         case .appStore(let record):     return record.date
+        case .cardCharge(let record):   return record.date
         }
     }
 }
@@ -154,8 +158,12 @@ enum SubscriptionEmailParser {
     ///     whose plan it is.
     static func events(body: String, html: String, sender: String, subject: String,
                        recipients: String, receivedOn date: Date) -> [SubscriptionEvent] {
-        // Bank alerts are expenses, handled by BankSMSParser.
-        guard !isFromBank(sender: sender) else { return [] }
+        // A bank alert is an expense (BankSMSParser imports it), and its
+        // card charge is also evidence of a subscription — "used for USD
+        // 49.000 at HIGGSFIELD INC." — kept whether or not it is imported.
+        if isFromBank(sender: sender) {
+            return CardChargeParser.parse(body: body, receivedOn: date).map { [.cardCharge($0)] } ?? []
+        }
 
         let lower = (subject + "\n" + body).lowercased()
         if isFromApple(sender: sender, lowerBody: lower) {

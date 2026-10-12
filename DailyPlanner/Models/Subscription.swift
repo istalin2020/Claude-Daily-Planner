@@ -100,6 +100,34 @@ struct SubscriptionBrand: Equatable {
               color: Color(red: 0.14, green: 0.16, blue: 0.18), symbol: "chevron.left.forwardslash.chevron.right"),
         .init(name: "Higgsfield",     keywords: ["higgsfield"],
               color: Color(red: 0.36, green: 0.31, blue: 0.86), symbol: "wand.and.stars"),
+        .init(name: "ElevenLabs",     keywords: ["elevenlabs", "eleven labs"],
+              color: Color(red: 0.12, green: 0.12, blue: 0.14), symbol: "waveform"),
+        .init(name: "Perplexity",     keywords: ["perplexity"],
+              color: Color(red: 0.13, green: 0.50, blue: 0.55), symbol: "sparkle.magnifyingglass"),
+        .init(name: "InVideo",        keywords: ["invideo"],
+              color: Color(red: 0.36, green: 0.28, blue: 0.95), symbol: "film.fill"),
+        .init(name: "Midjourney",     keywords: ["midjourney"],
+              color: Color(red: 0.10, green: 0.10, blue: 0.12), symbol: "paintbrush.fill"),
+        .init(name: "Runway",         keywords: ["runwayml", "runway ai"],
+              color: Color(red: 0.15, green: 0.15, blue: 0.17), symbol: "video.fill"),
+        .init(name: "Suno",           keywords: ["suno"],
+              color: Color(red: 0.95, green: 0.45, blue: 0.20), symbol: "music.note"),
+        .init(name: "Cursor",         keywords: ["cursor.com", "cursor ai", "anysphere"],
+              color: Color(red: 0.12, green: 0.12, blue: 0.14), symbol: "cursorarrow.rays"),
+        .init(name: "HeyGen",         keywords: ["heygen"],
+              color: Color(red: 0.40, green: 0.30, blue: 0.95), symbol: "person.crop.square.fill"),
+        .init(name: "Kling AI",       keywords: ["kling"],
+              color: Color(red: 0.15, green: 0.55, blue: 0.95), symbol: "video.badge.waveform"),
+        .init(name: "Leonardo AI",    keywords: ["leonardo.ai", "leonardo ai"],
+              color: Color(red: 0.55, green: 0.30, blue: 0.85), symbol: "paintpalette.fill"),
+        .init(name: "Gamma",          keywords: ["gamma.app"],
+              color: Color(red: 0.55, green: 0.35, blue: 0.95), symbol: "rectangle.on.rectangle"),
+        .init(name: "Descript",       keywords: ["descript"],
+              color: Color(red: 0.20, green: 0.40, blue: 0.95), symbol: "waveform.badge.mic"),
+        .init(name: "Synthesia",      keywords: ["synthesia"],
+              color: Color(red: 0.25, green: 0.25, blue: 0.90), symbol: "person.wave.2.fill"),
+        .init(name: "Replit",         keywords: ["replit"],
+              color: Color(red: 0.95, green: 0.40, blue: 0.15), symbol: "chevron.left.forwardslash.chevron.right"),
 
         // Productivity & cloud
         .init(name: "Apple",          keywords: ["apple.com/bill", "itunes", "apple services",
@@ -261,7 +289,9 @@ enum SubscriptionCategory: String, Codable, CaseIterable, Identifiable {
                               "perplexity", "grammarly", "notion", "wispr", "keyboard",
                               "higgsfield", "copilot", "microsoft 365", "ai assistant",
                               "google ai", "ask ai", "notee", "note taker", "planner",
-                              "dailyquote"]),
+                              "dailyquote", "elevenlabs", "invideo", "midjourney", "runway",
+                              "suno", "cursor", "heygen", "kling", "leonardo", "gamma",
+                              "descript", "synthesia", "replit"]),
             (.photoVideo,    ["photo", "video", "inshot", "lightroom", "canva", "b612",
                               "creator studio", "adobe", "capcut", "camera", "fonts",
                               "stickers", "collage"]),
@@ -327,6 +357,10 @@ struct Subscription: Identifiable, Codable, Equatable {
     /// For a plan that was cancelled but is paid up: the day it stops.
     /// Worked out from email each time, so not stored.
     var endsOn: Date? = nil
+    /// Set for plans seen in card alerts read by the full Gmail scan: every
+    /// charge is on record, so a missed renewal means the plan stopped.
+    /// Worked out each time, so not stored.
+    var lapsesWithoutCharge: Bool = false
     /// Every key this plan has been known by — app names, plan names, icon,
     /// subscription group — so removing it holds whichever one the next email
     /// uses. Worked out each time, so not stored.
@@ -358,7 +392,7 @@ struct Subscription: Identifiable, Codable, Equatable {
     /// have gaps simply because a month was never synced, and an edited plan
     /// is the user's call.
     var lapsedOn: Date? {
-        guard viaApple, isDetected, cancelledOn == nil else { return nil }
+        guard viaApple || lapsesWithoutCharge, isDetected, cancelledOn == nil else { return nil }
         let expected = cycle.advance(lastChargedOn)
         let grace = Calendar.current.date(byAdding: .day, value: 7, to: expected) ?? expected
         return grace < Calendar.current.startOfDay(for: Date()) ? expected : nil
@@ -474,11 +508,35 @@ enum SubscriptionDetector {
     /// the page filled with restaurants, pharmacies, petrol stations and a
     /// furniture shop — all of which genuinely do charge you about the same
     /// amount about once a month. The real subscriptions were lost among them.
-    static func detect(from entries: [String: DailyEntry]) -> [Subscription] {
-        struct Charge { let date: Date; let amount: Double }
+    private struct Charge {
+        let date: Date
+        /// In the user's currency.
+        let amount: Double
+        /// As billed, when that was another currency.
+        let original: Double?
+        let currency: String
+        /// From a card alert kept by the full Gmail scan.
+        let fromCard: Bool
+        /// The descriptor as the bank or the user wrote it, lowercased.
+        var descriptor: String = ""
+    }
 
+    /// - Parameters:
+    ///   - cardCharges: card charges read straight from bank alerts by the
+    ///     full Gmail scan. They count whether or not the user imported them
+    ///     as expenses, and replace an imported expense for the same charge.
+    ///   - localCurrency: the user's currency, which card charges are
+    ///     converted to.
+    static func detect(from entries: [String: DailyEntry],
+                       cardCharges: [CardChargeRecord] = [],
+                       localCurrency: String = "") -> [Subscription] {
+        let cal = Calendar.current
         var byService: [String: [Charge]] = [:]
         var displayName: [String: String] = [:]
+        var branded = Set<String>()
+        /// Services known only for billing in another currency — they must
+        /// also recur before they count.
+        var foreignOnly = Set<String>()
 
         for (_, entry) in entries {
             for expense in entry.expenses where !expense.isIncome && !expense.isDeposit {
@@ -493,31 +551,132 @@ enum SubscriptionDetector {
 
                 let key = brand?.name.lowercased() ?? normalise(text)
                 guard key.count >= 3 else { continue }
+                if brand != nil { branded.insert(key) }
 
                 displayName[key] = brand?.name ?? titleCased(text)
                 byService[key, default: []].append(
-                    Charge(date: entry.date, amount: expense.amount))
+                    Charge(date: entry.date, amount: expense.amount, original: nil,
+                           currency: "", fromCard: false, descriptor: text.lowercased()))
             }
         }
+
+        for card in cardCharges where CardChargeParser.isCandidate(card, localCurrency: localCurrency) {
+            let brand = SubscriptionBrand.match(card.merchant)
+            let key = brand?.name.lowercased() ?? normalise(card.merchant)
+            guard key.count >= 2 else { continue }
+            let converts = CurrencyConverter.needsConversion(detected: card.currency, local: localCurrency)
+            let local = converts
+                ? (CurrencyConverter.convert(amount: card.amount, from: card.currency, to: localCurrency) ?? card.amount)
+                : card.amount
+            let day = cal.startOfDay(for: card.date)
+
+            // The same charge, imported as an expense: keep the card record,
+            // which knows the currency it was billed in.
+            if var list = byService[key],
+               let i = list.firstIndex(where: { c in
+                   !c.fromCard && abs(c.date.timeIntervalSince(day)) <= 36 * 3600
+                       && abs(c.amount - local) <= max(local * 0.05, 0.05)
+               }) {
+                list.remove(at: i)
+                byService[key] = list
+            }
+            byService[key, default: []].append(
+                Charge(date: day, amount: local, original: converts ? card.amount : nil,
+                       currency: card.currency, fromCard: true,
+                       descriptor: card.merchant.lowercased()))
+            if brand != nil { branded.insert(key) }
+            if displayName[key] == nil { displayName[key] = brand?.name ?? titleCased(card.merchant) }
+            if brand == nil && !CardChargeParser.looksLikeSubscription(card.merchant) {
+                foreignOnly.insert(key)
+            }
+        }
+
+        mergeBareDescriptors(into: &byService, branded: branded, foreignOnly: &foreignOnly)
 
         return byService.compactMap { key, charges in
             let sorted = charges.sorted { $0.date < $1.date }
             // Price, schedule and start date all come from the plan's own
             // charges, so a one-off charge from the same company (API credits,
             // a top-up) can't distort any of them.
-            let plan = planCharges(sorted.map { (date: $0.date, amount: $0.amount) })
+            let plan = planCharges(sorted)
             guard let last = plan.last, let first = plan.first else { return nil }
+            // Billing in dollars alone proves nothing; billing in dollars every
+            // month does.
+            if foreignOnly.contains(key), !(plan.count >= 2 && isPeriodic(plan)) { return nil }
+
             var sub = Subscription(
                 name: displayName[key] ?? key.capitalized,
                 amount: last.amount,
+                currencyCode: last.original == nil ? "" : last.currency,
                 cycle: inferCycle(from: plan.map(\.date)),
                 startedOn: first.date,
                 lastChargedOn: last.date,
                 isDetected: true,
                 chargeCount: plan.count)
+            sub.originalAmount = last.original
             sub.sourceKey = key
+            sub.lapsesWithoutCharge = plan.contains { $0.fromCard }
             return sub
         }
+    }
+
+    /// A bank sometimes prints only part of the name — Perplexity appears as
+    /// "PRO" for months, then as "PERPLEXITY PRO". A bare descriptor that
+    /// bills the same amount, in the same currency, around the same day of
+    /// the month as a named service is that service.
+    private static func mergeBareDescriptors(into byService: inout [String: [Charge]],
+                                             branded: Set<String>,
+                                             foreignOnly: inout Set<String>) {
+        let cal = Calendar.current
+        let bare = byService.keys.filter { key in
+            !branded.contains(key) && (key.count <= 4 || ["plus", "premium", "subscription", "membership"].contains(key))
+        }
+        // Read from a copy: the helper below mustn't capture the inout.
+        let snapshot = byService
+        for key in bare {
+            guard let charges = snapshot[key], charges.allSatisfy(\.fromCard) else { continue }
+            /// How well a named service fits: nil when it bills a different
+            /// amount or day; lower is better. A service whose own descriptor
+            /// contains the bare word ("PERPLEXITY PRO" for "PRO") wins over
+            /// one that only happens to bill the same amount nearby — here,
+            /// Anthropic at $20 on the 6th.
+            func fit(_ brandKey: String) -> Int? {
+                let theirs = snapshot[brandKey] ?? []
+                var best: Int? = nil
+                for b in theirs {
+                    for c in charges where c.currency == b.currency
+                        && abs(c.amount - b.amount) <= b.amount * 0.03 {
+                        let gap = abs(cal.component(.day, from: c.date) - cal.component(.day, from: b.date))
+                        if gap <= 3 { best = min(best ?? gap, gap) }
+                    }
+                }
+                guard let dayGap = best else { return nil }
+                let named = theirs.contains { b in
+                    b.descriptor.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+                        .contains { String($0) == key }
+                }
+                return (named ? 0 : 100) + dayGap
+            }
+            let target = branded.compactMap { k in fit(k).map { (k, $0) } }
+                .min { $0.1 != $1.1 ? $0.1 < $1.1 : $0.0 < $1.0 }?.0
+            if let target = target {
+                byService[target, default: []].append(contentsOf: charges)
+                byService[key] = nil
+                foreignOnly.remove(key)
+            }
+        }
+    }
+
+    /// True when the charges recur on a real billing rhythm: some gap of
+    /// about a month, a quarter or a year. Top-ups bought days apart don't.
+    private static func isPeriodic(_ charges: [Charge]) -> Bool {
+        guard charges.count >= 2 else { return false }
+        let cal = Calendar.current
+        for i in 1..<charges.count {
+            let gap = cal.dateComponents([.day], from: charges[i - 1].date, to: charges[i].date).day ?? 0
+            if (25...35).contains(gap) || (85...97).contains(gap) || (350...380).contains(gap) { return true }
+        }
+        return false
     }
 
     /// The charges that belong to the plan itself, oldest first.
@@ -528,12 +687,13 @@ enum SubscriptionDetector {
     /// before, meant no two charges ever agreed, so the newest won — and for
     /// OpenAI that was a one-off OMR 40.357 charge, not the $20 plan.
     ///
-    /// A group that recurs beats any one-off. Among recurring groups, the one
+    /// A group billed on a monthly, quarterly or yearly rhythm beats one that
+    /// merely repeats — Higgsfield's $49 plan, not the $5 credit top-ups bought
+    /// days apart — and any repeat beats a one-off. Among equals, the one
     /// charged most recently wins, so a genuine price rise shows once it has
     /// repeated.
-    private static func planCharges(_ charges: [(date: Date, amount: Double)])
-        -> [(date: Date, amount: Double)] {
-        var groups: [[(date: Date, amount: Double)]] = []
+    private static func planCharges(_ charges: [Charge]) -> [Charge] {
+        var groups: [[Charge]] = []
         for c in charges {
             if let i = groups.firstIndex(where: { abs($0[0].amount - c.amount) <= $0[0].amount * 0.03 }) {
                 groups[i].append(c)
@@ -542,7 +702,8 @@ enum SubscriptionDetector {
             }
         }
         let recurring = groups.filter { $0.count >= 2 }
-        let pool = recurring.isEmpty ? groups : recurring
+        let periodic = recurring.filter(isPeriodic)
+        let pool = !periodic.isEmpty ? periodic : (!recurring.isEmpty ? recurring : groups)
         let best = pool.max { a, b in
             let la = a.last!.date, lb = b.last!.date
             // Same day: prefer the smaller charge, the likelier base plan.

@@ -896,7 +896,9 @@ class PlannerViewModel: ObservableObject {
             }
         }
 
-        let detectedAll = SubscriptionDetector.detect(from: entries)
+        let detectedAll = SubscriptionDetector.detect(from: entries,
+                                                      cardCharges: settings.cardChargeRecords,
+                                                      localCurrency: local)
         let detectedByKey = Dictionary(detectedAll.map { ($0.detectionKey, $0) },
                                        uniquingKeysWith: { a, _ in a })
 
@@ -968,6 +970,7 @@ class PlannerViewModel: ObservableObject {
     func prepareSubscriptionRescan() {
         settings.manualSubscriptions.removeAll { $0.isDetected }
         settings.appStoreRecords = []
+        settings.cardChargeRecords = []
     }
 
     /// Takes in what subscription emails said. Apple's are kept as records and
@@ -983,6 +986,8 @@ class PlannerViewModel: ObservableObject {
         var list = settings.manualSubscriptions
         var records = settings.appStoreRecords
         var seen = Set(records.map(\.signature))
+        var cards = settings.cardChargeRecords
+        var seenCards = Set(cards.map(\.signature))
         var changed = 0
         let local = settings.currency.rawValue
 
@@ -993,6 +998,13 @@ class PlannerViewModel: ObservableObject {
                     records.append(record)
                     changed += 1
                 }
+
+            case .cardCharge(let charge):
+                // Only charges that could be a subscription are kept.
+                guard CardChargeParser.isCandidate(charge, localCurrency: local),
+                      seenCards.insert(charge.signature).inserted else { continue }
+                cards.append(charge)
+                changed += 1
 
             case .charged(var sub):
                 let key = SubscriptionBrand.canonicalName(sub.name).lowercased()
@@ -1045,7 +1057,8 @@ class PlannerViewModel: ObservableObject {
                     guard list[idx].isActive, on >= list[idx].lastChargedOn else { continue }
                     list[idx].cancelledOn = on
                     changed += 1
-                } else if var detected = SubscriptionDetector.detect(from: entries)
+                } else if var detected = SubscriptionDetector.detect(from: entries, cardCharges: cards,
+                                                                     localCurrency: local)
                             .first(where: { $0.detectionKey == key }),
                           on >= detected.lastChargedOn {
                     // Known only from bank charges: store it, cancelled, so the
@@ -1060,9 +1073,11 @@ class PlannerViewModel: ObservableObject {
         // Nothing older than the scan window is needed to judge a plan.
         let cutoff = Calendar.current.date(byAdding: .month, value: -15, to: Date()) ?? .distantPast
         records.removeAll { $0.date < cutoff }
+        cards.removeAll { $0.date < cutoff }
 
         settings.manualSubscriptions = list
         settings.appStoreRecords = records
+        settings.cardChargeRecords = cards
         saveSettings()
         return changed
     }
@@ -2067,7 +2082,7 @@ class PlannerViewModel: ObservableObject {
     }
 
     /// The subscription reader this build writes.
-    private static let subscriptionDataVersion = 2
+    private static let subscriptionDataVersion = 3
 
     /// Clears subscription rows saved by an older version of the email reader
     /// — "Family", "Flow Pro", "Pro Monthly Plan", a newsletter author, an
@@ -2077,10 +2092,15 @@ class PlannerViewModel: ObservableObject {
     /// and everything they removed, are kept.
     func migrateSubscriptionsIfNeeded() {
         guard settings.subscriptionDataVersion < Self.subscriptionDataVersion else { return }
-        // Detected rows are rebuilt from email and spending; App Store rows
-        // only ever came from email.
-        settings.manualSubscriptions.removeAll { $0.isDetected || $0.viaApple }
+        if settings.subscriptionDataVersion < 2 {
+            // Detected rows are rebuilt from email and spending; App Store
+            // rows only ever came from email.
+            settings.manualSubscriptions.removeAll { $0.isDetected || $0.viaApple }
+        }
+        // Version 3 also reads card charges from bank alerts. Emptying the
+        // records makes the Subscriptions page run its full scan again.
         settings.appStoreRecords = []
+        settings.cardChargeRecords = []
         settings.subscriptionDataVersion = Self.subscriptionDataVersion
         saveSettings()
     }

@@ -182,7 +182,9 @@ final class GmailSyncService: NSObject, ObservableObject {
                                                        recipients: msg.to, receivedOn: msg.date)
             if !found.isEmpty {
                 events.append(contentsOf: found)
-                continue
+                // A bank alert is still the expense; its card charge was only
+                // noted for subscriptions.
+                if !SubscriptionEmailParser.isFromBank(sender: msg.sender) { continue }
             }
             // Apple mail is never an expense: the bank alert for the same
             // charge is. A top-up or one-off purchase simply yields nothing.
@@ -226,10 +228,15 @@ final class GmailSyncService: NSObject, ObservableObject {
         let general = "after:\(after) \(Self.subscriptionQueryArm) "
                     + "-category:social -category:forums"
         let apple   = "after:\(after) from:apple.com"
+        // Card alerts for charges billed abroad or by AI services — how
+        // Higgsfield, OpenAI, Anthropic and ElevenLabs plans show up.
+        let cards   = "after:\(after) (\"used for\" OR \"was used\" OR debited OR spent OR charged) "
+                    + "(USD OR EUR OR GBP OR SUBSCR OR SUBSCRIPTION OR OPENAI OR ANTHROPIC OR CLAUDE "
+                    + "OR HIGGSFIELD OR ELEVENLABS OR PERPLEXITY OR MIDJOURNEY OR INVIDEO OR GEMINI)"
 
         var seen = Set<String>()
         var ids: [String] = []
-        for query in [apple, general] {
+        for query in [apple, general, cards] {
             for id in try await listMessageIDs(query: query) where seen.insert(id).inserted {
                 ids.append(id)
             }
