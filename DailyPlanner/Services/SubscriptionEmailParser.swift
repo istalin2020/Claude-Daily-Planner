@@ -227,7 +227,11 @@ enum SubscriptionEmailParser {
 
         if notAnEvent.contains(where: { lower.contains($0) }) { return nil }
         if BankSMSParser.isMarketing(lower) { return nil }
-        guard recurringMarkers.contains(where: { lower.contains($0) }) else { return nil }
+        // What the period printed on the receipt says, if anything:
+        // "Oct 12–Nov 12, 2026" is a month of service, paid on Oct 12.
+        let period = servicePeriod(in: combined)
+        guard recurringMarkers.contains(where: { lower.contains($0) })
+                || period != nil || mentionsPlan(combined) else { return nil }
         // The subject must be about a payment or a plan. A newsletter body
         // mentions subscriptions, receipts and prices in passing; its subject
         // ("$250 Discount / Last Chance…") is about something else — which is
@@ -252,11 +256,82 @@ enum SubscriptionEmailParser {
         guard let (amount, currency) = chargedAmount(in: combined), amount > 0 else { return nil }
         sub.amount = amount
         sub.currencyCode = currency
-        if let renewal = renewalDate(in: combined) {
+        if let period = period {
+            // The receipt's own service period is the best evidence there is.
+            sub.cycle = period.cycle
+            sub.lastChargedOn = period.start
+            sub.startedOn = period.start
+        } else if let renewal = renewalDate(in: combined) {
             sub.lastChargedOn = sub.cycle.advance(renewal, by: -1)
             sub.startedOn = sub.lastChargedOn
         }
         return .charged(sub)
+    }
+
+    /// The service period a receipt covers, as Stripe, Paddle and most SaaS
+    /// receipts print it: "Oct 12–Nov 12, 2026", "Sep 6 - Oct 6, 2026",
+    /// "12 Oct 2026 – 12 Nov 2026". Its length gives the billing cycle.
+    static func servicePeriod(in text: String) -> (start: Date, cycle: BillingCycle)? {
+        let month = #"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?"#
+        // Month-first ("Oct 12–Nov 12, 2026") and day-first ("12 Oct 2026 –
+        // 12 Nov 2026"). Plain strings and a flag, so the compiler has
+        // nothing to infer.
+        let monthFirst: String = month + #"\s+(\d{1,2})(?:,\s*(\d{4}))?\s*[–—-]\s*"#
+            + month + #"\s+(\d{1,2}),\s*(\d{4})"#
+        let dayFirst: String = #"(\d{1,2})\s+"# + month + #"\s+(\d{4})\s*[–—-]\s*(\d{1,2})\s+"#
+            + month + #"\s+(\d{4})"#
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        for (pattern, isMonthFirst) in [(monthFirst, true), (dayFirst, false)] {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  m.numberOfRanges == 7
+            else { continue }
+            var g: [String] = []
+            for i in 1..<7 {
+                g.append(Range(m.range(at: i), in: text).map { String(text[$0]) } ?? "")
+            }
+            let rawStart: String
+            let rawEnd: String
+            if isMonthFirst {
+                // g: month, day, [year], month, day, year
+                let startYear = g[2].isEmpty ? g[5] : g[2]
+                rawStart = g[0] + " " + g[1] + " " + startYear
+                rawEnd = g[3] + " " + g[4] + " " + g[5]
+            } else {
+                // g: day, month, year, day, month, year
+                rawStart = g[1] + " " + g[0] + " " + g[2]
+                rawEnd = g[4] + " " + g[3] + " " + g[5]
+            }
+            func date(_ raw: String) -> Date? {
+                let cleaned = raw.replacingOccurrences(of: "Sept", with: "Sep")
+                    .replacingOccurrences(of: ".", with: "")
+                for fmt in ["MMM d yyyy", "MMMM d yyyy"] {
+                    f.dateFormat = fmt
+                    if let d = f.date(from: cleaned) { return d }
+                }
+                return nil
+            }
+            guard let start = date(rawStart), let end = date(rawEnd), end > start else { continue }
+            let days = Calendar.current.dateComponents([.day], from: start, to: end).day ?? 0
+            let cycle: BillingCycle
+            switch days {
+            case 5...9:     cycle = .weekly
+            case 26...35:   cycle = .monthly
+            case 85...95:   cycle = .quarterly
+            case 355...370: cycle = .yearly
+            default:        continue   // not a billing period — a trip, a stay
+            }
+            return (start, cycle)
+        }
+        return nil
+    }
+
+    /// "Max plan - 5x", "Pro plan", "Creator Plan", "Plus Monthly": a named
+    /// plan on a receipt. Restaurant and shop receipts don't have one.
+    static func mentionsPlan(_ text: String) -> Bool {
+        text.range(of: #"(?i)\b(?:pro|plus|max|premium|basic|starter|standard|creator|team|business|unlimited|individual|personal|ultra|power)\s+(?:plan|tier|membership|monthly|annual|yearly)\b"#,
+                   options: .regularExpression) != nil
     }
 
     /// Newsletter platforms. A paid newsletter's real receipt comes from the

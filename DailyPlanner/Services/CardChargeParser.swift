@@ -45,8 +45,9 @@ enum CardChargeParser {
         let pattern = #"(?i)"# + currency + #"\s?"# + number
             + #"\s+(?:at|to|towards|with)\s+(.+?)\s+(?:on|dated)\s+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
-              let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              m.numberOfRanges == 5,
+              let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text))
+        else { return bankFee(in: text, received: received) }
+        guard m.numberOfRanges == 5,
               let cr = Range(m.range(at: 1), in: text), let nr = Range(m.range(at: 2), in: text),
               let mr = Range(m.range(at: 3), in: text), let dr = Range(m.range(at: 4), in: text),
               let amount = Double(text[nr].replacingOccurrences(of: ",", with: "")), amount > 0
@@ -57,6 +58,30 @@ enum CardChargeParser {
         return CardChargeRecord(date: parseDate(String(text[dr])) ?? received,
                                 merchant: merchant, amount: amount,
                                 currency: iso(String(text[cr])))
+    }
+
+    /// A bank's own recurring fee — "Annual fee of OMR 25.000 has been
+    /// charged to your card", "membership fee … debited". These alerts name
+    /// no merchant, so the fee itself becomes the name.
+    private static func bankFee(in text: String, received: Date) -> CardChargeRecord? {
+        let currency = #"(USD|EUR|GBP|AED|SAR|QAR|KWD|BHD|INR|Rs\.?|OMR)"#
+        let number = #"([0-9][0-9,]*(?:\.[0-9]{1,3})?)"#
+        let fee = #"((?:annual|yearly|membership|renewal|joining|subscription)\s+fees?)"#
+        let feeFirst: String = #"(?i)"# + fee + #"[^.]{0,60}?"# + currency + #"\s?"# + number
+        let amountFirst: String = #"(?i)"# + currency + #"\s?"# + number + #"[^.]{0,60}?"# + fee
+        for (pattern, feeGroup, curGroup, numGroup) in [(feeFirst, 1, 2, 3), (amountFirst, 3, 1, 2)] {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  let fr = Range(m.range(at: feeGroup), in: text),
+                  let cr = Range(m.range(at: curGroup), in: text),
+                  let nr = Range(m.range(at: numGroup), in: text),
+                  let amount = Double(text[nr].replacingOccurrences(of: ",", with: "")), amount > 0
+            else { continue }
+            let label = String(text[fr]).lowercased()
+            return CardChargeRecord(date: received, merchant: "Card " + label,
+                                    amount: amount, currency: iso(String(text[cr])))
+        }
+        return nil
     }
 
     /// Whether a charge is worth keeping as subscription evidence: a known
@@ -76,6 +101,7 @@ enum CardChargeParser {
     static func looksLikeSubscription(_ merchant: String) -> Bool {
         let m = " " + merchant.lowercased() + " "
         let words = ["subscr", "subscription", "membership", "recurring", " sub ",
+                     "annual fee", "yearly fee", "renewal fee",
                      ".ai ", " ai ", "gpt", "openai", "llm"]
         return words.contains { m.contains($0) }
     }

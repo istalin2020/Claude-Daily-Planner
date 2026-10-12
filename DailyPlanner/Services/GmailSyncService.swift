@@ -208,10 +208,14 @@ final class GmailSyncService: NSObject, ObservableObject {
     /// Gmail terms that catch subscription receipts and cancellations. They
     /// carry none of the bank-alert wording, so without this arm they are
     /// never fetched at all.
+    /// Receipts are included: an AI service's Stripe receipt ("Receipt from
+    /// Anthropic, PBC — Max plan — Oct 12–Nov 12, 2026 — Amount paid
+    /// $100.00") never says "subscription" or "renewal".
     private static let subscriptionQueryArm =
         "(subscription OR membership OR renewal OR renews OR renewed OR \"auto-renew\" "
       + "OR \"automatically renew\" OR \"billing period\" OR \"apple.com/bill\" "
-      + "OR cancelled OR canceled)"
+      + "OR cancelled OR canceled OR \"receipt from\" OR \"amount paid\" "
+      + "OR subject:receipt OR subject:invoice)"
 
     /// Looks back over the last `monthsBack` months for subscription receipts
     /// and cancellations only — no bank alerts, so nothing enters the expense
