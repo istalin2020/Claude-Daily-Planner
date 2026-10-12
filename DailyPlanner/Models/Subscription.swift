@@ -357,10 +357,6 @@ struct Subscription: Identifiable, Codable, Equatable {
     /// For a plan that was cancelled but is paid up: the day it stops.
     /// Worked out from email each time, so not stored.
     var endsOn: Date? = nil
-    /// Set for plans seen in card alerts read by the full Gmail scan: every
-    /// charge is on record, so a missed renewal means the plan stopped.
-    /// Worked out each time, so not stored.
-    var lapsesWithoutCharge: Bool = false
     /// Every key this plan has been known by — app names, plan names, icon,
     /// subscription group — so removing it holds whichever one the next email
     /// uses. Worked out each time, so not stored.
@@ -381,20 +377,30 @@ struct Subscription: Identifiable, Codable, Equatable {
     /// Still running, so it still has a next payment.
     var isActive: Bool { cancelledOn == nil && lapsedOn == nil }
 
-    /// When an App Store plan ran out without being cancelled by email.
+    /// When a plan stopped: its renewal date passed with no charge.
     ///
-    /// Apple emails a receipt on every renewal, so a renewal date that passed a
-    /// week ago with no new receipt means the plan expired — the way the
-    /// user's LinkedIn, Canva and Lightroom plans did. Without this the
-    /// schedule rolled forward forever and expired plans sat under Active.
+    /// A monthly plan charges every month, so a renewal that came and went
+    /// with no receipt and no bank charge means it was cancelled — the way the
+    /// user's LinkedIn, Canva and InVideo plans ended. Without this the
+    /// schedule rolled forward forever and stopped plans sat under Active.
     ///
-    /// Only App Store plans the user hasn't edited: bank-detected plans can
-    /// have gaps simply because a month was never synced, and an edited plan
-    /// is the user's call.
+    /// Applies to every plan found automatically, from App Store receipts,
+    /// service receipts, card alerts or imported expenses. The full Gmail scan
+    /// reads 13 months of card alerts, so a missing charge is a real gap, not
+    /// an unsynced month. Plans the user typed in or edited are left alone.
+    ///
+    /// The allowance covers a renewal charged a few days late.
     var lapsedOn: Date? {
-        guard viaApple || lapsesWithoutCharge, isDetected, cancelledOn == nil else { return nil }
+        guard isDetected, cancelledOn == nil else { return nil }
         let expected = cycle.advance(lastChargedOn)
-        let grace = Calendar.current.date(byAdding: .day, value: 7, to: expected) ?? expected
+        let allowance: Int
+        switch cycle {
+        case .weekly:    allowance = 3
+        case .monthly:   allowance = 7
+        case .quarterly: allowance = 10
+        case .yearly:    allowance = 14
+        }
+        let grace = Calendar.current.date(byAdding: .day, value: allowance, to: expected) ?? expected
         return grace < Calendar.current.startOfDay(for: Date()) ? expected : nil
     }
 
@@ -615,7 +621,6 @@ enum SubscriptionDetector {
                 chargeCount: plan.count)
             sub.originalAmount = last.original
             sub.sourceKey = key
-            sub.lapsesWithoutCharge = plan.contains { $0.fromCard }
             return sub
         }
     }

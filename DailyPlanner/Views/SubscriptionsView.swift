@@ -762,7 +762,8 @@ private struct SubscriptionRow: View {
             return "Cancelled \(Fmt.dayMonth.string(from: ended))"
         }
         if let ran = sub.lapsedOn {
-            return "Expired \(Fmt.dayMonth.string(from: ran))"
+            // Not charged at its renewal: treated as cancelled.
+            return "Not renewed \(Fmt.dayMonth.string(from: ran))"
         }
         let prefix = days <= 0 ? "Due today" : (days == 1 ? "Tomorrow" : "\(days) days")
         return "\(prefix) · \(Fmt.dayMonth.string(from: next))"
