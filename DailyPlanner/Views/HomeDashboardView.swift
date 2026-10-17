@@ -525,8 +525,18 @@ struct TaskHubCard: View {
         }
     }
 
+    /// Pending tasks, newest first: today's own tasks (latest added on top),
+    /// then the ones rolled over from earlier days. Shown oldest-first, a new
+    /// task sat behind "+7 more" and the summary looked unchanged.
+    private var pending: [PlannerTask] {
+        let open = tasks.filter { !$0.isCompleted }
+        let fresh = open.filter { !$0.isRolledOver }.reversed()
+        let rolled = open.filter { $0.isRolledOver }.reversed()
+        return Array(fresh) + Array(rolled)
+    }
+
     var body: some View {
-        let pending = tasks.filter { !$0.isCompleted }
+        let pending = self.pending
 
         return Button {
             withAnimation(.easeInOut(duration: 0.25)) {

@@ -104,6 +104,13 @@ struct ContentView: View {
             }
         case .todo:
             showQuickTodo = true
+        case .health:
+            // Health opens workouts and activity directly; water, food, sleep
+            // and medications stay one tap away on the Health tile.
+            withAnimation(.easeInOut(duration: 0.25)) {
+                vm.activeHub = nil
+                vm.selectedSection = .healthFitness
+            }
         default:
             quickTab = tab
         }

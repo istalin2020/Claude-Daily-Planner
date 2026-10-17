@@ -97,7 +97,8 @@ struct HomeFrontPage: View {
 
                     HStack(spacing: spacing) {
                         TodoTile { open(.tasks) }
-                        HealthTile(open: { open(.health) }, openSection: openSection)
+                        // Straight to workouts and activity — the page used most.
+                        HealthTile(open: { openSection(.healthFitness) }, openSection: openSection)
                     }
                     .frame(height: row1)
 
