@@ -21,6 +21,14 @@ final class HealthKitManager {
     /// false on Simulator — HealthKit is only available on real iPhone/Apple Watch
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
+    /// True once the user has tapped Connect/Sync for Apple Health. Until
+    /// then the app never asks for Health access — not at launch, not when a
+    /// page opens — so the permission sheet only ever follows the user's tap.
+    var isLinkedByUser: Bool {
+        get { UserDefaults.standard.bool(forKey: "healthKitLinkedByUser") }
+        set { UserDefaults.standard.set(newValue, forKey: "healthKitLinkedByUser") }
+    }
+
     /// true when the user has explicitly denied step-count access in Settings.
     var isStepCountAuthDenied: Bool {
         guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return false }

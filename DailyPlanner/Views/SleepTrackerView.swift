@@ -60,7 +60,9 @@ struct SleepTrackerView: View {
             }
         }
         .onAppear {
-            if sleep.bedtime == nil {
+            // Only once Apple Health is connected — opening the page must not
+            // pop up the Health permission sheet.
+            if sleep.bedtime == nil && HealthKitManager.shared.isLinkedByUser {
                 syncFromHealthKit()
             }
         }
@@ -99,6 +101,7 @@ struct SleepTrackerView: View {
 
     private func syncFromHealthKit() {
         guard HealthKitManager.shared.isAvailable else { return }
+        HealthKitManager.shared.isLinkedByUser = true   // the user asked
         isSyncingHealth = true
         HealthKitManager.shared.requestAuthorization {
             HealthKitManager.shared.fetchSleepData(for: vm.selectedDate) { bedtime, wakeTime, duration in

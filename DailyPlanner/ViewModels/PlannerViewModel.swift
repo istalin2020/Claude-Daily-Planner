@@ -1455,7 +1455,8 @@ class PlannerViewModel: ObservableObject {
     /// On the first call it also registers HKObserverQuery + enables background
     /// delivery so future Apple Health changes trigger an automatic re-sync.
     func syncHealthKitForToday() {
-        guard HealthKitManager.shared.isAvailable else { return }
+        // Not before the user has asked for it on the Health page.
+        guard HealthKitManager.shared.isAvailable, HealthKitManager.shared.isLinkedByUser else { return }
         let today = Calendar.current.startOfDay(for: Date())
         HealthKitManager.shared.requestAuthorization { [weak self] in
             guard let self else { return }

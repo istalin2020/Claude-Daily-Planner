@@ -215,6 +215,8 @@ struct HealthFitnessView: View {
 
     private func autoSync() {
         guard HealthKitManager.shared.isAvailable else { return }
+        // Opening the page never asks for Health access; Connect does.
+        guard HealthKitManager.shared.isLinkedByUser else { return }
         guard !isSyncing else { return }
         performSync()
     }
@@ -229,7 +231,10 @@ struct HealthFitnessView: View {
             showSettingsAlert = true
         }
 
+        HealthKitManager.shared.isLinkedByUser = true
         performSync()
+        // From now on keep today fresh in the background too.
+        vm.syncHealthKitForToday()
     }
 
     private func performSync() {
@@ -260,6 +265,9 @@ struct AppleHealthSyncBanner: View {
     let onSync: () -> Void
 
     private var syncLabel: String {
+        guard HealthKitManager.shared.isLinkedByUser else {
+            return "Tap Connect to bring in steps and workouts"
+        }
         guard let date = syncedAt else { return "Not synced yet" }
         let fmt = RelativeDateTimeFormatter()
         fmt.unitsStyle = .abbreviated
@@ -290,7 +298,7 @@ struct AppleHealthSyncBanner: View {
                     .padding(.trailing, 4)
             } else {
                 Button(action: onSync) {
-                    Text(syncedAt == nil ? "Connect" : "Sync")
+                    Text(syncedAt == nil || !HealthKitManager.shared.isLinkedByUser ? "Connect" : "Sync")
                         .font(.system(size: 12, weight: .semibold))
                         .padding(.horizontal, 14).padding(.vertical, 7)
                         .background(Color.red.opacity(0.12))

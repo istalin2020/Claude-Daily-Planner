@@ -3,9 +3,9 @@ import SwiftUI
 // MARK: - First-launch tour
 
 /// Three swipeable highlights shown the first time the app opens — To-Do,
-/// Finance and Health — with Skip on every page. The Finance page can link
-/// Gmail right there, since that is what fills the finance and subscription
-/// trackers on their own.
+/// Finance and Health — with Skip on every page. It only shows what the app
+/// does: nothing is connected or asked for here. Gmail is offered when the
+/// user first opens the Finance Tracker, Apple Health when they tap Connect.
 struct OnboardingView: View {
     @EnvironmentObject var vm: PlannerViewModel
     let onFinish: () -> Void
@@ -36,14 +36,14 @@ struct OnboardingView: View {
                       ("arrow.uturn.forward", "Unfinished tasks roll over to the next day")]),
         Page(id: 1,
              title: "Your money, tracked for you",
-             subtitle: "Link Gmail and your bank alerts fill the tracker on their own.",
+             subtitle: "See where every rupee, riyal or dollar goes — month by month.",
              symbol: "chart.bar.fill",
              accent: Color(red: 0.18, green: 0.83, blue: 0.48),
              accentDeep: Color(red: 0.07, green: 0.66, blue: 0.35),
              wash: Color(red: 0.87, green: 0.97, blue: 0.91),
-             points: [("envelope.open.fill", "Card and bank alerts become expenses, by category"),
+             points: [("tag.fill", "Income, expenses and savings by category"),
                       ("repeat.circle.fill", "Every subscription and its next renewal"),
-                      ("lock.fill", "Read-only access, processed on your iPhone")]),
+                      ("chart.pie.fill", "Budgets and spending trends at a glance")]),
         Page(id: 2,
              title: "Feel your best, every day",
              subtitle: "Steps, food, water, sleep and medicines at a glance.",
@@ -111,11 +111,15 @@ struct OnboardingView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
         }
+        // Solid: the home screen must not show through behind the tour.
         .background(
-            LinearGradient(colors: [current.wash.opacity(0.9), Color(.systemBackground)],
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-                .animation(.easeInOut, value: page)
+            ZStack {
+                Color(.systemBackground)
+                LinearGradient(colors: [current.wash, Color(.systemBackground)],
+                               startPoint: .top, endPoint: .bottom)
+                    .animation(.easeInOut, value: page)
+            }
+            .ignoresSafeArea()
         )
     }
 
@@ -154,10 +158,6 @@ struct OnboardingView: View {
                 }
                 .padding(.horizontal, 32)
 
-                if p.id == 1 {
-                    ConnectGmailCard(compact: true)
-                        .padding(.horizontal, 24)
-                }
             }
             .padding(.bottom, 12)
         }
@@ -281,6 +281,131 @@ struct ConnectGmailCard: View {
                 errorText = (error as? GmailSyncError)?.errorDescription ?? error.localizedDescription
             }
             working = false
+        }
+    }
+}
+
+// MARK: - Finance Tracker first-visit guide
+
+/// Three short tips shown the first time the Finance Tracker opens: Gmail
+/// sync (with a link to set it up), adding entries by hand, and reviewing
+/// transactions. Skippable at any step; never shown again once done.
+struct FinanceGuideOverlay: View {
+    let isPro: Bool
+    /// Opens Gmail sync (or the PRO page for free users).
+    let onSetUpGmail: () -> Void
+    let onFinish: () -> Void
+
+    @State private var step = 0
+
+    private struct Tip {
+        let icon: String
+        let color: Color
+        let title: String
+        let text: String
+    }
+
+    private let tips: [Tip] = [
+        Tip(icon: "envelope.badge.fill", color: Color(red: 0.86, green: 0.27, blue: 0.22),
+            title: "Bring in your bank alerts",
+            text: "Connect Gmail once and the app reads your bank and card alert emails, then turns each one into an expense for you to review before it's added. It also finds your subscriptions and their renewal dates. Access is read-only — nothing is sent, changed or deleted."),
+        Tip(icon: "plus.circle.fill", color: Color(red: 0.1, green: 0.65, blue: 0.35),
+            title: "Add anything yourself",
+            text: "Use Add Income and Add Expense at the bottom for cash, transfers or anything without an alert. Pick a category so your breakdown and budgets stay accurate."),
+        Tip(icon: "list.bullet.rectangle.portrait.fill", color: Color(red: 0.25, green: 0.45, blue: 0.95),
+            title: "Review and fix in one place",
+            text: "Tap Transactions to see every entry for the month. Filter by category, and edit or delete any entry — the totals and the chart update straight away."),
+    ]
+
+    var body: some View {
+        let tip = tips[step]
+
+        ZStack {
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .onTapGesture { }   // keep taps off the page behind
+
+            VStack(spacing: 16) {
+                HStack {
+                    Text("\(step + 1) of \(tips.count)")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button("Skip") { onFinish() }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+
+                Image(systemName: tip.icon)
+                    .font(.system(size: 30, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 70, height: 70)
+                    .background(Circle().fill(tip.color))
+                    .shadow(color: tip.color.opacity(0.35), radius: 10, y: 4)
+
+                Text(tip.title)
+                    .font(.system(size: 20, weight: .heavy))
+                    .multilineTextAlignment(.center)
+
+                Text(tip.text)
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if step == 0 {
+                    Button {
+                        onFinish()
+                        onSetUpGmail()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("Set up Gmail sync")
+                            if !isPro {
+                                Text("PRO")
+                                    .font(.system(size: 10, weight: .heavy))
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.white.opacity(0.3)))
+                            }
+                            Image(systemName: "arrow.right")
+                        }
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Capsule().fill(tip.color))
+                    }
+                    .buttonStyle(TilePressStyle())
+                }
+
+                Button {
+                    if step < tips.count - 1 {
+                        withAnimation(.easeInOut(duration: 0.2)) { step += 1 }
+                    } else {
+                        onFinish()
+                    }
+                } label: {
+                    Text(step == 0 ? "Maybe later" : (step < tips.count - 1 ? "Next" : "Got it"))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(step == 0 ? tip.color : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Capsule().fill(step == 0 ? tip.color.opacity(0.12) : tip.color))
+                }
+                .buttonStyle(TilePressStyle())
+
+                HStack(spacing: 6) {
+                    ForEach(0..<tips.count, id: \.self) { i in
+                        Capsule()
+                            .fill(i == step ? tip.color : Color.secondary.opacity(0.25))
+                            .frame(width: i == step ? 18 : 6, height: 6)
+                    }
+                }
+            }
+            .padding(22)
+            .background(RoundedRectangle(cornerRadius: 26).fill(Color(.systemBackground)))
+            .shadow(color: .black.opacity(0.15), radius: 20, y: 8)
+            .padding(.horizontal, 24)
+            .transition(.scale(scale: 0.95).combined(with: .opacity))
         }
     }
 }

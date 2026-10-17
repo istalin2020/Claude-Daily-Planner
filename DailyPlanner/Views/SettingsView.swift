@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var showPomodoro       = false
     /// Cleared to show the welcome tour again (ContentView watches it).
     @AppStorage("hasSeenWelcomeTour.v1") private var hasSeenWelcomeTour = true
+    @AppStorage("financeGuideSeen.v1") private var financeGuideSeen = true
     @State private var showProUpgrade     = false
     @State private var showSharing        = false
 
@@ -624,9 +625,12 @@ struct SettingsView: View {
                     }
                     Button {
                         dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { hasSeenWelcomeTour = false }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                            hasSeenWelcomeTour = false
+                            financeGuideSeen = false
+                        }
                     } label: {
-                        Label("Show welcome tour", systemImage: "sparkles")
+                        Label("Show welcome tour & tips", systemImage: "sparkles")
                     }
                 }
             }

@@ -19,6 +19,8 @@ struct ExpenseTrackerView: View {
     @State private var hasCheckedClipboard = false
     @State private var showGmailSync = false
     @State private var showTransactions = false
+    /// The three-tip guide, shown the first time the Finance Tracker opens.
+    @AppStorage("financeGuideSeen.v1") private var financeGuideSeen = false
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -113,6 +115,15 @@ struct ExpenseTrackerView: View {
                 vm.addExpense(expense)
             }
             .environmentObject(vm)
+        }
+        .overlay {
+            if !financeGuideSeen {
+                FinanceGuideOverlay(isPro: pro.isPro,
+                                    onSetUpGmail: {
+                                        if pro.isPro { showGmailSync = true } else { showProUpgrade = true }
+                                    },
+                                    onFinish: { withAnimation { financeGuideSeen = true } })
+            }
         }
         .sheet(isPresented: $showGmailSync) {
             GmailSyncView(sym: sym).environmentObject(vm)
