@@ -96,7 +96,7 @@ struct HomeFrontPage: View {
                         .frame(height: dateCard)
 
                     HStack(spacing: spacing) {
-                        TodoTile { open(.tasks) }
+                        TodoTile(open: { open(.tasks) }, openSection: openSection)
                         // Straight to workouts and activity — the page used most.
                         HealthTile(open: { openSection(.healthFitness) }, openSection: openSection)
                     }
@@ -601,7 +601,9 @@ private extension View {
 
 private struct TodoTile: View {
     @EnvironmentObject var vm: PlannerViewModel
-    let action: () -> Void
+    let open: () -> Void
+    /// Opens one list straight from its icon.
+    let openSection: (AppSection) -> Void
 
     var body: some View {
         let e = vm.currentEntry
@@ -611,7 +613,7 @@ private struct TodoTile: View {
         let theme = HomeTileTheme.todo
 
         HomeTile(theme: theme, icon: "checklist", title: "To-Do List",
-                 subtitle: "Stay on top of your tasks", action: action) {
+                 subtitle: "Stay on top of your tasks", action: open) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(total == 0 ? "No tasks yet" : "\(done) of \(total) done")
@@ -636,6 +638,15 @@ private struct TodoTile: View {
             }
             .padding(10)
             .tileInset()
+
+            // One icon per list, with how many of its tasks are done —
+            // tap to open that list.
+            HStack(spacing: 0) {
+                list(.topPriorities, "Priority", e.topPriorities)
+                list(.toDoLists, "Lists", e.toDoLists)
+                list(.callsEmails, "Calls", e.callsEmails)
+                list(.personalTodo, "Personal", e.personalTodo)
+            }
         } art: {
             ZStack(alignment: .bottomTrailing) {
                 // Leaves on the left, a clipboard on the right.
@@ -645,10 +656,35 @@ private struct TodoTile: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                 .offset(x: 6, y: 14)
-                TileArt(symbol: "list.clipboard.fill", color: theme.accentDeep, size: 56)
-                    .padding(.trailing, 14).padding(.bottom, 10)
+                TileArt(symbol: "list.clipboard.fill", color: theme.accentDeep, size: 44)
+                    .padding(.trailing, 10).padding(.bottom, 6)
+                    .opacity(0.7)
             }
         }
+    }
+
+    private func list(_ section: AppSection, _ label: String, _ tasks: [PlannerTask]) -> some View {
+        let done = tasks.filter(\.isCompleted).count
+        return Button { openSection(section) } label: {
+            VStack(spacing: 2) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(section.color)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(HomeStyle.innerCard))
+                Text(tasks.isEmpty ? "0" : "\(done)/\(tasks.count)")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .foregroundColor(.primary)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text(label)
+                    .font(.system(size: 9.5))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(TilePressStyle())
+        .accessibilityLabel("\(section.rawValue): \(done) of \(tasks.count) done")
     }
 }
 
