@@ -1540,9 +1540,65 @@ class PlannerViewModel: ObservableObject {
 
         static func from(_ expense: Expense) -> DisplayCategory {
             if !expense.customCategoryLabel.isEmpty {
-                return DisplayCategory(name: expense.customCategoryLabel, icon: "tag.fill", color: .purple)
+                return DisplayCategory(name: expense.customCategoryLabel, icon: "tag.fill",
+                                       color: customColor(for: expense.customCategoryLabel))
             }
             return DisplayCategory(name: expense.category.rawValue, icon: expense.category.icon, color: expense.category.color)
+        }
+
+        /// Colours for categories the user created, chosen to differ from
+        /// the built-in ones (orange, green, blue, red, purple, pink, yellow,
+        /// gray). Every custom category used to be purple, so "Credit Card",
+        /// "India" and "Entertainment" looked like one slice.
+        static let customPalette: [Color] = [
+            Color(red: 0.00, green: 0.65, blue: 0.65),   // teal
+            Color(red: 0.35, green: 0.30, blue: 0.85),   // indigo
+            Color(red: 0.55, green: 0.35, blue: 0.20),   // brown
+            Color(red: 0.85, green: 0.20, blue: 0.60),   // magenta
+            Color(red: 0.20, green: 0.75, blue: 0.95),   // sky
+            Color(red: 0.55, green: 0.60, blue: 0.15),   // olive
+            Color(red: 1.00, green: 0.50, blue: 0.40),   // coral
+            Color(red: 0.15, green: 0.25, blue: 0.55),   // navy
+            Color(red: 0.25, green: 0.80, blue: 0.60),   // mint
+            Color(red: 0.60, green: 0.15, blue: 0.25),   // maroon
+            Color(red: 0.85, green: 0.65, blue: 0.10),   // gold
+            Color(red: 0.60, green: 0.50, blue: 0.90),   // lavender
+            Color(red: 0.10, green: 0.45, blue: 0.25),   // forest
+            Color(red: 0.95, green: 0.70, blue: 0.75),   // blush
+        ]
+
+        /// The same name always starts from the same colour (a stable hash —
+        /// not `hashValue`, which changes every launch).
+        static func customColor(for name: String) -> Color {
+            let h = name.lowercased().unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
+            return customPalette[h % customPalette.count]
+        }
+
+        /// Gives every category in a breakdown its own colour: the first to
+        /// claim a colour keeps it, and any later one with the same colour
+        /// takes the next free one from the palette.
+        static func withUniqueColors(_ list: [(DisplayCategory, Double)]) -> [(DisplayCategory, Double)] {
+            let all: [Color] = [.orange, Color(red: 0.2, green: 0.7, blue: 0.3), .blue, .red, .purple,
+                                .pink, .yellow, .gray] + customPalette
+            var used: [Color] = []
+            var result: [(DisplayCategory, Double)] = []
+            for (dc, amount) in list {
+                var color = dc.color
+                if used.contains(color) {
+                    // Start the search at this name's own place in the palette.
+                    let start = customPalette.firstIndex(of: customColor(for: dc.name)) ?? 0
+                    let order = Array(customPalette[start...]) + Array(customPalette[..<start]) + all
+                    if let free = order.first(where: { !used.contains($0) }) {
+                        color = free
+                    } else {
+                        // More categories than colours: vary the brightness.
+                        color = color.opacity(max(0.35, 1.0 - Double(used.count) * 0.04))
+                    }
+                }
+                used.append(color)
+                result.append((DisplayCategory(name: dc.name, icon: dc.icon, color: color), amount))
+            }
+            return result
         }
     }
 
@@ -1555,7 +1611,11 @@ class PlannerViewModel: ObservableObject {
             let dc = DisplayCategory.from(exp)
             totals[dc.name, default: (dc, 0)].1 += exp.amount
         }
-        return totals.values.sorted { $0.1 > $1.1 }
+        // Ties broken by name so colours don't swap between redraws.
+        let sorted = totals.values.sorted { a, b in
+            a.1 != b.1 ? a.1 > b.1 : a.0.name < b.0.name
+        }
+        return DisplayCategory.withUniqueColors(sorted)
     }
 
     func monthlyTotalExpenses(for date: Date, upTo cutoff: Date? = nil) -> Double {
