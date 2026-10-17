@@ -308,16 +308,24 @@ struct ConnectGmailCard: View {
     }
 }
 
-// MARK: - Finance Tracker first-visit guide
+// MARK: - Finance Tracker guides
 
-/// Three short tips shown the first time the Finance Tracker opens: Gmail
-/// sync (with a link to set it up), adding entries by hand, and reviewing
-/// transactions. Skippable at any step; never shown again once done.
+/// Short guides shown at the moment the user reaches for a feature — never on
+/// simply opening the Finance Tracker, where a Gmail prompt felt alarming.
+///   • `.gmail`  — the first tap on "Expense Sync from Gmail": what it does
+///                  and where the data stays, then on to the sync.
+///   • `.adding` — the first tap on Add Income / Add Expense: adding by hand,
+///                  and fixing things in Transactions, then on to the form.
 struct FinanceGuideOverlay: View {
+    enum Guide { case gmail, adding }
+
+    let guide: Guide
     let isPro: Bool
-    /// Opens Gmail sync (or the PRO page for free users).
-    let onSetUpGmail: () -> Void
-    let onFinish: () -> Void
+    /// Carries on with what the user tapped — the Gmail sync (or the PRO
+    /// page for free users), or the add form.
+    let onContinue: () -> Void
+    /// Closes without carrying on.
+    let onCancel: () -> Void
 
     @State private var step = 0
 
@@ -328,20 +336,26 @@ struct FinanceGuideOverlay: View {
         let text: String
     }
 
-    private let tips: [Tip] = [
-        Tip(icon: "envelope.badge.fill", color: Color(red: 0.86, green: 0.27, blue: 0.22),
-            title: "Bring in your bank alerts",
-            text: "Connect Gmail once and the app reads your bank and card alert emails, then turns each one into an expense for you to review before it's added. It also finds your subscriptions and their renewal dates. Access is read-only, and everything it finds is stored only on this device — never shared with other users or the app developer."),
-        Tip(icon: "plus.circle.fill", color: Color(red: 0.1, green: 0.65, blue: 0.35),
-            title: "Add anything yourself",
-            text: "Use Add Income and Add Expense at the bottom for cash, transfers or anything without an alert. Pick a category so your breakdown and budgets stay accurate."),
-        Tip(icon: "list.bullet.rectangle.portrait.fill", color: Color(red: 0.25, green: 0.45, blue: 0.95),
-            title: "Review and fix in one place",
-            text: "Tap Transactions to see every entry for the month. Filter by category, and edit or delete any entry — the totals and the chart update straight away."),
-    ]
+    private var tips: [Tip] {
+        switch guide {
+        case .gmail:
+            return [Tip(icon: "envelope.badge.fill", color: Color(red: 0.86, green: 0.27, blue: 0.22),
+                        title: "Sync expenses from Gmail",
+                        text: "Connect Gmail once and the app reads your bank and card alert emails, then turns each one into an expense for you to review before it's added. It also finds your subscriptions and their renewal dates. Access is read-only, and everything it finds is stored only on this device — never shared with other users or the app developer.")]
+        case .adding:
+            return [Tip(icon: "plus.circle.fill", color: Color(red: 0.1, green: 0.65, blue: 0.35),
+                        title: "Add anything yourself",
+                        text: "Use Add Income and Add Expense for cash, transfers or anything without a bank alert. Pick a category so your breakdown and budgets stay accurate."),
+                    Tip(icon: "list.bullet.rectangle.portrait.fill", color: Color(red: 0.25, green: 0.45, blue: 0.95),
+                        title: "Review and fix in one place",
+                        text: "Tap Transactions to see every entry for the month. Filter by category, and edit or delete any entry — the totals and the chart update straight away.")]
+        }
+    }
 
     var body: some View {
-        let tip = tips[step]
+        let all = tips
+        let tip = all[min(step, all.count - 1)]
+        let isLast = step >= all.count - 1
 
         ZStack {
             Color.black.opacity(0.35)
@@ -349,14 +363,13 @@ struct FinanceGuideOverlay: View {
                 .onTapGesture { }   // keep taps off the page behind
 
             VStack(spacing: 16) {
-                HStack {
-                    Text("\(step + 1) of \(tips.count)")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Button("Skip") { onFinish() }
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.secondary)
+                if all.count > 1 {
+                    HStack {
+                        Text("\(step + 1) of \(all.count)")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
                 }
 
                 Image(systemName: tip.icon)
@@ -376,51 +389,46 @@ struct FinanceGuideOverlay: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if step == 0 {
-                    Button {
-                        onFinish()
-                        onSetUpGmail()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("Set up Gmail sync")
-                            if !isPro {
-                                Text("PRO")
-                                    .font(.system(size: 10, weight: .heavy))
-                                    .padding(.horizontal, 6).padding(.vertical, 2)
-                                    .background(Capsule().fill(Color.white.opacity(0.3)))
-                            }
-                            Image(systemName: "arrow.right")
+                Button {
+                    if isLast { onContinue() } else { withAnimation(.easeInOut(duration: 0.2)) { step += 1 } }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(isLast ? (guide == .gmail ? "Continue to Gmail sync" : "Got it") : "Next")
+                        if guide == .gmail && !isPro {
+                            Text("PRO")
+                                .font(.system(size: 10, weight: .heavy))
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Capsule().fill(Color.white.opacity(0.3)))
                         }
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(Capsule().fill(tip.color))
+                        if guide == .gmail { Image(systemName: "arrow.right") }
+                    }
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Capsule().fill(tip.color))
+                }
+                .buttonStyle(TilePressStyle())
+
+                if guide == .gmail {
+                    Button { onCancel() } label: {
+                        Text("Not now")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(tip.color)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .background(Capsule().fill(tip.color.opacity(0.12)))
                     }
                     .buttonStyle(TilePressStyle())
                 }
 
-                Button {
-                    if step < tips.count - 1 {
-                        withAnimation(.easeInOut(duration: 0.2)) { step += 1 }
-                    } else {
-                        onFinish()
-                    }
-                } label: {
-                    Text(step == 0 ? "Maybe later" : (step < tips.count - 1 ? "Next" : "Got it"))
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(step == 0 ? tip.color : .white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(Capsule().fill(step == 0 ? tip.color.opacity(0.12) : tip.color))
-                }
-                .buttonStyle(TilePressStyle())
-
-                HStack(spacing: 6) {
-                    ForEach(0..<tips.count, id: \.self) { i in
-                        Capsule()
-                            .fill(i == step ? tip.color : Color.secondary.opacity(0.25))
-                            .frame(width: i == step ? 18 : 6, height: 6)
+                if all.count > 1 {
+                    HStack(spacing: 6) {
+                        ForEach(0..<all.count, id: \.self) { i in
+                            Capsule()
+                                .fill(i == step ? tip.color : Color.secondary.opacity(0.25))
+                                .frame(width: i == step ? 18 : 6, height: 6)
+                        }
                     }
                 }
             }

@@ -19,8 +19,11 @@ struct ExpenseTrackerView: View {
     @State private var hasCheckedClipboard = false
     @State private var showGmailSync = false
     @State private var showTransactions = false
-    /// The three-tip guide, shown the first time the Finance Tracker opens.
-    @AppStorage("financeGuideSeen.v1") private var financeGuideSeen = false
+    /// Guides shown the first time the user reaches for Gmail sync or for
+    /// Add Income / Add Expense — never just for opening the page.
+    @AppStorage("financeGmailGuideSeen.v1") private var gmailGuideSeen = false
+    @AppStorage("financeAddGuideSeen.v1") private var addGuideSeen = false
+    @State private var activeGuide: FinanceGuideOverlay.Guide? = nil
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -117,12 +120,16 @@ struct ExpenseTrackerView: View {
             .environmentObject(vm)
         }
         .overlay {
-            if !financeGuideSeen {
-                FinanceGuideOverlay(isPro: pro.isPro,
-                                    onSetUpGmail: {
-                                        if pro.isPro { showGmailSync = true } else { showProUpgrade = true }
+            if let guide = activeGuide {
+                FinanceGuideOverlay(guide: guide, isPro: pro.isPro,
+                                    onContinue: {
+                                        finishGuide(guide)
+                                        switch guide {
+                                        case .gmail:  openGmailSync()
+                                        case .adding: showAddSheet = true
+                                        }
                                     },
-                                    onFinish: { withAnimation { financeGuideSeen = true } })
+                                    onCancel: { finishGuide(guide) })
             }
         }
         .sheet(isPresented: $showGmailSync) {
@@ -260,6 +267,25 @@ struct ExpenseTrackerView: View {
         .padding(.horizontal, 16)
     }
 
+    // MARK: - Guides
+
+    private func openGmailSync() {
+        if pro.isPro { showGmailSync = true } else { showProUpgrade = true }
+    }
+
+    /// The add form, with the two adding tips the very first time.
+    private func startAdding() {
+        if addGuideSeen { showAddSheet = true } else { withAnimation { activeGuide = .adding } }
+    }
+
+    private func finishGuide(_ guide: FinanceGuideOverlay.Guide) {
+        switch guide {
+        case .gmail:  gmailGuideSeen = true
+        case .adding: addGuideSeen = true
+        }
+        withAnimation { activeGuide = nil }
+    }
+
     // MARK: - Quick Add Buttons
 
     /// Fixed bar at the bottom of the screen — never scrolls away.
@@ -268,11 +294,11 @@ struct ExpenseTrackerView: View {
             FinanceAddButton(label: "Add Income", icon: "plus.circle.fill",
                              bg: Color(red: 0.1, green: 0.75, blue: 0.4).opacity(0.12),
                              fg: Color(red: 0.1, green: 0.65, blue: 0.35)) {
-                addMode = .income; showAddSheet = true
+                addMode = .income; startAdding()
             }
             FinanceAddButton(label: "Add Expense", icon: "minus.circle.fill",
                              bg: Color.red.opacity(0.1), fg: .red) {
-                addMode = .expense; showAddSheet = true
+                addMode = .expense; startAdding()
             }
         }
         .padding(.horizontal, 16)
@@ -296,7 +322,7 @@ struct ExpenseTrackerView: View {
 
             // ── Expense Sync from Gmail (PRO) ──────────────────────
             Button {
-                if pro.isPro { showGmailSync = true } else { showProUpgrade = true }
+                if gmailGuideSeen { openGmailSync() } else { withAnimation { activeGuide = .gmail } }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "envelope.badge.fill")
