@@ -1388,21 +1388,20 @@ class PlannerViewModel: ObservableObject {
         saveSettings()
     }
 
-    /// Number of days left before the test-mode Gmail refresh token is expected
-    /// to expire (~7 days from connection). Returns nil when not connected.
-    var gmailDaysUntilReconnect: Int? {
-        guard !settings.gmailConnectedEmail.isEmpty,
-              settings.gmailConnectedEpoch > 0 else { return nil }
-        let expiry = settings.gmailConnectedEpoch + 7 * 24 * 3600
-        let remaining = expiry - Date().timeIntervalSince1970
-        return Int(floor(remaining / (24 * 3600)))
+    /// True when a Gmail account was linked but Google has since ended the
+    /// sign-in (weekly while the app is in Google's test mode, or after a
+    /// password change). Read from the saved token, not guessed from dates,
+    /// so the Finance badge and the Gmail screen always agree.
+    var gmailNeedsReconnect: Bool {
+        !settings.gmailConnectedEmail.isEmpty && !GmailSyncService.hasSavedSignIn
     }
 
-    /// True when the Gmail connection is expired or within ~2 days of expiring,
-    /// so the UI can show a gentle "reconnect soon" nudge.
-    var gmailNeedsReconnectSoon: Bool {
-        guard let days = gmailDaysUntilReconnect else { return false }
-        return days <= 2
+    /// Checks the Gmail sign-in with Google and refreshes anything showing it.
+    @MainActor
+    func checkGmailConnection() async {
+        guard !settings.gmailConnectedEmail.isEmpty else { return }
+        _ = await GmailSyncService.shared.verifyConnection()
+        objectWillChange.send()
     }
 
     func updateSavings(_ amount: Double) {

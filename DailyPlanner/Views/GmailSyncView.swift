@@ -74,6 +74,7 @@ struct GmailSyncView: View {
                     Button(phase == .summary ? "Done" : "Close") { finishAndDismiss() }
                 }
             }
+            .task { await vm.checkGmailConnection() }
             .sheet(isPresented: $showMonthPicker) { monthPickerSheet }
             .sheet(isPresented: $showResetMonthPicker) { resetMonthPickerSheet }
         }
@@ -256,9 +257,11 @@ struct GmailSyncView: View {
     private var connectedCard: some View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
-                Image(systemName: "checkmark.seal.fill").foregroundColor(.green)
+                Image(systemName: expired ? "exclamationmark.circle.fill" : "checkmark.seal.fill")
+                    .foregroundColor(expired ? .orange : .green)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Connected").font(.system(size: 13, weight: .semibold))
+                    Text(expired ? "Signed out by Google" : "Connected")
+                        .font(.system(size: 13, weight: .semibold))
                     Text(vm.settings.gmailConnectedEmail)
                         .font(.caption).foregroundColor(.secondary).lineLimit(1)
                 }
@@ -285,33 +288,44 @@ struct GmailSyncView: View {
                 }
             }
 
-            Button(action: { showSyncChoice = true }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                    Text("Sync Now").fontWeight(.semibold)
+            if expired {
+                Button(action: connect) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Reconnect Gmail").fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(accent).foregroundColor(.white).cornerRadius(14)
                 }
-                .frame(maxWidth: .infinity).padding(.vertical, 14)
-                .background(accent).foregroundColor(.white).cornerRadius(14)
-            }
-            .confirmationDialog("Which period do you want to sync?",
-                                isPresented: $showSyncChoice, titleVisibility: .visible) {
-                Button("Current Month") {
-                    startSync(monthStart: Self.currentMonthStart)
+            } else {
+                Button(action: { showSyncChoice = true }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Sync Now").fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(accent).foregroundColor(.white).cornerRadius(14)
                 }
-                Button("Previous Month…") {
-                    selectedMonthIndex = 0
-                    showMonthPicker = true
+                .confirmationDialog("Which period do you want to sync?",
+                                    isPresented: $showSyncChoice, titleVisibility: .visible) {
+                    Button("Current Month") {
+                        startSync(monthStart: Self.currentMonthStart)
+                    }
+                    Button("Previous Month…") {
+                        selectedMonthIndex = 0
+                        showMonthPicker = true
+                    }
+                    Button("Cancel", role: .cancel) {}
                 }
-                Button("Cancel", role: .cancel) {}
-            }
 
-            Button(action: connect) {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.clockwise")
-                    Text("Reconnect Gmail")
+                Button(action: connect) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Reconnect Gmail")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(accent)
                 }
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(accent)
             }
 
             Button(role: .destructive, action: disconnect) {
@@ -354,26 +368,20 @@ struct GmailSyncView: View {
         .cornerRadius(16)
     }
 
-    /// A gentle heads-up that the Google "Testing" mode connection expires
-    /// weekly, so the periodic re-login isn't a surprise.
+    /// Google has ended the saved sign-in; syncing needs a fresh one.
+    private var expired: Bool { vm.gmailNeedsReconnect }
+
+    /// Shown only when Google has really ended the sign-in — checked with
+    /// Google when this screen opens, never guessed from the date.
     @ViewBuilder
     private var reconnectReminder: some View {
-        if let days = vm.gmailDaysUntilReconnect {
-            if days <= 0 {
-                reminderBanner(
-                    icon: "exclamationmark.triangle.fill",
-                    color: .orange,
-                    title: "Reconnect needed",
-                    message: "Google signs you out weekly while the app is in test mode. Tap “Reconnect Gmail” below to sign in again, then sync."
-                )
-            } else if days <= 2 {
-                reminderBanner(
-                    icon: "clock.badge.exclamationmark.fill",
-                    color: .orange,
-                    title: days == 1 ? "Reconnect in ~1 day" : "Reconnect in ~\(days) days",
-                    message: "Google signs you out weekly in test mode. You can reconnect anytime to reset the timer."
-                )
-            }
+        if expired {
+            reminderBanner(
+                icon: "exclamationmark.triangle.fill",
+                color: .orange,
+                title: "Reconnect needed",
+                message: "Google ends this sign-in every 7 days while the app is in Google's test mode. Tap “Reconnect Gmail” to sign in again — your synced expenses and history stay as they are."
+            )
         }
     }
 
@@ -788,6 +796,10 @@ struct GmailSyncView: View {
                     loadReviewItem()
                     phase = .review
                 }
+            } catch GmailSyncError.reconnectNeeded {
+                // The card switches to "Reconnect needed" on its own.
+                errorText = nil
+                phase = .home
             } catch {
                 errorText = (error as? GmailSyncError)?.errorDescription ?? error.localizedDescription
                 phase = .home

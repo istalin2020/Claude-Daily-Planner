@@ -195,6 +195,10 @@ struct ExpenseTrackerView: View {
             }
         }
         .onAppear(perform: startCoachIfNeeded)
+        .task { if pro.isPro { await vm.checkGmailConnection() } }
+        .onChange(of: showGmailSync) { _, open in
+            if !open { Task { await vm.checkGmailConnection() } }
+        }
     }
 
     // MARK: - Category Pie Chart
@@ -375,7 +379,7 @@ struct ExpenseTrackerView: View {
                         .font(.system(size: 15, weight: .semibold))
                     if !pro.isPro {
                         ProInlineBadge()
-                    } else if pro.isPro && vm.gmailNeedsReconnectSoon {
+                    } else if vm.gmailNeedsReconnect {
                         Text("Reconnect")
                             .font(.system(size: 11, weight: .bold))
                             .padding(.horizontal, 8).padding(.vertical, 3)

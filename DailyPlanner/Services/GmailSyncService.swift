@@ -89,6 +89,27 @@ final class GmailSyncService: NSObject, ObservableObject {
 
     var isConnected: Bool { KeychainHelper.read(keychainRefreshKey) != nil }
 
+    /// Whether a Google sign-in is saved on this device. It is cleared the
+    /// moment Google refuses it, so this is the real connection state.
+    nonisolated static var hasSavedSignIn: Bool {
+        KeychainHelper.read("gmail_refresh_token") != nil
+    }
+
+    /// Asks Google whether the saved sign-in still works: false once Google
+    /// has ended it (the dead token is then cleared), nil when Google
+    /// couldn't be reached. Costs nothing while the access token is fresh.
+    func verifyConnection() async -> Bool? {
+        guard isConnected else { return false }
+        do {
+            try await ensureAccessToken()
+            return true
+        } catch GmailSyncError.reconnectNeeded {
+            return false
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: Connect (first-time OAuth)
 
     /// Presents Google sign-in and stores the refresh token.
