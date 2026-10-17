@@ -15,7 +15,7 @@ struct SettingsView: View {
     /// Cleared to show the welcome tour again (ContentView watches it).
     @AppStorage("hasSeenWelcomeTour.v1") private var hasSeenWelcomeTour = true
     @AppStorage("financeGmailGuideSeen.v1") private var gmailGuideSeen = true
-    @AppStorage("financeAddGuideSeen.v1") private var addGuideSeen = true
+    @AppStorage("financeCoachSeen.v1") private var financeCoachSeen = true
     @State private var showProUpgrade     = false
     @State private var showSharing        = false
 
@@ -629,7 +629,7 @@ struct SettingsView: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                             hasSeenWelcomeTour = false
                             gmailGuideSeen = false
-                            addGuideSeen = false
+                            financeCoachSeen = false
                         }
                     } label: {
                         Label("Show welcome tour & tips", systemImage: "sparkles")

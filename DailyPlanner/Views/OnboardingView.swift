@@ -440,3 +440,176 @@ struct FinanceGuideOverlay: View {
         }
     }
 }
+
+// MARK: - Finance Tracker coach marks
+
+/// The four things the first Finance Tracker tour points at, in order.
+enum FinanceCoachTarget: Int, CaseIterable, Hashable {
+    case gmail, transactions, addIncome, addExpense
+
+    var title: String {
+        switch self {
+        case .gmail:        return "Expense Sync from Gmail"
+        case .transactions: return "Transactions"
+        case .addIncome:    return "Add Income"
+        case .addExpense:   return "Add Expense"
+        }
+    }
+
+    var text: String {
+        switch self {
+        case .gmail:
+            return "Optional — link Gmail whenever you're ready and your bank alerts become expenses for you to review. Read-only, and stored only on this device."
+        case .transactions:
+            return "Every entry for the month. Filter by category, and edit or delete any of them — totals update straight away."
+        case .addIncome:
+            return "Salary, refunds, money received — add it here."
+        case .addExpense:
+            return "Cash, transfers or anything without a bank alert. Pick a category to keep your breakdown accurate."
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .gmail:        return Color(red: 0.86, green: 0.27, blue: 0.22)
+        case .transactions: return Color(red: 0.25, green: 0.45, blue: 0.95)
+        case .addIncome:    return Color(red: 0.1, green: 0.65, blue: 0.35)
+        case .addExpense:   return .red
+        }
+    }
+}
+
+/// Where each target sits on screen, gathered from the views themselves.
+struct FinanceCoachKey: PreferenceKey {
+    static var defaultValue: [FinanceCoachTarget: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [FinanceCoachTarget: Anchor<CGRect>],
+                       nextValue: () -> [FinanceCoachTarget: Anchor<CGRect>]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
+extension View {
+    /// Marks this view as a coach-mark target.
+    func financeCoach(_ target: FinanceCoachTarget) -> some View {
+        anchorPreference(key: FinanceCoachKey.self, value: .bounds) { [target: $0] }
+    }
+}
+
+/// Dims the page, cuts a highlight around the target, and shows a bubble
+/// with an arrow pointing at it.
+struct FinanceCoachOverlay: View {
+    let target: FinanceCoachTarget
+    /// Where the target is; nil when it isn't on screen. Resolved in this
+    /// overlay's own space, so the cut-out lines up however far it extends.
+    let anchor: Anchor<CGRect>?
+    let index: Int
+    let count: Int
+    let onNext: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        GeometryReader { geo in
+            let hole = anchor.map { geo[$0].insetBy(dx: -6, dy: -6) }
+            let size = geo.size
+            // Bubble below the target when it's in the top half, else above.
+            let below = (hole?.midY ?? size.height / 2) < size.height * 0.5
+            let bubbleWidth = min(size.width - 32, 320)
+            let arrowX = min(max((hole?.midX ?? size.width / 2), 40), size.width - 40)
+
+            ZStack(alignment: .topLeading) {
+                // Dim with a cut-out.
+                Path { p in
+                    p.addRect(CGRect(origin: .zero, size: size))
+                    if let hole = hole { p.addRoundedRect(in: hole, cornerSize: CGSize(width: 16, height: 16)) }
+                }
+                .fill(Color.black.opacity(0.55), style: FillStyle(eoFill: true))
+                .contentShape(Rectangle())
+                .onTapGesture { onNext() }
+
+                if let hole = hole {
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(target.color, lineWidth: 2.5)
+                        .frame(width: hole.width, height: hole.height)
+                        .offset(x: hole.minX, y: hole.minY)
+                        .allowsHitTesting(false)
+                }
+
+                if let hole = hole {
+                    // The arrow's tip touches the highlight.
+                    if below {
+                        callout(below: true, arrowX: arrowX, bubbleWidth: bubbleWidth, width: size.width)
+                            .frame(width: size.width, height: max(size.height - hole.maxY - 2, 0), alignment: .top)
+                            .offset(y: hole.maxY + 2)
+                    } else {
+                        callout(below: false, arrowX: arrowX, bubbleWidth: bubbleWidth, width: size.width)
+                            .frame(width: size.width, height: max(hole.minY - 2, 0), alignment: .bottom)
+                    }
+                } else {
+                    bubble.frame(width: bubbleWidth)
+                        .frame(width: size.width, height: size.height)
+                }
+            }
+        }
+        .ignoresSafeArea()
+        .transition(.opacity)
+    }
+
+    private func callout(below: Bool, arrowX: CGFloat, bubbleWidth: CGFloat, width: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            if below { arrow(up: true).offset(x: arrowX - width / 2) }
+            bubble.frame(width: bubbleWidth)
+            if !below { arrow(up: false).offset(x: arrowX - width / 2) }
+        }
+        .frame(width: width)
+    }
+
+    private func arrow(up: Bool) -> some View {
+        Triangle()
+            .fill(Color(.systemBackground))
+            .frame(width: 22, height: 12)
+            .rotationEffect(.degrees(up ? 0 : 180))
+    }
+
+    private var bubble: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("\(index + 1) of \(count)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(target.color)
+                Spacer()
+                Button("Skip", action: onSkip)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            Text(target.title)
+                .font(.system(size: 17, weight: .heavy))
+            Text(target.text)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action: onNext) {
+                Text(index + 1 < count ? "Next" : "Got it")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Capsule().fill(target.color))
+            }
+            .buttonStyle(TilePressStyle())
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground)))
+        .shadow(color: .black.opacity(0.2), radius: 14, y: 6)
+    }
+
+    private struct Triangle: Shape {
+        func path(in rect: CGRect) -> Path {
+            Path { p in
+                p.move(to: CGPoint(x: rect.midX, y: rect.minY))
+                p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+                p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+                p.closeSubpath()
+            }
+        }
+    }
+}

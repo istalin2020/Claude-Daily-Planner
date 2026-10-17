@@ -19,11 +19,12 @@ struct ExpenseTrackerView: View {
     @State private var hasCheckedClipboard = false
     @State private var showGmailSync = false
     @State private var showTransactions = false
-    /// Guides shown the first time the user reaches for Gmail sync or for
-    /// Add Income / Add Expense — never just for opening the page.
+    /// The Gmail explainer, shown the first time the user taps Gmail sync.
     @AppStorage("financeGmailGuideSeen.v1") private var gmailGuideSeen = false
-    @AppStorage("financeAddGuideSeen.v1") private var addGuideSeen = false
     @State private var activeGuide: FinanceGuideOverlay.Guide? = nil
+    /// First-visit tips pointing at Gmail sync, Transactions and the add buttons.
+    @AppStorage("financeCoachSeen.v1") private var coachSeen = false
+    @State private var coachStep: FinanceCoachTarget? = nil
 
     var entry: DailyEntry { vm.currentEntry }
     private var sym: String { vm.settings.currency.symbol }
@@ -50,6 +51,7 @@ struct ExpenseTrackerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+        ScrollViewReader { scrollProxy in
         ScrollView {
             VStack(spacing: 0) {
                 // 1 ── Income & Expense list table ─────────────────────
@@ -170,12 +172,29 @@ struct ExpenseTrackerView: View {
                 Text("Delete \"\(item.description)\" (\(item.isIncome ? "+" : item.isDeposit ? "+" : "-")\(sym)\(String(format: "%.2f", item.amount)))?")
             }
         }
+        .onChange(of: coachStep) { _, step in
+            // Bring a tip's target into view; the add buttons are always visible.
+            guard let step = step, step == .gmail || step == .transactions else { return }
+            withAnimation(.easeInOut(duration: 0.3)) { scrollProxy.scrollTo(step, anchor: .center) }
+        }
+        }
 
         // ── Fixed bottom bar: always one tap away ──────────────────────
         if !vm.isFuture {
             bottomAddBar
         }
         }
+        .overlayPreferenceValue(FinanceCoachKey.self) { anchors in
+            Group {
+                if let step = coachStep {
+                    FinanceCoachOverlay(target: step, anchor: anchors[step],
+                                        index: coachSteps.firstIndex(of: step) ?? 0,
+                                        count: coachSteps.count,
+                                        onNext: advanceCoach, onSkip: finishCoach)
+                }
+            }
+        }
+        .onAppear(perform: startCoachIfNeeded)
     }
 
     // MARK: - Category Pie Chart
@@ -273,17 +292,40 @@ struct ExpenseTrackerView: View {
         if pro.isPro { showGmailSync = true } else { showProUpgrade = true }
     }
 
-    /// The add form, with the two adding tips the very first time.
     private func startAdding() {
-        if addGuideSeen { showAddSheet = true } else { withAnimation { activeGuide = .adding } }
+        showAddSheet = true
     }
 
     private func finishGuide(_ guide: FinanceGuideOverlay.Guide) {
-        switch guide {
-        case .gmail:  gmailGuideSeen = true
-        case .adding: addGuideSeen = true
-        }
+        if guide == .gmail { gmailGuideSeen = true }
         withAnimation { activeGuide = nil }
+    }
+
+    /// The tips for what's on screen: no Gmail or add buttons on a future day.
+    private var coachSteps: [FinanceCoachTarget] {
+        vm.isFuture ? [.transactions] : FinanceCoachTarget.allCases
+    }
+
+    private func startCoachIfNeeded() {
+        guard !coachSeen, coachStep == nil else { return }
+        // A moment for the page to settle so the highlights land in place.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            guard !coachSeen, activeGuide == nil, !showSMSImport else { return }
+            withAnimation(.easeInOut(duration: 0.25)) { coachStep = coachSteps.first }
+        }
+    }
+
+    private func advanceCoach() {
+        let steps = coachSteps
+        guard let step = coachStep, let i = steps.firstIndex(of: step), i + 1 < steps.count else {
+            finishCoach(); return
+        }
+        withAnimation(.easeInOut(duration: 0.25)) { coachStep = steps[i + 1] }
+    }
+
+    private func finishCoach() {
+        coachSeen = true
+        withAnimation(.easeInOut(duration: 0.2)) { coachStep = nil }
     }
 
     // MARK: - Quick Add Buttons
@@ -296,10 +338,12 @@ struct ExpenseTrackerView: View {
                              fg: Color(red: 0.1, green: 0.65, blue: 0.35)) {
                 addMode = .income; startAdding()
             }
+            .financeCoach(.addIncome)
             FinanceAddButton(label: "Add Expense", icon: "minus.circle.fill",
                              bg: Color.red.opacity(0.1), fg: .red) {
                 addMode = .expense; startAdding()
             }
+            .financeCoach(.addExpense)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -346,6 +390,8 @@ struct ExpenseTrackerView: View {
                 .foregroundColor(Color(red: 0.85, green: 0.2, blue: 0.2))
                 .cornerRadius(14)
             }
+            .financeCoach(.gmail)
+            .id(FinanceCoachTarget.gmail)
             .padding(.horizontal, 16)
         }
     }
@@ -508,6 +554,8 @@ struct ExpenseTrackerView: View {
                     .foregroundColor(AppSection.expenseTracker.color)
                     .cornerRadius(12)
                 }
+                .financeCoach(.transactions)
+                .id(FinanceCoachTarget.transactions)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 14)
             }
