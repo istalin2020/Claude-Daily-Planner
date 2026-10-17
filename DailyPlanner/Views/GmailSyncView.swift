@@ -206,6 +206,9 @@ struct GmailSyncView: View {
                         .padding(.horizontal, 24)
                 }
 
+                // Where the email data goes — before and after connecting.
+                GmailPrivacyNote()
+
                 infoCard
                 Spacer(minLength: 20)
             }

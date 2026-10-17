@@ -195,6 +195,33 @@ struct OnboardingView: View {
     }
 }
 
+// MARK: - Gmail privacy note
+
+/// What happens to email data, shown wherever Gmail sync starts. Worded to
+/// stay true with iCloud Sync on (the user's own iCloud) and with the
+/// Sharing feature (only what the user chooses to share).
+struct GmailPrivacyNote: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.green)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Your data stays with you")
+                    .font(.system(size: 13, weight: .bold))
+                Text("Emails are read on this iPhone only. The transactions and subscriptions found are stored on this device (and in your own iCloud, if iCloud Sync is on). Nothing is sent to the app developer or shared with other users — unless you choose to share a list yourself.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Color.green.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.green.opacity(0.25), lineWidth: 1))
+    }
+}
+
 // MARK: - Connect Gmail
 
 /// Links the user's Gmail account, read-only. Used on the tour's Finance page
@@ -257,11 +284,7 @@ struct ConnectGmailCard: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 4)
             } else if !compact && connected.isEmpty {
-                Text("Read-only: the app reads bank alerts and receipts to fill your trackers. It never sends, changes or deletes email, and what it reads is processed on your iPhone.")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 4)
+                GmailPrivacyNote()
             }
         }
     }
@@ -308,7 +331,7 @@ struct FinanceGuideOverlay: View {
     private let tips: [Tip] = [
         Tip(icon: "envelope.badge.fill", color: Color(red: 0.86, green: 0.27, blue: 0.22),
             title: "Bring in your bank alerts",
-            text: "Connect Gmail once and the app reads your bank and card alert emails, then turns each one into an expense for you to review before it's added. It also finds your subscriptions and their renewal dates. Access is read-only — nothing is sent, changed or deleted."),
+            text: "Connect Gmail once and the app reads your bank and card alert emails, then turns each one into an expense for you to review before it's added. It also finds your subscriptions and their renewal dates. Access is read-only, and everything it finds is stored only on this device — never shared with other users or the app developer."),
         Tip(icon: "plus.circle.fill", color: Color(red: 0.1, green: 0.65, blue: 0.35),
             title: "Add anything yourself",
             text: "Use Add Income and Add Expense at the bottom for cash, transfers or anything without an alert. Pick a category so your breakdown and budgets stay accurate."),
