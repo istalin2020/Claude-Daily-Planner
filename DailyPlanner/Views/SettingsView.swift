@@ -12,6 +12,8 @@ struct SettingsView: View {
     @State private var showExport         = false
     @State private var showWeeklySummary  = false
     @State private var showPomodoro       = false
+    /// Cleared to show the welcome tour again (ContentView watches it).
+    @AppStorage("hasSeenWelcomeTour.v1") private var hasSeenWelcomeTour = true
     @State private var showProUpgrade     = false
     @State private var showSharing        = false
 
@@ -619,6 +621,12 @@ struct SettingsView: View {
                         Text("Version")
                         Spacer()
                         Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.1").foregroundColor(.secondary).font(.caption)
+                    }
+                    Button {
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { hasSeenWelcomeTour = false }
+                    } label: {
+                        Label("Show welcome tour", systemImage: "sparkles")
                     }
                 }
             }

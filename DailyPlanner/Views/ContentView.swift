@@ -17,6 +17,8 @@ struct ContentView: View {
     @State private var activeForm: QuickForm? = nil
     /// The bar steps aside while typing, instead of riding up on the keyboard.
     @State private var keyboardShown = false
+    /// The three-page welcome tour, shown once, on the first launch.
+    @AppStorage("hasSeenWelcomeTour.v1") private var hasSeenWelcomeTour = false
 
     /// The front page draws its own header.
     private var isHome: Bool { vm.selectedSection == .overview && vm.activeHub == nil }
@@ -62,6 +64,13 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardShown = false
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { !hasSeenWelcomeTour },
+            set: { shown in if !shown { hasSeenWelcomeTour = true } }
+        )) {
+            OnboardingView { hasSeenWelcomeTour = true }
+                .environmentObject(vm)
         }
         .sheet(isPresented: $showQuickTodo) {
             QuickTodoSheet()

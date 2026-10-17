@@ -69,7 +69,7 @@ enum GmailSyncError: LocalizedError {
         switch self {
         case .notConfigured:   return "Gmail sync isn't configured yet. Add your Google OAuth Client ID in GmailSyncService.swift."
         case .cancelled:       return "Sign-in was cancelled."
-        case .authFailed(let m): return "Google sign-in failed: \(m)"
+        case .authFailed(let m): return m
         case .network(let m):  return "Couldn't reach Gmail: \(m)"
         case .noRefreshToken:  return "Gmail isn't connected. Please connect your account first."
         case .reconnectNeeded: return "Your Gmail connection has expired. Tap “Reconnect Gmail” to sign in again."
@@ -292,14 +292,24 @@ final class GmailSyncService: NSObject, ObservableObject {
                     if nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
                         continuation.resume(throwing: GmailSyncError.cancelled)
                     } else {
-                        continuation.resume(throwing: GmailSyncError.authFailed(error.localizedDescription))
+                        continuation.resume(throwing: GmailSyncError.authFailed("Google sign-in failed: " + error.localizedDescription))
                     }
                     return
                 }
-                guard let callbackURL = callbackURL,
-                      let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
-                        .queryItems?.first(where: { $0.name == "code" })?.value else {
-                    continuation.resume(throwing: GmailSyncError.authFailed("No authorization code returned."))
+                let items = callbackURL.flatMap {
+                    URLComponents(url: $0, resolvingAgainstBaseURL: false)?.queryItems
+                } ?? []
+                // Google says why it didn't hand over a code — most often the
+                // person tapped Cancel on its permission screen.
+                if let reason = items.first(where: { $0.name == "error" })?.value {
+                    let message = reason == "access_denied"
+                        ? "Google didn't give access to Gmail. Sign in again and allow access to read your bank and subscription emails — the app only reads, and never sends or deletes anything."
+                        : "Google sign-in stopped (\(reason)). Please try again."
+                    continuation.resume(throwing: GmailSyncError.authFailed(message))
+                    return
+                }
+                guard let code = items.first(where: { $0.name == "code" })?.value else {
+                    continuation.resume(throwing: GmailSyncError.authFailed("Google didn't finish signing in. Please try again."))
                     return
                 }
                 continuation.resume(returning: code)
@@ -369,11 +379,11 @@ final class GmailSyncService: NSObject, ObservableObject {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let msg = String(data: data, encoding: .utf8) ?? "Unknown token error"
-            throw GmailSyncError.authFailed(msg)
+            throw GmailSyncError.authFailed("Google sign-in failed: " + msg)
         }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let access = json["access_token"] as? String else {
-            throw GmailSyncError.authFailed("Malformed token response.")
+            throw GmailSyncError.authFailed("Google sign-in failed: malformed token response.")
         }
         let refresh   = json["refresh_token"] as? String
         let expires   = (json["expires_in"] as? Double) ?? 3600

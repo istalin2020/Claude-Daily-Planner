@@ -34,7 +34,14 @@ struct SubscriptionsView: View {
 
         ScrollView {
             LazyVStack(spacing: 14) {
-                if !vm.settings.gmailConnectedEmail.isEmpty { gmailScanRow }
+                if vm.settings.gmailConnectedEmail.isEmpty {
+                    // Not linked yet: link here, then search straight away.
+                    ConnectGmailCard {
+                        Task { await scanGmail() }
+                    }
+                } else {
+                    gmailScanRow
+                }
 
                 if let next = active.first {
                     nextUpCard(next)

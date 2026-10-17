@@ -22,6 +22,7 @@
 		AA260000000000000000001A /* WaterTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA250000000000000000001A /* WaterTrackerView.swift */; };
 		AA280000000000000000001A /* FoodTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA270000000000000000001A /* FoodTrackerView.swift */; };
 		AA780000000000000000009A /* MealPresetPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA790000000000000000009A /* MealPresetPicker.swift */; };
+		AA78000000000000000000CA /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79000000000000000000CA /* OnboardingView.swift */; };
 		AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA290000000000000000001A /* DailyScheduleView.swift */; };
 		AA2C0000000000000000001A /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B0000000000000000001A /* AppointmentsView.swift */; };
 		AA2E0000000000000000001A /* NotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2D0000000000000000001A /* NotesView.swift */; };
@@ -89,6 +90,7 @@
 		AA250000000000000000001A /* WaterTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterTrackerView.swift; sourceTree = "<group>"; };
 		AA270000000000000000001A /* FoodTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodTrackerView.swift; sourceTree = "<group>"; };
 		AA790000000000000000009A /* MealPresetPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPresetPicker.swift; sourceTree = "<group>"; };
+		AA79000000000000000000CA /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		AA290000000000000000001A /* DailyScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScheduleView.swift; sourceTree = "<group>"; };
 		AA2B0000000000000000001A /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
 		AA2D0000000000000000001A /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
@@ -262,6 +264,7 @@
 				AA250000000000000000001A /* WaterTrackerView.swift */,
 				AA270000000000000000001A /* FoodTrackerView.swift */,
 				AA790000000000000000009A /* MealPresetPicker.swift */,
+				AA79000000000000000000CA /* OnboardingView.swift */,
 				AA290000000000000000001A /* DailyScheduleView.swift */,
 				AA2B0000000000000000001A /* AppointmentsView.swift */,
 				AA2D0000000000000000001A /* NotesView.swift */,
@@ -498,6 +501,7 @@
 				AA260000000000000000001A /* WaterTrackerView.swift in Sources */,
 				AA280000000000000000001A /* FoodTrackerView.swift in Sources */,
 				AA780000000000000000009A /* MealPresetPicker.swift in Sources */,
+				AA78000000000000000000CA /* OnboardingView.swift in Sources */,
 				AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */,
 				AA2C0000000000000000001A /* AppointmentsView.swift in Sources */,
 				AA2E0000000000000000001A /* NotesView.swift in Sources */,
