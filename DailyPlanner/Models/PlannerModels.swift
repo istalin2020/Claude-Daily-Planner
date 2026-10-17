@@ -1398,7 +1398,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .topPriorities: return "star.fill"
         case .toDoLists: return "list.bullet.clipboard.fill"
         case .callsEmails: return "phone.fill"
-        case .personalTodo: return "checkmark.circle.fill"
+        case .personalTodo: return "person.fill"
         case .healthFitness: return "figure.run"
         case .waterTracker: return "drop.fill"
         case .foodTracker: return "fork.knife"
