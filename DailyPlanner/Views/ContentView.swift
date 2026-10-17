@@ -80,6 +80,7 @@ struct ContentView: View {
         .sheet(item: $quickTab, onDismiss: runPendingAction) { tab in
             QuickActionsSheet(tab: tab) { pendingAction = $0 }
                 .environmentObject(vm)
+                .environmentObject(pro)
                 .presentationDetents([.medium, .large])
         }
         .sheet(item: $activeForm) { form in
@@ -131,6 +132,11 @@ struct ContentView: View {
         switch action {
         case .open(let section):
             withAnimation(.easeInOut(duration: 0.25)) { vm.selectedSection = section }
+        case .openHub(let group):
+            withAnimation(.easeInOut(duration: 0.25)) {
+                vm.selectedSection = .overview
+                vm.activeHub = group
+            }
         case .form(let form):
             activeForm = form
         case .addWater:

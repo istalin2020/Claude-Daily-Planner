@@ -1191,6 +1191,8 @@ struct QuickTodoSheet: View {
 /// What a quick action does once its card is tapped.
 enum QuickAction {
     case open(AppSection)
+    /// A group's front page, e.g. My Schedule with its three tiles.
+    case openHub(HomeTileGroup)
     case form(QuickForm)
     case addWater
 }
@@ -1207,6 +1209,8 @@ struct QuickActionItem: Identifiable {
     let icon: String
     let color: Color
     let action: QuickAction
+    /// Shows the PRO badge for users who haven't upgraded.
+    var proOnly: Bool = false
     var id: String { title }
 }
 
@@ -1242,14 +1246,14 @@ extension HomeTab {
             ]
         case .schedule:
             return [
+                .init(title: "New Schedule", detail: "Add a time block to your day plan", icon: "clock.fill",
+                      color: .rgb(90, 120, 245), action: .form(.timeBlock)),
                 .init(title: "New appointment", detail: "With a time and reminder", icon: "calendar.badge.plus",
                       color: .rgb(142, 108, 245), action: .form(.appointment)),
-                .init(title: "Plan a time block", detail: "Add to today's day plan", icon: "clock.fill",
-                      color: .rgb(90, 120, 245), action: .form(.timeBlock)),
                 .init(title: "Subscriptions", detail: "Upcoming renewals", icon: "repeat.circle.fill",
-                      color: .rgb(106, 69, 224), action: .open(.subscriptions)),
-                .init(title: "Open My Schedule", detail: "Day plan and appointments", icon: "calendar",
-                      color: .rgb(120, 90, 230), action: .open(.dailySchedule)),
+                      color: .rgb(106, 69, 224), action: .open(.subscriptions), proOnly: true),
+                .init(title: "Open My Schedule", detail: "Day plan, appointments and subscriptions", icon: "calendar",
+                      color: .rgb(120, 90, 230), action: .openHub(.schedule)),
             ]
         case .journal:
             return [
@@ -1277,6 +1281,7 @@ extension HomeTab {
 /// A half-height page of large action cards for one area.
 struct QuickActionsSheet: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     @Environment(\.dismiss) private var dismiss
     let tab: HomeTab
     /// Runs after the sheet is gone, so a follow-up sheet or page can open.
@@ -1316,9 +1321,12 @@ struct QuickActionsSheet: View {
                 .frame(width: 44, height: 44)
                 .background(RoundedRectangle(cornerRadius: 13).fill(item.color))
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.primary)
+                HStack(spacing: 6) {
+                    Text(item.title)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.primary)
+                    if item.proOnly && !pro.isPro { ProInlineBadge() }
+                }
                 Text(isWater ? "\(e.waterGlasses) of \(e.waterGoal) glasses today" : item.detail)
                     .font(.caption)
                     .foregroundColor(.secondary)

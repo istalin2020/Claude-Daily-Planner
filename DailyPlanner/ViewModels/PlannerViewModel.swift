@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 import Combine
-import WidgetKit
 
 class PlannerViewModel: ObservableObject {
     @Published var selectedDate: Date = Calendar.current.startOfDay(for: Date())
@@ -2194,9 +2193,8 @@ class PlannerViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Widget refresh is EXPENSIVE (WidgetCenter.reloadAllTimelines runs on
-        // the main thread) — doing it per keystroke made typing feel laggy.
-        // Debounce so widgets refresh once, shortly after edits stop.
+        // Today's snapshot for the "Check Today's Habits" Siri shortcut,
+        // written once shortly after edits stop.
         $entries
             .dropFirst()
             .debounce(for: .seconds(1), scheduler: RunLoop.main)
@@ -2550,7 +2548,7 @@ class PlannerViewModel: ObservableObject {
         return result
     }
 
-    // MARK: - Widget Shared Data Model (mirrors WidgetSharedData in the widget extension)
+    // MARK: - Shared snapshot (read by the Siri shortcut in AppShortcuts.swift)
 
     struct WidgetSharedData: Codable {
         var dateKey: String
@@ -2564,7 +2562,7 @@ class PlannerViewModel: ObservableObject {
         var waterGoal: Int
     }
 
-    // MARK: - Widget Data
+    // MARK: - Shortcut data
 
     func updateWidgetData() {
         let suiteName = "group.com.istalin.DailyPlanner"
@@ -2587,7 +2585,6 @@ class PlannerViewModel: ObservableObject {
         if let data = try? JSONEncoder().encode(shared) {
             defaults.set(data, forKey: "widget_data")
         }
-        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - Summary helpers
