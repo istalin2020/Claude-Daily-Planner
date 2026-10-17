@@ -564,7 +564,7 @@ struct SettingsView: View {
                                     Text("Upgrade to PRO")
                                         .font(.system(size: 14, weight: .bold))
                                         .foregroundColor(.primary)
-                                    Text("₹99/month · ₹999/year · Unlock all 15 features")
+                                    Text("\(pro.monthlyPriceString)/month · \(pro.yearlyPriceString)/year · Unlock all \(ProUpgradeView.features.count) features")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }

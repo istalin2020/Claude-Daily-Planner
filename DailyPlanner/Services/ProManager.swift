@@ -303,7 +303,7 @@ struct ProGate<Content: View>: View {
                         VStack(spacing: 8) {
                             Text("\(featureName) is PRO")
                                 .font(.title3).fontWeight(.bold)
-                            Text("Upgrade to unlock all 15 premium features including\nHabit Tracker, Sleep Tracker, Medication Reminders,\nPomodoro Timer, Spending Trends and more.")
+                            Text("Upgrade to unlock all \(ProUpgradeView.features.count) premium features including\nSubscription Schedule, Gmail Expense Sync, AI Calorie Calculator,\nSpending Trends, Habit Tracker and more.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)

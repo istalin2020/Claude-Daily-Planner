@@ -14,23 +14,29 @@ struct ProUpgradeView: View {
 
     enum PlanType { case monthly, yearly }
 
-    private let proFeatures: [(icon: String, name: String, desc: String)] = [
-        ("icloud.fill",              "iCloud Sync",           "Sync across all your Apple devices"),
-        ("square.and.arrow.up.fill", "Task Sharing",          "Share task categories & receive notifications when accepted"),
-        ("arrow.clockwise",          "Recurring Tasks",        "Daily, weekly & monthly auto-scheduling"),
-        ("magnifyingglass",          "Global Search",          "Search tasks, notes & expenses instantly"),
-        ("arrow.up.doc.fill",        "PDF & CSV Export",       "Export your planner data anytime"),
-        ("timer",                    "Pomodoro Timer",         "Stay focused with timed work sessions"),
-        ("checkmark.circle.fill",    "Habit Tracker",          "Build streaks & lasting daily habits"),
-        ("dollarsign.circle.fill",   "Budget Limits",          "Set spending caps per category"),
-        ("moon.zzz.fill",            "Sleep Tracker",          "Log sleep & monitor quality over time"),
-        ("calendar.badge.clock",     "Weekly/Monthly Summary", "Aggregated insights across any period"),
-        ("mic.fill",                 "Siri Shortcuts",         "Voice commands & Shortcuts app actions"),
-        ("list.bullet.indent",       "Task Notes & Subtasks",  "Break tasks into actionable steps"),
+    private var proFeatures: [(icon: String, name: String, desc: String)] { Self.features }
+
+    /// Everything PRO unlocks, most wanted first. Its count is quoted in
+    /// Settings and on locked pages, so it stays right when this changes.
+    static let features: [(icon: String, name: String, desc: String)] = [
+        ("icloud.fill",              "iCloud Sync",            "Sync across all your Apple devices"),
+        ("repeat.circle.fill",       "Subscription Schedule",  "Every renewal from Gmail, by category"),
+        ("envelope.badge.fill",      "Gmail Expense Sync",     "Bank alerts in Gmail become expenses for you to review"),
+        ("fork.knife.circle.fill",   "AI Calorie Calculator (GPT)", "Snap or type a meal for calories & macros"),
         ("chart.bar.fill",           "Spending Trends",        "Visual charts of your expense history"),
         ("paintpalette.fill",        "Color Themes",           "8 beautiful accent colors for the app"),
         ("pill.fill",                "Medication Reminders",   "Never miss a dose with smart reminders"),
-        ("repeat.circle.fill",       "Subscription Schedule",  "Every renewal from Gmail, by category"),
+        ("checkmark.circle.fill",    "Habit Tracker",          "Build streaks & lasting daily habits"),
+        ("mic.fill",                 "Siri Shortcuts",         "Voice commands & Shortcuts app actions"),
+        ("arrow.clockwise",          "Recurring Tasks",        "Daily, weekly & monthly auto-scheduling"),
+        ("magnifyingglass",          "Global Search",          "Search tasks, notes & expenses instantly"),
+        ("square.and.arrow.up.fill", "Task Sharing",           "Share task categories & receive notifications when accepted"),
+        ("arrow.up.doc.fill",        "PDF & CSV Export",       "Export your planner data anytime"),
+        ("timer",                    "Pomodoro Timer",         "Stay focused with timed work sessions"),
+        ("dollarsign.circle.fill",   "Budget Limits",          "Set spending caps per category"),
+        ("moon.zzz.fill",            "Sleep Tracker",          "Log sleep & monitor quality over time"),
+        ("calendar.badge.clock",     "Weekly/Monthly Summary", "Aggregated insights across any period"),
+        ("list.bullet.indent",       "Task Notes & Subtasks",  "Break tasks into actionable steps"),
     ]
 
     var body: some View {
@@ -89,7 +95,7 @@ struct ProUpgradeView: View {
                         }
                         return ""
                     }()
-                    Text("Your \(info.planName) subscription is now active.\n\nPlan: \(info.planName)\nPrice: \(info.price)\nStarted: \(ProManager.formattedDate(info.purchaseDate))\n\(renewalText)\n\nAll 16 premium features are now unlocked. Enjoy!")
+                    Text("Your \(info.planName) subscription is now active.\n\nPlan: \(info.planName)\nPrice: \(info.price)\nStarted: \(ProManager.formattedDate(info.purchaseDate))\n\(renewalText)\n\nAll \(Self.features.count) premium features are now unlocked. Enjoy!")
                 } else {
                     Text("Your PRO subscription is now active. All premium features are unlocked!")
                 }
@@ -130,7 +136,7 @@ struct ProUpgradeView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
 
-                Text("Unlock all 16 premium features and\ntake full control of your day.")
+                Text("Unlock all \(Self.features.count) premium features and\ntake full control of your day.")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.80))
                     .multilineTextAlignment(.center)
@@ -251,7 +257,7 @@ struct ProUpgradeView: View {
             let monthlyEquiv = y.price / 12
             return y.priceFormatStyle.format(monthlyEquiv) + "/mo"
         }
-        return "₹83.25/mo"
+        return "₹83/mo"
     }
 
     private func planCard(type: PlanType, topBadge: String?, title: String,
