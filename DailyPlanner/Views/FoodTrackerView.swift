@@ -30,6 +30,7 @@ struct FoodTrackerView: View {
     /// Set by the PRO sheet just before it dismisses, so its `onDismiss` can
     /// reopen the on-device sheet with the same shot instead of losing it.
     @State private var fallbackImage: UIImage? = nil
+    @State private var showUpgrade = false
 
     /// PRO users get cloud analysis unless they've switched it off, or the
     /// build has no service configured.
@@ -51,6 +52,12 @@ struct FoodTrackerView: View {
                                        fiber:   entry.meals.totalFiber,
                                        iron:    entry.meals.totalIron)
                         .padding(.horizontal, 16).padding(.top, 8)
+                }
+
+                // ── How to add food ──────────────────────────────────────────
+                if !vm.isFuture {
+                    FoodTipNote(isPro: pro.isPro) { showUpgrade = true }
+                        .padding(.horizontal, 16).padding(.top, 10)
                 }
 
                 // ── Meal sections ────────────────────────────────────────────
@@ -79,6 +86,9 @@ struct FoodTrackerView: View {
 
                 Spacer(minLength: 40)
             }
+        }
+        .sheet(isPresented: $showUpgrade) {
+            ProUpgradeView().environmentObject(pro)
         }
         // Ready-made dishes by cuisine, already worked out.
         .sheet(isPresented: $showPresets) {
@@ -183,6 +193,51 @@ struct FoodTrackerView: View {
 /// A read-only summary strip. Styled as a tinted capsule with a caption
 /// label and a big number so it clearly reads as an output, never as a
 /// text field waiting for input.
+/// A two-line note above the meals: snap a photo for the calories (PRO), or
+/// add food yourself. Free users can tap it to see PRO.
+private struct FoodTipNote: View {
+    let isPro: Bool
+    let onUpgrade: () -> Void
+
+    var body: some View {
+        Button { if !isPro { onUpgrade() } } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(Color.orange))
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(isPro ? "Snap your meal" : "Snap your meal with PRO")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.primary)
+                        if !isPro { ProInlineBadge() }
+                    }
+                    Text(isPro
+                         ? "Tap 📷 and ChatGPT works out the calories. Or add food yourself with + or Choose."
+                         : "Take a photo and ChatGPT works out the calories. Or add food yourself with + or Choose — free.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                if !isPro {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.6))
+                        .padding(.top, 8)
+                }
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color.orange.opacity(0.10)))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.orange.opacity(0.25), lineWidth: 1))
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
 private struct CalorieBanner: View {
     let total: Int
 
