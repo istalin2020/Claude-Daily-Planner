@@ -219,6 +219,8 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.topPriorities.firstIndex(where: { $0.id == original.id }) {
             e.topPriorities[i] = updated
+            // Newer than any saved or iCloud copy, so a merge keeps this edit.
+            e.topPriorities[i].touch()
         }
         currentEntry = e
     }
@@ -278,6 +280,8 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.toDoLists.firstIndex(where: { $0.id == original.id }) {
             e.toDoLists[i] = updated
+            // Newer than any saved or iCloud copy, so a merge keeps this edit.
+            e.toDoLists[i].touch()
         }
         currentEntry = e
     }
@@ -371,6 +375,8 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.callsEmails.firstIndex(where: { $0.id == original.id }) {
             e.callsEmails[i] = updated
+            // Newer than any saved or iCloud copy, so a merge keeps this edit.
+            e.callsEmails[i].touch()
         }
         currentEntry = e
     }
@@ -502,6 +508,8 @@ class PlannerViewModel: ObservableObject {
         var e = currentEntry
         if let i = e.personalTodo.firstIndex(where: { $0.id == original.id }) {
             e.personalTodo[i] = updated
+            // Newer than any saved or iCloud copy, so a merge keeps this edit.
+            e.personalTodo[i].touch()
         }
         currentEntry = e
     }
