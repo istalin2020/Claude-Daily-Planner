@@ -44,30 +44,41 @@ struct HealthHubPage: View {
 
     var body: some View {
         GeometryReader { geo in
+            // Everything is sized to the screen so the page sits still, like
+            // the front page. Only a phone too short for the minimum tile
+            // sizes scrolls, and it doesn't bounce once the content fits.
             let spacing: CGFloat = 8
             let side: CGFloat = 10
+            let header: CGFloat = 86
+            let dateCard: CGFloat = 100
             let tileWidth = (geo.size.width - side * 2 - spacing) / 2
+            let free = geo.size.height - 2 - header - dateCard - spacing * 2 - spacing * 2 - 4
+            let rows = max(free, 450)
+            let row1 = max(170, rows * 0.38)
+            let row2 = (rows - row1) / 2
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 12) {
+                VStack(spacing: spacing) {
                     HealthHeader(onBack: goHome, onToday: {
                         withAnimation(.spring(response: 0.3)) { vm.selectToday() }
                         recenter += 1
                     })
+                    .frame(height: header)
                     .padding(.horizontal, 6)
 
                     HealthDateCard(recenter: recenter)
+                        .frame(height: dateCard)
 
                     VStack(spacing: spacing) {
-                        row(spacing) {
+                        row(spacing, height: row1) {
                             StepsTile(hourly: hourlySteps) { open(.healthFitness) }
                             WaterTile { open(.waterTracker) }
                         }
-                        row(spacing) {
+                        row(spacing, height: row2) {
                             FoodTile { open(.foodTracker) }
                             SleepTile { open(.sleepTracker) }
                         }
-                        row(spacing) {
+                        row(spacing, height: row2) {
                             MedsTile { open(.medications) }
                             HabitsTile { open(.habits) }
                         }
@@ -75,8 +86,8 @@ struct HealthHubPage: View {
                     .environment(\.healthTitleSize, Self.titleSize(for: tileWidth))
                 }
                 .padding(.horizontal, side)
-                .padding(.top, 4)
-                .padding(.bottom, 24)
+                .padding(.top, 2)
+                .padding(.bottom, 4)
             }
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -85,20 +96,21 @@ struct HealthHubPage: View {
         .onChange(of: vm.selectedDate) { _, _ in loadHourlySteps() }
     }
 
-    /// Two tiles side by side, the same height.
-    private func row<C: View>(_ spacing: CGFloat, @ViewBuilder _ content: () -> C) -> some View {
-        HStack(alignment: .top, spacing: spacing) { content() }
-            .fixedSize(horizontal: false, vertical: true)
+    /// Two tiles side by side, filling the row.
+    private func row<C: View>(_ spacing: CGFloat, height: CGFloat,
+                              @ViewBuilder _ content: () -> C) -> some View {
+        HStack(spacing: spacing) { content() }
+            .frame(height: height)
     }
 
     /// One title size for every tile: the largest at which the longest name
     /// still fits beside the icon and chevron.
     private static func titleSize(for tileWidth: CGFloat) -> CGFloat {
-        // tile padding 24, icon 42, gaps 8 + 6, chevron 9
+        // tile padding 20, icon 34, gaps 8 + 8, chevron 9, a little slack
         let room = tileWidth - 89
         let width = ("Steps & Activity" as NSString)
             .size(withAttributes: [.font: UIFont.systemFont(ofSize: 16, weight: .bold)]).width
-        return min(16, max(11, 16 * room / max(width, 1)))
+        return min(15, max(11, 16 * room / max(width, 1)))
     }
 
     private func loadHourlySteps() {
@@ -143,10 +155,11 @@ private struct HealthHeader: View {
         ZStack(alignment: .topTrailing) {
             // Leaves and a heart behind the Today button, as on the design.
             HeaderArt()
-                .offset(x: 18, y: 34)
+                .scaleEffect(0.8, anchor: .topTrailing)
+                .offset(x: 14, y: 30)
                 .allowsHitTesting(false)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Button(action: onBack) {
                         HStack(spacing: 4) {
@@ -168,7 +181,7 @@ private struct HealthHeader: View {
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.primary)
                         }
-                        .padding(.horizontal, 14).padding(.vertical, 9)
+                        .padding(.horizontal, 13).padding(.vertical, 6)
                         .background(Capsule().fill(HealthStyle.card))
                         .shadow(color: .black.opacity(0.07), radius: 8, y: 3)
                     }
@@ -177,18 +190,18 @@ private struct HealthHeader: View {
 
                 HStack(alignment: .top, spacing: 6) {
                     Text("Health Tracker")
-                        .font(.system(size: 32, weight: .heavy))
+                        .font(.system(size: 28, weight: .heavy))
                         .foregroundColor(.primary)
                         .lineLimit(1).minimumScaleFactor(0.7)
                     Image(systemName: "heart")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundColor(HealthTheme.steps.accent)
-                        .padding(.top, 4)
+                        .padding(.top, 3)
                 }
-                .padding(.top, 6)
+                .padding(.top, 2)
 
                 Text("Small habits. A healthier, happier you")
-                    .font(.system(size: 14))
+                    .font(.system(size: 13))
                     .foregroundColor(.secondary)
                     .lineLimit(1).minimumScaleFactor(0.8)
             }
@@ -249,12 +262,12 @@ private struct HealthDateCard: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 4) {
             HStack(spacing: 22) {
                 monthButton("chevron.left", by: -1)
                 Button { showMonthWheel = true } label: {
                     Text(Self.monthFormat.string(from: vm.selectedDate))
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundColor(.primary)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -279,9 +292,10 @@ private struct HealthDateCard: View {
                 .onChange(of: recenter) { _, _ in scroll(proxy, animated: true) }
             }
         }
-        .padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 24).fill(HealthStyle.card))
-        .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(Color.primary.opacity(0.04), lineWidth: 1))
+        .padding(.vertical, 7)
+        .frame(maxHeight: .infinity)
+        .background(RoundedRectangle(cornerRadius: 20).fill(HealthStyle.card))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.04), lineWidth: 1))
         .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
         .sheet(isPresented: $showMonthWheel) {
             MonthYearWheel()
@@ -297,9 +311,9 @@ private struct HealthDateCard: View {
             }
         } label: {
             Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.primary)
-                .frame(width: 30, height: 30)
+                .frame(width: 28, height: 26)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -320,21 +334,21 @@ private struct HealthDateCard: View {
         let today = cal.isDateInToday(day)
         let hasData = vm.entries[vm.dateKey(for: day)]?.hasData ?? false
 
-        return VStack(spacing: 5) {
+        return VStack(spacing: 3) {
             Text(Self.weekdayFormat.string(from: day))
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(selected ? .white.opacity(0.92) : .secondary)
             Text("\(cal.component(.day, from: day))")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundColor(selected ? .white : .primary)
             Circle()
                 .fill(selected ? Color.white : HealthStyle.blue)
-                .frame(width: 5, height: 5)
+                .frame(width: 4, height: 4)
                 .opacity(hasData || selected ? 1 : 0)
         }
-        .frame(width: 37, height: 62)
+        .frame(width: 34, height: 56)
         .background(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(selected
                       ? AnyShapeStyle(LinearGradient(colors: [hc(40, 150, 255), hc(12, 104, 240)],
                                                      startPoint: .top, endPoint: .bottom))
@@ -342,10 +356,10 @@ private struct HealthDateCard: View {
                 .shadow(color: selected ? HealthStyle.blue.opacity(0.25) : .clear, radius: 5, y: 2)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(HealthStyle.blue.opacity(today && !selected ? 0.35 : 0), lineWidth: 1.2)
         )
-        .padding(.horizontal, 1.5)
+        .padding(.horizontal, 1)
         .contentShape(Rectangle())
     }
 }
@@ -371,20 +385,20 @@ private struct HealthTile<Content: View, Art: View>: View {
                 LinearGradient(colors: [theme.accent.opacity(0.11), theme.accent.opacity(0.04)],
                                startPoint: .topLeading, endPoint: .bottomTrailing)
                 art
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .center, spacing: 8) {
                         Image(systemName: icon)
-                            .font(.system(size: 19, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(LinearGradient(colors: [theme.accent, theme.deep],
                                                             startPoint: .top, endPoint: .bottom))
-                            .frame(width: 42, height: 42)
+                            .frame(width: 34, height: 34)
                             .background(Circle().fill(HealthStyle.card))
                             .shadow(color: .black.opacity(0.06), radius: 5, y: 2)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(title)
                                 .font(.system(size: titleSize, weight: .bold))
                                 .foregroundColor(.primary)
-                                .lineLimit(1)
+                                .lineLimit(1).minimumScaleFactor(0.8)
                             Text(subtitle)
                                 .font(.system(size: max(10, titleSize - 4)))
                                 .foregroundColor(.secondary)
@@ -397,7 +411,7 @@ private struct HealthTile<Content: View, Art: View>: View {
                     }
                     content
                 }
-                .padding(12)
+                .padding(.horizontal, 10).padding(.vertical, 9)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .clipShape(RoundedRectangle(cornerRadius: 22))
@@ -418,12 +432,12 @@ private struct BigFigure: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
             Text(value)
-                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                .font(.system(size: 24, weight: .heavy, design: .rounded))
                 .foregroundColor(color)
                 .lineLimit(1).minimumScaleFactor(0.6)
             if !unit.isEmpty {
                 Text(unit)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -442,9 +456,9 @@ private struct TileActionBar: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
-                    .font(.system(size: 13, weight: .heavy))
+                    .font(.system(size: 12, weight: .heavy))
                     .foregroundColor(.white)
-                    .frame(width: 26, height: 26)
+                    .frame(width: 22, height: 22)
                     .background(Circle().fill(LinearGradient(colors: [theme.accent, theme.deep],
                                                              startPoint: .top, endPoint: .bottom)))
                 Text(title)
@@ -460,7 +474,7 @@ private struct TileActionBar: View {
                         .foregroundColor(.secondary.opacity(0.7))
                 }
             }
-            .padding(.leading, 7).padding(.trailing, 10).padding(.vertical, 7)
+            .padding(.leading, 5).padding(.trailing, 10).padding(.vertical, 4)
             .background(Capsule().fill(HealthStyle.inner))
             .overlay(Capsule().strokeBorder(theme.accent.opacity(0.10), lineWidth: 1))
             .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
@@ -489,15 +503,15 @@ private struct StepsTile: View {
 
         HealthTile(theme: theme, icon: "shoeprints.fill", title: "Steps & Activity",
                    subtitle: "Move more, feel better", action: action) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(steps.formatted())
-                            .font(.system(size: 26, weight: .heavy, design: .rounded))
+                            .font(.system(size: 24, weight: .heavy, design: .rounded))
                             .foregroundColor(theme.deep)
                             .lineLimit(1).minimumScaleFactor(0.6)
                         Text("steps today")
-                            .font(.system(size: 13))
+                            .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
                     Spacer(minLength: 4)
@@ -524,7 +538,7 @@ private struct StepsTile: View {
                             .frame(width: max(fraction > 0 ? 8 : 0, g.size.width * fraction))
                     }
                 }
-                .frame(height: 8)
+                .frame(height: 7)
 
                 HStack {
                     Text("\(Int((fraction * 100).rounded()))% of \(goal.formatted()) steps")
@@ -542,30 +556,35 @@ private struct StepsTile: View {
         }
     }
 
+    /// Hourly bars that take whatever height the tile has left, so the
+    /// tile has no empty band at the bottom.
     private func chart(_ theme: HealthTheme) -> some View {
         let values = hours.map { hourly.indices.contains($0) ? hourly[$0] : 0 }
         let peak = max(values.max() ?? 0, 1)
 
-        return VStack(spacing: 4) {
-            HStack(alignment: .bottom, spacing: 0) {
-                ForEach(values.indices, id: \.self) { i in
-                    let v = values[i]
-                    Group {
-                        if v > 0 {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(LinearGradient(colors: [theme.accent, theme.accent.opacity(0.75)],
-                                                     startPoint: .top, endPoint: .bottom))
-                                .frame(width: 5, height: max(5, CGFloat(v / peak) * 34))
-                        } else {
-                            Circle()
-                                .fill(theme.accent.opacity(0.35))
-                                .frame(width: 3.5, height: 3.5)
+        return VStack(spacing: 3) {
+            GeometryReader { g in
+                HStack(alignment: .bottom, spacing: 0) {
+                    ForEach(values.indices, id: \.self) { i in
+                        let v = values[i]
+                        Group {
+                            if v > 0 {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(LinearGradient(colors: [theme.accent, theme.accent.opacity(0.75)],
+                                                         startPoint: .top, endPoint: .bottom))
+                                    .frame(width: 5, height: max(5, CGFloat(v / peak) * (g.size.height - 2)))
+                            } else {
+                                Circle()
+                                    .fill(theme.accent.opacity(0.35))
+                                    .frame(width: 3.5, height: 3.5)
+                            }
                         }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
                 }
+                .frame(width: g.size.width, height: g.size.height, alignment: .bottom)
             }
-            .frame(height: 36, alignment: .bottom)
+            .frame(minHeight: 14, maxHeight: .infinity)
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(theme.accent.opacity(0.18))
@@ -576,7 +595,7 @@ private struct StepsTile: View {
             HStack {
                 Text("6am"); Spacer(); Text("12pm"); Spacer(); Text("6pm"); Spacer(); Text("12am")
             }
-            .font(.system(size: 10))
+            .font(.system(size: 9.5))
             .foregroundColor(.secondary)
         }
     }
@@ -598,9 +617,9 @@ private struct WaterTile: View {
 
         HealthTile(theme: theme, icon: "drop.fill", title: "Water Tracker",
                    subtitle: "Stay hydrated", action: action) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 (Text("\(glasses)")
-                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
                     .foregroundColor(theme.deep)
                  + Text("  of  ").font(.system(size: 14)).foregroundColor(.secondary)
                  + Text("\(goal)").font(.system(size: 18, weight: .heavy)).foregroundColor(.primary)
@@ -618,7 +637,7 @@ private struct WaterTile: View {
                             .overlay(GlassShape().stroke(theme.accent.opacity(full ? 0.9 : 0.4),
                                                          style: StrokeStyle(lineWidth: 1.4, lineJoin: .round)))
                             .frame(maxWidth: 18)
-                            .frame(height: 22)
+                            .frame(height: 20)
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 guard !vm.isFuture else { action(); return }
@@ -627,7 +646,9 @@ private struct WaterTile: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
+                Spacer(minLength: 0)
+
+                VStack(alignment: .leading, spacing: 6) {
                     Text("\(Int((fraction * 100).rounded()))% of goal")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
@@ -642,27 +663,25 @@ private struct WaterTile: View {
                     }
                     .frame(height: 7)
                 }
-                .padding(12)
-                .background(RoundedRectangle(cornerRadius: 16).fill(HealthStyle.inner))
-
-                Spacer(minLength: 30)   // room for the water at the bottom
+                .padding(.horizontal, 11).padding(.vertical, 9)
+                .background(RoundedRectangle(cornerRadius: 14).fill(HealthStyle.inner))
             }
         } art: {
             ZStack(alignment: .bottomTrailing) {
                 WaterWave()
                     .fill(LinearGradient(colors: [theme.accent.opacity(0.30), theme.accent.opacity(0.55)],
                                          startPoint: .top, endPoint: .bottom))
-                    .frame(height: 40)
+                    .frame(height: 34)
                 Image(systemName: "drop.fill")
-                    .font(.system(size: 20))
+                    .font(.system(size: 18))
                     .foregroundColor(theme.accent.opacity(0.55))
                     .rotationEffect(.degrees(25))
-                    .offset(x: -14, y: -30)
+                    .offset(x: -12, y: -26)
                 Image(systemName: "drop.fill")
                     .font(.system(size: 11))
                     .foregroundColor(theme.accent.opacity(0.45))
                     .rotationEffect(.degrees(-20))
-                    .offset(x: -36, y: -24)
+                    .offset(x: -32, y: -21)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
@@ -719,24 +738,25 @@ private struct FoodTile: View {
 
         HealthTile(theme: theme, icon: "fork.knife", title: "Food Tracker",
                    subtitle: "Eat healthy, stay strong", action: action) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 2) {
                     BigFigure(value: "\(kcal)", unit: "kcal", color: theme.deep)
                     Text(kcal > 0 ? "logged today" : "No meals yet")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 4)
                 if !vm.isFuture {
                     TileActionBar(title: "Add Meal", theme: theme, action: action)
                 }
             }
         } art: {
             Text("🥗")
-                .font(.system(size: 54))
+                .font(.system(size: 44))
                 .shadow(color: theme.accent.opacity(0.15), radius: 6, y: 3)
                 .padding(.trailing, 8)
-                .padding(.bottom, vm.isFuture ? 10 : 50)
+                .padding(.bottom, vm.isFuture ? 10 : 46)
         }
     }
 }
@@ -755,23 +775,24 @@ private struct SleepTile: View {
 
         HealthTile(theme: theme, icon: "moon.fill", title: "Sleep Tracker",
                    subtitle: "Rest for a brighter you", action: action) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 2) {
                     if logged {
                         BigFigure(value: sleep.durationString, unit: "slept", color: theme.deep)
                     } else {
                         Text("Not logged yet")
-                            .font(.system(size: 17, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundColor(theme.deep)
                             .lineLimit(1).minimumScaleFactor(0.7)
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 3)
                     }
                     Text(logged ? "Last night" : "Tap to add your sleep")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                         .lineLimit(1).minimumScaleFactor(0.8)
                 }
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 4)
                 TileActionBar(title: "Log Sleep", theme: theme, proLocked: !pro.isPro, action: action)
             }
         } art: {
@@ -798,7 +819,7 @@ private struct SleepTile: View {
                     .offset(x: -60, y: -34)
             }
             .padding(.trailing, 10)
-            .padding(.bottom, 54)
+            .padding(.bottom, 46)
         }
     }
 }
@@ -817,15 +838,16 @@ private struct MedsTile: View {
 
         HealthTile(theme: theme, icon: "pills.fill", title: "Medications",
                    subtitle: "Stay on track", action: action) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 2) {
                     BigFigure(value: "\(active)", unit: active == 1 ? "medication" : "medications",
                               color: theme.deep)
                     Text(active == 0 ? "None active" : "\(taken) taken today")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 4)
                 TileActionBar(title: "Add Medication", theme: theme, proLocked: !pro.isPro, action: action)
             }
         } art: {
@@ -840,7 +862,7 @@ private struct MedsTile: View {
                     .foregroundColor(theme.accent.opacity(0.22))
             }
             .padding(.trailing, 12)
-            .padding(.bottom, 56)
+            .padding(.bottom, 46)
         }
     }
 }
@@ -859,15 +881,16 @@ private struct HabitsTile: View {
 
         HealthTile(theme: theme, icon: "scope", title: "Habit Tracker",
                    subtitle: "Build better habits", action: action) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 2) {
                     BigFigure(value: habits.isEmpty ? "0" : "\(done)/\(habits.count)",
                               unit: habits.isEmpty ? "habits" : "done", color: theme.deep)
                     Text(habits.isEmpty ? "None yet" : "habits today")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 4)
                 TileActionBar(title: "Add Habit", theme: theme, proLocked: !pro.isPro, action: action)
             }
         } art: {
@@ -876,7 +899,7 @@ private struct HabitsTile: View {
                 .foregroundColor(theme.accent.opacity(0.20))
                 .rotationEffect(.degrees(8))
                 .padding(.trailing, 12)
-                .padding(.bottom, 56)
+                .padding(.bottom, 46)
         }
     }
 }
