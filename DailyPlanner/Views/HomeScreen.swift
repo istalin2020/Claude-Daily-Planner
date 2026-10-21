@@ -524,7 +524,7 @@ private struct HomeTile<Content: View, Art: View>: View {
                                 .fill(LinearGradient(colors: [theme.accent, theme.accentDeep],
                                                      startPoint: .topLeading, endPoint: .bottomTrailing))
                                 .frame(width: 36, height: 36)
-                                .shadow(color: theme.accent.opacity(0.35), radius: 5, y: 2)
+                                .shadow(color: theme.accent.opacity(0.20), radius: 4, y: 2)
                             Image(systemName: icon)
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(.white)
@@ -555,11 +555,14 @@ private struct HomeTile<Content: View, Art: View>: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .clipShape(RoundedRectangle(cornerRadius: 22))
+            // A thin border in the tile's colour and a barely-there shadow,
+            // rather than a bright glow.
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .strokeBorder(theme.accent.opacity(0.35), lineWidth: 1.1)
+                    .strokeBorder(theme.accent.opacity(0.20), lineWidth: 0.8)
             )
-            .shadow(color: theme.accent.opacity(0.14), radius: 10, y: 4)
+            .shadow(color: theme.accent.opacity(0.06), radius: 8, y: 3)
+            .shadow(color: .black.opacity(0.03), radius: 2, y: 1)
         }
         .buttonStyle(TilePressStyle())
     }
