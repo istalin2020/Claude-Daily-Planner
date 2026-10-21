@@ -302,6 +302,34 @@ final class HealthKitManager {
         store.execute(query)
     }
 
+    // MARK: - Hourly steps (Health Tracker chart)
+
+    /// Steps in each hour of the day, 24 values, on the main thread. Empty
+    /// when HealthKit isn't available.
+    func fetchHourlySteps(for date: Date, completion: @escaping ([Double]) -> Void) {
+        guard isAvailable, let type = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
+            completion([]); return
+        }
+        let (start, end) = dayBounds(date)
+        let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let q = HKStatisticsCollectionQuery(quantityType: type,
+                                            quantitySamplePredicate: pred,
+                                            options: .cumulativeSum,
+                                            anchorDate: start,
+                                            intervalComponents: DateComponents(hour: 1))
+        q.initialResultsHandler = { _, results, _ in
+            var hours = Array(repeating: 0.0, count: 24)
+            results?.enumerateStatistics(from: start, to: end) { stats, _ in
+                let h = Calendar.current.component(.hour, from: stats.startDate)
+                if hours.indices.contains(h) {
+                    hours[h] += stats.sumQuantity()?.doubleValue(for: .count()) ?? 0
+                }
+            }
+            DispatchQueue.main.async { completion(hours) }
+        }
+        store.execute(q)
+    }
+
     // MARK: - Helper
     private func dayBounds(_ date: Date) -> (Date, Date) {
         let cal   = Calendar.current

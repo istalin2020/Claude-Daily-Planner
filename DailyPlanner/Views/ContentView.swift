@@ -22,18 +22,20 @@ struct ContentView: View {
 
     /// The front page draws its own header.
     private var isHome: Bool { vm.selectedSection == .overview && vm.activeHub == nil }
+    /// So does the Health Tracker page, with its own back button and date card.
+    private var isHealthHub: Bool { vm.selectedSection == .overview && vm.activeHub == .health }
 
     var body: some View {
         VStack(spacing: 0) {
             // App Header
-            if !isHome {
+            if !isHome && !isHealthHub {
                 AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
             }
 
             // The front page is a clean tile dashboard. Hub pages and every
             // section get a back bar above a compact date picker — the
             // horizontal category band is gone entirely.
-            if vm.selectedSection == .overview, let hub = vm.activeHub {
+            if vm.selectedSection == .overview, let hub = vm.activeHub, hub != .health {
                 hubTopBar(hub)
                 DateScrollerView(compact: true)
             } else if vm.selectedSection != .overview {
@@ -241,6 +243,8 @@ struct ContentView: View {
             if let hub = vm.activeHub {
                 if hub == .tasks {
                     TasksHubView()
+                } else if hub == .health {
+                    HealthHubPage()
                 } else {
                     GroupHubView(group: hub)
                 }

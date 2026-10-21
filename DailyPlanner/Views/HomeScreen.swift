@@ -379,7 +379,7 @@ struct HomeDateCard: View {
 }
 
 /// Month and year on two wheels, opened from the month title.
-private struct MonthYearWheel: View {
+struct MonthYearWheel: View {
     @EnvironmentObject var vm: PlannerViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var month = 1
@@ -446,7 +446,7 @@ private struct MonthYearWheel: View {
 }
 
 /// Pick any date from a month calendar.
-private struct HomeCalendarSheet: View {
+struct HomeCalendarSheet: View {
     @EnvironmentObject var vm: PlannerViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var date = Date()
