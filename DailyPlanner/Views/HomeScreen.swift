@@ -67,6 +67,7 @@ struct HomeFrontPage: View {
     let onSettings: () -> Void
 
     @State private var showUpgrade = false
+    @State private var showAddExpense = false
 
     var body: some View {
         GeometryReader { geo in
@@ -104,7 +105,8 @@ struct HomeFrontPage: View {
                     .frame(height: row1)
 
                     HStack(spacing: spacing) {
-                        FinanceTile { open(.finance) }
+                        FinanceTile(action: { open(.finance) },
+                                    onAddExpense: { showAddExpense = true })
                         ScheduleTile { open(.schedule) }
                     }
                     .frame(height: row2)
@@ -122,6 +124,13 @@ struct HomeFrontPage: View {
         .background(HomeBackground().ignoresSafeArea())
         .sheet(isPresented: $showUpgrade) {
             ProUpgradeView().environmentObject(pro)
+        }
+        .sheet(isPresented: $showAddExpense) {
+            AddTransactionSheet(mode: .expense, currencySymbol: vm.settings.currency.symbol) {
+                vm.addExpense($0)
+            }
+            .environmentObject(vm)
+            .environmentObject(pro)
         }
     }
 
@@ -773,6 +782,8 @@ private struct HealthTile: View {
 private struct FinanceTile: View {
     @EnvironmentObject var vm: PlannerViewModel
     let action: () -> Void
+    /// Opens the expense form right here on the front page.
+    let onAddExpense: () -> Void
 
     /// Spending in each of the last three weeks, oldest first, for the bars.
     private var weeklySpend: [Double] {
@@ -819,6 +830,29 @@ private struct FinanceTile: View {
             }
             .padding(10)
             .tileInset()
+
+            // Nothing can be spent on a day that hasn't come yet.
+            if !vm.isFuture {
+                Button(action: onAddExpense) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 15, weight: .bold))
+                        Text("Add Expense")
+                            .font(.system(size: 13.5, weight: .bold))
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(
+                        Capsule().fill(LinearGradient(colors: [theme.accent, theme.accentDeep],
+                                                      startPoint: .leading, endPoint: .trailing))
+                    )
+                    .shadow(color: theme.accent.opacity(0.3), radius: 4, y: 2)
+                }
+                .buttonStyle(TilePressStyle())
+                .accessibilityLabel("Add expense")
+            }
         } art: {
             EmptyView()
         }
@@ -833,11 +867,27 @@ private struct FinanceTile: View {
 
 private struct ScheduleTile: View {
     @EnvironmentObject var vm: PlannerViewModel
+    @EnvironmentObject var pro: ProManager
     let action: () -> Void
 
     private static let time: DateFormatter = {
         let f = DateFormatter(); f.timeStyle = .short; return f
     }()
+
+    private static let due: DateFormatter = {
+        let f = DateFormatter(); f.setLocalizedDateFormatFromTemplate("d MMM"); return f
+    }()
+
+    /// "Today", "Tomorrow", "in 5 days" — or the date when it's further off.
+    private static func dueText(_ sub: Subscription) -> String {
+        let days = sub.daysUntilDue
+        switch days {
+        case ..<1: return "Due today"
+        case 1:    return "Due tomorrow"
+        case 2...7: return "Due \(due.string(from: sub.nextDue)) · in \(days) days"
+        default:   return "Due \(due.string(from: sub.nextDue))"
+        }
+    }
 
     var body: some View {
         let e = vm.currentEntry
@@ -865,9 +915,54 @@ private struct ScheduleTile: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
             .tileInset()
+
+            nextRenewal(theme)
         } art: {
             TileArt(symbol: "calendar", color: theme.accentDeep, size: 40, rotation: 8)
                 .padding(.trailing, 12).padding(.bottom, 8)
+        }
+    }
+}
+
+extension ScheduleTile {
+    /// The next subscription payment, in the tile's own colours. Free users
+    /// see that it's a PRO feature.
+    @ViewBuilder
+    fileprivate func nextRenewal(_ theme: HomeTileTheme) -> some View {
+        if !pro.isPro {
+            HStack(spacing: 8) {
+                Image(systemName: "repeat.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(theme.accentDeep)
+                Text("Next renewal")
+                    .font(.system(size: 12.5, weight: .bold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                ProInlineBadge()
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 14).fill(theme.accent.opacity(0.14)))
+        } else if let sub = vm.nextSubscription {
+            let soon = sub.daysUntilDue <= 2
+            HStack(spacing: 8) {
+                BrandTile(sub: sub, size: 28)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(sub.name)
+                        .font(.system(size: 12.5, weight: .bold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                    Text(Self.dueText(sub))
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundColor(soon ? .orange : theme.accentDeep)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(8)
+            .background(RoundedRectangle(cornerRadius: 14).fill(theme.accent.opacity(0.14)))
+            .overlay(RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(theme.accent.opacity(0.25), lineWidth: 1))
         }
     }
 }
