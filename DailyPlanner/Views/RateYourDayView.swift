@@ -148,16 +148,23 @@ struct RateYourDayView: View {
         max(rating.productivity, max(rating.mood, rating.health))
     }
 
-    private var overallScore: Int {
-        guard hasRating else { return 0 }
+    private var overallScore: Int { rating.overallScore }
+    private var overallEmoji: String { rating.overallEmoji }
+    private var overallMessage: String { rating.overallMessage }
+}
+
+// The day's reflection, shared by this page and the Notes & Journal tile.
+extension DayRating {
+    /// The average of the categories rated, 0 when none are.
+    var overallScore: Int {
         var total = 0, count = 0
-        if rating.productivity > 0 { total += rating.productivity; count += 1 }
-        if rating.mood > 0 { total += rating.mood; count += 1 }
-        if rating.health > 0 { total += rating.health; count += 1 }
+        if productivity > 0 { total += productivity; count += 1 }
+        if mood > 0 { total += mood; count += 1 }
+        if health > 0 { total += health; count += 1 }
         return count > 0 ? Int(round(Double(total) / Double(count))) : 0
     }
 
-    private var overallEmoji: String {
+    var overallEmoji: String {
         switch overallScore {
         case 0: return "📊"
         case 1: return "😔"
@@ -168,7 +175,7 @@ struct RateYourDayView: View {
         }
     }
 
-    private var overallMessage: String {
+    var overallMessage: String {
         switch overallScore {
         case 0: return "Rate your day below"
         case 1: return "Tough day — tomorrow is a new start"

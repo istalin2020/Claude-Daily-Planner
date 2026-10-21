@@ -80,8 +80,8 @@ struct HomeFrontPage: View {
             let dateCard: CGFloat = 112
             let free = geo.size.height - headerTop - header - dateCard - spacing * 4 - 4
             let rows = max(free, 470)
-            let row1 = rows * 0.42
-            let row2 = rows * 0.37
+            let row1 = rows * 0.40
+            let row2 = rows * 0.36
             let row3 = rows - row1 - row2   // Notes & Journal, the shortest
             // One title size for every tile: the largest at which the longest
             // name ("Finance Tracker") still fits a half-width tile.
@@ -979,16 +979,35 @@ private struct JournalTile: View {
     var body: some View {
         let e = vm.currentEntry
         let theme = HomeTileTheme.journal
-        let status: String? = {
-            if !e.notes.isEmpty && e.rating.mood > 0 { return "Note written · Day rated" }
-            if !e.notes.isEmpty { return "Note written today" }
-            if e.rating.mood > 0 { return "Day rated" }
-            return nil
-        }()
+        let score = e.rating.overallScore
 
         HomeTile(theme: theme, icon: "square.and.pencil", title: "Notes & Journal",
-                 subtitle: status ?? "Capture thoughts, ideas and memories", action: action) {
-            EmptyView()
+                 subtitle: e.notes.isEmpty ? "Capture thoughts, ideas and memories" : "Note written today",
+                 action: action) {
+            // The day's reflection in one row: mood, message, stars, score.
+            HStack(spacing: 8) {
+                Text(score > 0 ? e.rating.overallEmoji : "✨")
+                    .font(.system(size: 20))
+                Text(score > 0 ? e.rating.overallMessage : "How was your day? Rate it")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1).minimumScaleFactor(0.75)
+                Spacer(minLength: 4)
+                HStack(spacing: 2) {
+                    ForEach(1...5, id: \.self) { i in
+                        Image(systemName: i <= score ? "star.fill" : "star")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(i <= score ? theme.accent : theme.accentDeep.opacity(0.35))
+                    }
+                }
+                if score > 0 {
+                    Text("\(score)/5")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundColor(theme.accentDeep)
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 8)
+            .tileInset()
         } art: {
             TileArt(symbol: "doc.plaintext.fill", color: theme.accentDeep, size: 62, rotation: 10)
                 .padding(.trailing, 40)
