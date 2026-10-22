@@ -16,7 +16,6 @@ struct ExpenseTrackerView: View {
     @State private var editingExpense: Expense? = nil
     @State private var showSMSImport = false
     @State private var detectedSMS: ParsedTransaction? = nil
-    @State private var hasCheckedClipboard = false
     @State private var showGmailSync = false
     @State private var showTransactions = false
     /// The Gmail explainer, shown the first time the user taps Gmail sync.
@@ -143,19 +142,9 @@ struct ExpenseTrackerView: View {
             }
             .environmentObject(vm)
         }
-        .onAppear {
-            guard vm.settings.smartBankSMSEnabled else { return }
-            hasCheckedClipboard = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                guard let text = UIPasteboard.general.string, !text.isEmpty else { return }
-                let hash = String(text.hashValue)
-                guard !vm.settings.dismissedSMSHashes.contains(hash) else { return }
-                if BankSMSParser.looksLikeBankSMS(text), let result = BankSMSParser.parse(text) {
-                    detectedSMS = result
-                    showSMSImport = true
-                }
-            }
-        }
+        // The clipboard is no longer read on opening the page: iOS asks
+        // "allow paste?" every time an app reads it unprompted. Bank SMS are
+        // pasted from Paste Bank SMS, with the system Paste button.
         .alert("Delete Transaction", isPresented: Binding(
             get: { deleteConfirmItem != nil },
             set: { if !$0 { deleteConfirmItem = nil } }
@@ -1615,18 +1604,15 @@ struct SMSImportWizard: View {
                 }
                 .disabled(smsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                Button {
-                    if let clip = UIPasteboard.general.string, !clip.isEmpty {
-                        smsText = clip
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "doc.on.clipboard")
-                        Text("Paste from Clipboard")
-                    }
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.purple)
+                // The system Paste button reads the clipboard without iOS
+                // asking for permission, because the user tapped it.
+                PasteButton(payloadType: String.self) { strings in
+                    guard let clip = strings.first, !clip.isEmpty else { return }
+                    DispatchQueue.main.async { smsText = clip }
                 }
+                .buttonBorderShape(.capsule)
+                .labelStyle(.titleAndIcon)
+                .tint(.purple)
             }
         }
     }
