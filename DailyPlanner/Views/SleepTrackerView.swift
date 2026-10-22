@@ -53,6 +53,7 @@ struct SleepTrackerView: View {
                 .padding(.vertical, 16)
             }
         }
+        .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showEditSheet) {
             SleepEditSheet(sleep: sleep) { updated in
                 vm.updateSleep(updated)

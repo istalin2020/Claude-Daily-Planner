@@ -43,6 +43,7 @@ struct MedicationTrackerView: View {
                 .padding(.vertical, 16)
             }
         }
+        .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $showAddSheet) {
             MedicationEditSheet(medication: nil) { med in
                 vm.addMedication(med)
