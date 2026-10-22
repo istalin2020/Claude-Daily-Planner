@@ -107,7 +107,8 @@ struct HomeFrontPage: View {
                     HStack(spacing: spacing) {
                         FinanceTile(action: { open(.finance) },
                                     onAddExpense: { showAddExpense = true })
-                        ScheduleTile { open(.schedule) }
+                        ScheduleTile(action: { open(.schedule) },
+                                     openSubscriptions: { openSection(.subscriptions) })
                     }
                     .frame(height: row2)
 
@@ -872,6 +873,8 @@ private struct ScheduleTile: View {
     @EnvironmentObject var vm: PlannerViewModel
     @EnvironmentObject var pro: ProManager
     let action: () -> Void
+    /// The renewal row opens the Subscriptions page itself.
+    let openSubscriptions: () -> Void
 
     private static let time: DateFormatter = {
         let f = DateFormatter(); f.timeStyle = .short; return f
@@ -919,7 +922,8 @@ private struct ScheduleTile: View {
             .padding(10)
             .tileInset()
 
-            nextRenewal(theme)
+            Button(action: openSubscriptions) { nextRenewal(theme) }
+                .buttonStyle(TilePressStyle())
         } art: {
             TileArt(symbol: "calendar", color: theme.accentDeep, size: 40, rotation: 8)
                 .padding(.trailing, 12).padding(.bottom, 8)
