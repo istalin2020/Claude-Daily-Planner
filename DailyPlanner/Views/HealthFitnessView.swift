@@ -14,6 +14,15 @@ struct HealthFitnessView: View {
     var entry: DailyEntry { vm.currentEntry }
     var fitness: FitnessEntry { entry.fitness }
 
+    private var goalsMet: Int {
+        let s = vm.settings
+        return [(fitness.displayWorkoutMinutes, s.workoutTarget),
+                (fitness.displayWalkingMinutes, s.walkingTarget),
+                (fitness.displaySteps, s.stepsTarget),
+                (fitness.displayCalories, s.caloriesTarget)]
+            .filter { $0.1 > 0 && $0.0 >= $0.1 }.count
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -26,120 +35,85 @@ struct HealthFitnessView: View {
                 )
                 .padding(.horizontal, 16).padding(.top, 12)
 
-                // Progress Rings (2×2 grid)
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Today's Progress")
-                        .font(.system(size: 19, weight: .bold))
-                        .padding(.horizontal, 16)
-
+                // Today's Progress — the four goals, with Set Target
+                FitnessCard(color: AppSection.healthFitness.color, icon: "figure.run",
+                            title: vm.isToday ? "Today's Progress" : "Day's Progress",
+                            subtitle: "\(goalsMet) of 4 goals reached") {
+                    FitnessPill(title: "Set Target", icon: "target", color: AppSection.healthFitness.color) {
+                        showTargetsSheet = true
+                    }
+                } content: {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
-                        HealthRingCard(
-                            title: "Workout",
-                            icon: "figure.run",
-                            value: fitness.displayWorkoutMinutes,
-                            target: vm.settings.workoutTarget,
-                            unit: "min",
-                            color: .orange
-                        )
-                        HealthRingCard(
-                            title: "Walking",
-                            icon: "figure.walk",
-                            value: fitness.displayWalkingMinutes,
-                            target: vm.settings.walkingTarget,
-                            unit: "min",
-                            color: .green
-                        )
-                        HealthRingCard(
-                            title: "Steps",
-                            icon: "shoeprints.fill",
-                            value: fitness.displaySteps,
-                            target: vm.settings.stepsTarget,
-                            unit: "steps",
-                            color: .blue
-                        )
-                        HealthRingCard(
-                            title: "Calories",
-                            icon: "flame.fill",
-                            value: fitness.displayCalories,
-                            target: vm.settings.caloriesTarget,
-                            unit: "kcal",
-                            color: .red
-                        )
+                        HealthRingCard(title: "Workout", icon: "figure.run",
+                                       value: fitness.displayWorkoutMinutes,
+                                       target: vm.settings.workoutTarget, unit: "min", color: .orange)
+                        HealthRingCard(title: "Walking", icon: "figure.walk",
+                                       value: fitness.displayWalkingMinutes,
+                                       target: vm.settings.walkingTarget, unit: "min", color: .green)
+                        HealthRingCard(title: "Steps", icon: "shoeprints.fill",
+                                       value: fitness.displaySteps,
+                                       target: vm.settings.stepsTarget, unit: "steps", color: .blue)
+                        HealthRingCard(title: "Calories", icon: "flame.fill",
+                                       value: fitness.displayCalories,
+                                       target: vm.settings.caloriesTarget, unit: "kcal", color: .red)
                     }
-                    .padding(.horizontal, 16)
                 }
-                .padding(.top, 14)
-
-                // Daily Targets — set via a popup instead of inline steppers
-                Button {
-                    showTargetsSheet = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "target")
-                            .font(.system(size: 17, weight: .semibold))
-                        Text("Set Daily Target")
-                            .font(.system(size: 17, weight: .semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 13)
-                    .background(AppSection.healthFitness.color.opacity(0.12))
-                    .foregroundColor(AppSection.healthFitness.color)
-                    .cornerRadius(14)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
+                .padding(.horizontal, 16).padding(.top, 14)
 
                 // From Apple Health — Workouts
                 if !fitness.hkWorkouts.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "heart.fill").foregroundColor(.red).font(.caption)
-                            Text("From Apple Health")
-                                .font(.system(size: 19, weight: .bold))
-                        }
-                        .padding(.horizontal, 16)
-
+                    FitnessCard(color: .red, icon: "heart.fill", title: "From Apple Health",
+                                subtitle: "\(fitness.hkWorkouts.count) workout\(fitness.hkWorkouts.count == 1 ? "" : "s") recorded") {
+                        EmptyView()
+                    } content: {
                         VStack(spacing: 6) {
                             ForEach(fitness.hkWorkouts) { workout in
                                 HKWorkoutRow(workout: workout)
-                                    .padding(.horizontal, 16)
                             }
                         }
                     }
-                    .padding(.top, 20)
+                    .padding(.horizontal, 16).padding(.top, 14)
                 }
 
-                // Manual Activities
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        Text("My Activities")
-                            .font(.system(size: 19, weight: .bold))
-                        Spacer()
-                        if !vm.isFuture {
-                            Button(action: { showAddActivity = true }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 26))
-                                    .foregroundColor(AppSection.healthFitness.color)
-                            }
-                        }
+                // My Activities — the user's own log
+                FitnessCard(color: .purple, icon: "figure.strengthtraining.traditional",
+                            title: "My Activities",
+                            subtitle: fitness.activities.isEmpty
+                                ? "Log your own workouts"
+                                : "\(fitness.activities.filter(\.isCompleted).count) of \(fitness.activities.count) done") {
+                    if !vm.isFuture {
+                        FitnessPill(title: "Add", icon: "plus", color: .purple) { showAddActivity = true }
                     }
-                    .padding(.horizontal, 16).padding(.bottom, 8)
-
+                } content: {
                     if fitness.activities.isEmpty {
-                        EmptySectionView(section: .healthFitness,
-                                         message: "Log your personal workouts and activities")
+                        HStack(spacing: 12) {
+                            Image(systemName: "figure.mixed.cardio")
+                                .font(.system(size: 30))
+                                .foregroundColor(.purple.opacity(0.45))
+                                .frame(width: 48)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("No activities yet")
+                                    .font(.system(size: 16, weight: .bold))
+                                Text("Yoga, gym, cycling, a walk with friends — add anything you did.")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(12)
+                        .background(RoundedRectangle(cornerRadius: 16).fill(Color(.systemBackground)))
                     } else {
                         VStack(spacing: 6) {
                             ForEach(fitness.activities) { activity in
                                 ActivityRowCard(activity: activity) {
                                     vm.toggleFitnessActivity(activity)
                                 }
-                                .padding(.horizontal, 16)
                             }
                         }
                     }
                 }
-                .padding(.top, 20)
+                .padding(.horizontal, 16).padding(.top, 14)
 
                 // Notes
                 NotesCard(title: "Fitness Notes", text: fitness.generalNotes,
@@ -312,6 +286,70 @@ struct AppleHealthSyncBanner: View {
         .background(RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground)))
         .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.red.opacity(0.12), lineWidth: 1))
         .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+    }
+}
+
+// MARK: - Section card (same style as the other redesigned pages)
+
+private struct FitnessCard<Trailing: View, Content: View>: View {
+    let color: Color
+    let icon: String
+    let title: String
+    let subtitle: String
+    @ViewBuilder let trailing: Trailing
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundColor(color)
+                    .frame(width: 46, height: 46)
+                    .background(RoundedRectangle(cornerRadius: 13).fill(color.opacity(0.14)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 19, weight: .bold))
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                    Text(subtitle)
+                        .font(.system(size: 13.5))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                trailing
+            }
+            content
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(LinearGradient(colors: [color.opacity(0.08), color.opacity(0.03)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .background(RoundedRectangle(cornerRadius: 24).fill(Color(.systemBackground)))
+        )
+        .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(color.opacity(0.15), lineWidth: 1))
+        .shadow(color: color.opacity(0.06), radius: 10, y: 4)
+    }
+}
+
+private struct FitnessPill: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 13, weight: .bold))
+                Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+            }
+            .foregroundColor(color)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(Capsule().fill(color.opacity(0.13)))
+        }
+        .buttonStyle(TilePressStyle())
     }
 }
 
