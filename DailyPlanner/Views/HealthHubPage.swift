@@ -62,14 +62,17 @@ struct HealthHubPage: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: spacing) {
-                    HealthHeader(onBack: goHome, onToday: {
+                    CategoryHeader(title: "Health Tracker",
+                                   subtitle: "Small habits. A healthier, happier you",
+                                   titleIcon: "heart", color: hc(245, 100, 150), emblem: "heart.fill",
+                                   onBack: goHome, onToday: {
                         withAnimation(.spring(response: 0.3)) { vm.selectToday() }
                         recenter += 1
                     })
                     .frame(height: header)
                     .padding(.horizontal, 6)
 
-                    HealthDateCard(recenter: recenter)
+                    CategoryDateCard(recenter: recenter)
                         .frame(height: dateCard)
 
                     VStack(spacing: spacing) {
@@ -158,14 +161,26 @@ private extension EnvironmentValues {
 
 // MARK: - Header
 
-private struct HealthHeader: View {
+/// The shared page header of the main category pages, as designed for the
+/// Health Tracker: "‹ Daily Planner" back link and Today at the top, the
+/// page title large at the top left with a small icon, a one-line subtitle,
+/// and leaves with the page's emblem behind Today.
+struct CategoryHeader: View {
+    let title: String
+    let subtitle: String
+    /// Small outline icon after the title.
+    let titleIcon: String
+    /// The page's colour, for the title icon and emblem.
+    let color: Color
+    /// Filled emblem among the leaves.
+    let emblem: String
     let onBack: () -> Void
     let onToday: () -> Void
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            // Leaves and a heart behind the Today button, as on the design.
-            HeaderArt()
+            // Leaves and the page's emblem behind the Today button.
+            HeaderArt(emblem: emblem, color: color)
                 .scaleEffect(0.8, anchor: .topTrailing)
                 .offset(x: 14, y: 30)
                 .allowsHitTesting(false)
@@ -200,18 +215,18 @@ private struct HealthHeader: View {
                 }
 
                 HStack(alignment: .top, spacing: 6) {
-                    Text("Health Tracker")
+                    Text(title)
                         .font(.system(size: 28, weight: .heavy))
                         .foregroundColor(.primary)
                         .lineLimit(1).minimumScaleFactor(0.7)
-                    Image(systemName: "heart")
+                    Image(systemName: titleIcon)
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(HealthTheme.steps.accent)
+                        .foregroundColor(color)
                         .padding(.top, 3)
                 }
                 .padding(.top, 2)
 
-                Text("Small habits. A healthier, happier you")
+                Text(subtitle)
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
                     .lineLimit(1).minimumScaleFactor(0.8)
@@ -221,6 +236,9 @@ private struct HealthHeader: View {
 }
 
 private struct HeaderArt: View {
+    let emblem: String
+    let color: Color
+
     var body: some View {
         ZStack {
             Image(systemName: "leaf.fill")
@@ -238,11 +256,11 @@ private struct HeaderArt: View {
                 .foregroundColor(hc(140, 200, 150).opacity(0.35))
                 .rotationEffect(.degrees(60))
                 .offset(x: 34, y: -6)
-            Image(systemName: "heart.fill")
+            Image(systemName: emblem)
                 .font(.system(size: 34))
-                .foregroundStyle(LinearGradient(colors: [hc(255, 150, 190), hc(245, 100, 150)],
+                .foregroundStyle(LinearGradient(colors: [color.opacity(0.75), color],
                                                 startPoint: .top, endPoint: .bottom))
-                .shadow(color: hc(245, 100, 150).opacity(0.25), radius: 6, y: 3)
+                .shadow(color: color.opacity(0.25), radius: 6, y: 3)
                 .offset(x: -14, y: 6)
         }
         .frame(width: 120, height: 90)
@@ -251,9 +269,12 @@ private struct HeaderArt: View {
 
 // MARK: - Date card
 
-private struct HealthDateCard: View {
+/// The shared date card of the main category pages.
+struct CategoryDateCard: View {
     @EnvironmentObject var vm: PlannerViewModel
     let recenter: Int
+
+    init(recenter: Int) { self.recenter = recenter }
     @State private var showMonthWheel = false
 
     private let cal = Calendar.current

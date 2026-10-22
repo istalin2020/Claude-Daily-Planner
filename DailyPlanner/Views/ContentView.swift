@@ -24,6 +24,46 @@ struct ContentView: View {
     private var isHome: Bool { vm.selectedSection == .overview && vm.activeHub == nil }
     /// So does the Health Tracker page, with its own back button and date card.
     private var isHealthHub: Bool { vm.selectedSection == .overview && vm.activeHub == .health }
+    @State private var headerRecenter = 0
+
+    struct CategoryPage {
+        let title: String, subtitle: String, icon: String, emblem: String, color: Color
+    }
+
+    /// To-Do List, Finance Tracker, My Schedule and Notes & Journal use the
+    /// Health Tracker's header and date card (Health Tracker draws its own).
+    private var categoryPage: CategoryPage? {
+        if vm.selectedSection == .expenseTracker {
+            return CategoryPage(title: "Finance Tracker", subtitle: "Know where your money goes",
+                                icon: "dollarsign.circle", emblem: "dollarsign.circle.fill",
+                                color: HomeTileTheme.finance.accentDeep)
+        }
+        guard vm.selectedSection == .overview, let hub = vm.activeHub else { return nil }
+        switch hub {
+        case .tasks:
+            return CategoryPage(title: "To-Do List", subtitle: "Plan it, do it, tick it off",
+                                icon: "checklist", emblem: "checkmark.circle.fill",
+                                color: HomeTileTheme.todo.accentDeep)
+        case .schedule:
+            return CategoryPage(title: "My Schedule", subtitle: "Plan your day with ease",
+                                icon: "calendar", emblem: "calendar.circle.fill",
+                                color: HomeTileTheme.schedule.accentDeep)
+        case .journal:
+            return CategoryPage(title: "Notes & Journal", subtitle: "Reflect, write and grow",
+                                icon: "square.and.pencil", emblem: "book.closed.fill",
+                                color: HomeTileTheme.journal.accentDeep)
+        default:
+            return nil
+        }
+    }
+
+    private func goHome() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            vm.activeHub = nil
+            vm.selectedSection = .overview
+        }
+    }
+
     /// The main category pages look like the front page: its soft
     /// background (the theme colour for PRO), its header, and the date strip
     /// on a card. To-Do List, Health Tracker, Finance Tracker, My Schedule,
@@ -37,13 +77,23 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             // App Header
-            if usesSoftBlue && !isHealthHub {
-                HomeHeader(onPro: { showUpgrade = true },
-                           onSearch: { showSearch = true },
-                           onSettings: { showSettings = true })
-                    .frame(height: 58)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 6)
+            if let page = categoryPage {
+                // Laid out exactly like the Health Tracker page.
+                VStack(spacing: 8) {
+                    CategoryHeader(title: page.title, subtitle: page.subtitle,
+                                   titleIcon: page.icon, color: page.color, emblem: page.emblem,
+                                   onBack: goHome, onToday: {
+                        withAnimation(.spring(response: 0.3)) { vm.selectToday() }
+                        headerRecenter += 1
+                    })
+                    .frame(height: 86)
+                    .padding(.horizontal, 6)
+                    CategoryDateCard(recenter: headerRecenter)
+                        .frame(height: 100)
+                }
+                .padding(.horizontal, 10)
+                .padding(.top, 2)
+                .padding(.bottom, 4)
             } else if !isHome && !isHealthHub {
                 AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
             }
@@ -51,7 +101,9 @@ struct ContentView: View {
             // The front page is a clean tile dashboard. Hub pages and every
             // section get a back bar above a compact date picker — the
             // horizontal category band is gone entirely.
-            if vm.selectedSection == .overview, let hub = vm.activeHub, hub != .health {
+            if categoryPage != nil {
+                EmptyView()
+            } else if vm.selectedSection == .overview, let hub = vm.activeHub, hub != .health {
                 hubTopBar(hub)
                 DateScrollerView(compact: true, onCard: usesSoftBlue)
             } else if vm.selectedSection != .overview {
