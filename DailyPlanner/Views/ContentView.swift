@@ -124,10 +124,10 @@ struct ContentView: View {
                 vm.activeHub = nil
                 vm.selectedSection = .expenseTracker
             }
+        case .schedule:
+            openHub(.schedule)     // Daily Schedule, Appointments, Subscriptions
         case .journal:
             openHub(.journal)      // Notes and Rate Your Day
-        default:
-            quickTab = tab
         }
     }
 
