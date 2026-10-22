@@ -41,6 +41,9 @@ struct HealthHubPage: View {
     @State private var hourlySteps: [Double] = []
     /// Bumped by Today so the date strip re-centres.
     @State private var recenter = 0
+    /// Add Habit opens the new-habit form here, not the habits list.
+    @State private var showAddHabit = false
+    @State private var showUpgrade = false
 
     var body: some View {
         GeometryReader { geo in
@@ -80,7 +83,9 @@ struct HealthHubPage: View {
                         }
                         row(spacing, height: row2) {
                             MedsTile { open(.medications) }
-                            HabitsTile { open(.habits) }
+                            HabitsTile(action: { open(.habits) }, addHabit: {
+                                if pro.isPro { showAddHabit = true } else { showUpgrade = true }
+                            })
                         }
                     }
                     .environment(\.healthTitleSize, Self.titleSize(for: tileWidth))
@@ -92,6 +97,12 @@ struct HealthHubPage: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .background(HomeBackground().ignoresSafeArea())
+        .sheet(isPresented: $showAddHabit) {
+            HabitEditSheet(habit: nil) { vm.addHabit($0) }
+        }
+        .sheet(isPresented: $showUpgrade) {
+            ProUpgradeView().environmentObject(pro)
+        }
         .onAppear(perform: loadHourlySteps)
         .onChange(of: vm.selectedDate) { _, _ in loadHourlySteps() }
     }
@@ -873,6 +884,7 @@ private struct HabitsTile: View {
     @EnvironmentObject var vm: PlannerViewModel
     @EnvironmentObject var pro: ProManager
     let action: () -> Void
+    let addHabit: () -> Void
 
     var body: some View {
         let theme = HealthTheme.habits
@@ -891,7 +903,7 @@ private struct HabitsTile: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: 4)
-                TileActionBar(title: "Add Habit", theme: theme, proLocked: !pro.isPro, action: action)
+                TileActionBar(title: "Add Habit", theme: theme, proLocked: !pro.isPro, action: addHabit)
             }
         } art: {
             Image(systemName: "checklist")
