@@ -158,7 +158,18 @@ struct AddScheduleBlockSheet: View {
 
     let onSave: (ScheduleBlock) -> Void
 
-    private let timeSlots = ["6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", "8:00 AM", "8:30 AM",
+    /// Opens on `startTime` (one of the half-hour slots), ending an hour later.
+    init(startTime: String = "9:00 AM", onSave: @escaping (ScheduleBlock) -> Void) {
+        self.onSave = onSave
+        let start = Self.slots.contains(startTime) ? startTime : "9:00 AM"
+        _startTime = State(initialValue: start)
+        let i = Self.slots.firstIndex(of: start) ?? 0
+        _endTime = State(initialValue: Self.slots[min(i + 2, Self.slots.count - 1)])
+    }
+
+    private var timeSlots: [String] { Self.slots }
+
+    static let slots = ["6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", "8:00 AM", "8:30 AM",
                               "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
                               "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM",
                               "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM",
