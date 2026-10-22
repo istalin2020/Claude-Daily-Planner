@@ -145,6 +145,7 @@ struct AddAppointmentSheet: View {
     @State private var notes = ""
     @State private var time = Date()
     @State private var reminderOffset: ReminderOffset = .none
+    @State private var reminderTone: NotificationTone = .defaultTone
 
     let onSave: (Appointment) -> Void
 
@@ -170,6 +171,9 @@ struct AddAppointmentSheet: View {
                         }
                     } label: {
                         Label("Reminder", systemImage: "bell.badge")
+                    }
+                    if reminderOffset != .none {
+                        ReminderToneRow(tone: $reminderTone)
                     }
                 } header: {
                     Text("Reminder")
@@ -191,7 +195,8 @@ struct AddAppointmentSheet: View {
                     Button("Add") {
                         guard !title.isEmpty else { return }
                         onSave(Appointment(time: time, title: title, location: location,
-                                           notes: notes, reminderOffset: reminderOffset))
+                                           notes: notes, reminderOffset: reminderOffset,
+                                           reminderTone: reminderTone))
                         dismiss()
                     }
                     .disabled(title.isEmpty)
@@ -209,6 +214,7 @@ struct EditAppointmentSheet: View {
     @State private var notes: String
     @State private var time: Date
     @State private var reminderOffset: ReminderOffset
+    @State private var reminderTone: NotificationTone
 
     let appointment: Appointment
     let onSave: (Appointment) -> Void
@@ -221,6 +227,7 @@ struct EditAppointmentSheet: View {
         _notes = State(initialValue: appointment.notes)
         _time = State(initialValue: appointment.time)
         _reminderOffset = State(initialValue: appointment.reminderOffset)
+        _reminderTone = State(initialValue: appointment.reminderTone)
     }
 
     var body: some View {
@@ -245,6 +252,9 @@ struct EditAppointmentSheet: View {
                         }
                     } label: {
                         Label("Reminder", systemImage: "bell.badge")
+                    }
+                    if reminderOffset != .none {
+                        ReminderToneRow(tone: $reminderTone)
                     }
                 } header: {
                     Text("Reminder")
@@ -271,6 +281,7 @@ struct EditAppointmentSheet: View {
                         updated.notes = notes
                         updated.time = time
                         updated.reminderOffset = reminderOffset
+                        updated.reminderTone = reminderTone
                         onSave(updated)
                         dismiss()
                     }

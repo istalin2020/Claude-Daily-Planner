@@ -3,8 +3,8 @@ import SwiftUI
 // MARK: - My Schedule page
 //
 // Three cards, each usable right here:
-//   • Today's Schedule — a timeline of the day's blocks with empty 9 AM /
-//     12 PM / 3 PM / 6 PM slots; tap a slot to plan it, tick a block done.
+//   • Today's Schedule — the day's planned blocks in time order, ticked off
+//     here, or an Add button when nothing is planned.
 //   • Appointments — today's appointments, or an Add button when there are
 //     none.
 //   • Subscriptions — the next payments with logo, amount and due date.
@@ -158,9 +158,6 @@ private struct TodayScheduleCard: View {
     let onAdd: (String) -> Void
     let onOpen: () -> Void
 
-    /// The empty slots offered when the day has room.
-    private static let defaultSlots = ["9:00 AM", "12:00 PM", "3:00 PM", "6:00 PM"]
-
     private static let parser: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -174,35 +171,6 @@ private struct TodayScheduleCard: View {
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
 
-    private enum Row: Identifiable {
-        case block(ScheduleBlock)
-        case empty(String)
-        var id: String {
-            switch self {
-            case .block(let b): return b.id.uuidString
-            case .empty(let t): return "slot-" + t
-            }
-        }
-        var time: String {
-            switch self {
-            case .block(let b): return b.startTime
-            case .empty(let t): return t
-            }
-        }
-    }
-
-    /// The day's blocks in time order, with the default slots filling any
-    /// hour that's still free, so there's always somewhere to tap.
-    private var rows: [Row] {
-        let blocks = vm.currentEntry.dailySchedule
-        let taken = Set(blocks.map { Self.minutes($0.startTime) / 60 })
-        var rows = blocks.map { Row.block($0) }
-        for slot in Self.defaultSlots where !taken.contains(Self.minutes(slot) / 60) {
-            rows.append(.empty(slot))
-        }
-        return rows.sorted { Self.minutes($0.time) < Self.minutes($1.time) }
-    }
-
     /// The next free half hour today, or 9 AM on other days.
     private var nextSlot: String {
         guard vm.isToday else { return "9:00 AM" }
@@ -213,106 +181,83 @@ private struct TodayScheduleCard: View {
 
     var body: some View {
         let color = ScheduleStyle.blocks
+        // Only what's been planned, in time order — no placeholder times.
         let blocks = vm.currentEntry.dailySchedule
-        let open = blocks.filter { !$0.isCompleted }.count
-        let all = rows
-        let shown = Array(all.prefix(6))
+            .sorted { Self.minutes($0.startTime) < Self.minutes($1.startTime) }
+        let open = blocks.filter { !$0.isCompleted }
+        let when = vm.isToday ? "today" : "this day"
 
         ScheduleCard(color: color, icon: "calendar.badge.clock",
                      title: vm.isToday ? "Today's Schedule" : "Day's Schedule",
-                     status: blocks.isEmpty ? "No blocks yet" : "\(blocks.count) block\(blocks.count == 1 ? "" : "s")",
-                     detail: blocks.isEmpty ? "Plan your day" : (open == 0 ? "All done" : "\(open) to go"),
+                     status: blocks.isEmpty ? "No blocks \(when)"
+                        : "\(blocks.count) block\(blocks.count == 1 ? "" : "s")",
+                     detail: blocks.isEmpty ? "Tap to add"
+                        : (open.first.map { "Next \($0.startTime)" } ?? "All done"),
                      onOpen: onOpen) {
-            AddPill(title: "Add Block", color: color) { onAdd(nextSlot) }
+            if !blocks.isEmpty { AddPill(title: "Add", color: color) { onAdd(nextSlot) } }
         } content: {
-            VStack(spacing: 8) {
-                ForEach(Array(shown.enumerated()), id: \.element.id) { i, row in
-                    HStack(spacing: 10) {
-                        // Timeline dot and rail.
-                        VStack(spacing: 0) {
-                            Circle()
-                                .fill(rowIsDone(row) ? color : color.opacity(0.25))
-                                .frame(width: 9, height: 9)
-                            if i < shown.count - 1 {
-                                Rectangle()
-                                    .fill(color.opacity(0.15))
-                                    .frame(width: 2)
-                                    .frame(maxHeight: .infinity)
-                            }
-                        }
-                        .frame(width: 10)
-
-                        Text(row.time)
-                            .font(.system(size: 13, weight: .medium))
+            if blocks.isEmpty {
+                HStack(spacing: 14) {
+                    ZStack(alignment: .bottomTrailing) {
+                        Image(systemName: "calendar.day.timeline.left")
+                            .font(.system(size: 38, weight: .light))
+                            .foregroundColor(color.opacity(0.45))
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.white, color)
+                            .offset(x: 6, y: 4)
+                    }
+                    .frame(width: 56, height: 52)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Nothing planned \(when)")
+                            .font(.system(size: 15, weight: .bold))
+                        Text("Plan your day in time blocks")
+                            .font(.system(size: 13))
                             .foregroundColor(.secondary)
-                            .frame(width: 70, alignment: .leading)
-
-                        switch row {
-                        case .block(let b): blockRow(b, color: color)
-                        case .empty(let t): emptyRow(t)
+                    }
+                    Spacer(minLength: 4)
+                    AddPill(title: "Add", color: color) { onAdd(nextSlot) }
+                }
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(blocks.prefix(4)) { b in
+                        HStack(spacing: 10) {
+                            Text(b.startTime)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(color)
+                                .frame(width: 72, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(b.activity)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(b.isCompleted ? .secondary : .primary)
+                                    .strikethrough(b.isCompleted, color: .secondary)
+                                    .lineLimit(1)
+                                Text("until \(b.endTime)")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer(minLength: 4)
+                            Button {
+                                withAnimation(.snappy) { vm.toggleScheduleBlock(b) }
+                            } label: {
+                                Image(systemName: b.isCompleted ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(b.isCompleted ? color : .secondary.opacity(0.5))
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-                if all.count > shown.count {
-                    Button(action: onOpen) {
-                        Text("+\(all.count - shown.count) more")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(color)
+                    if blocks.count > 4 {
+                        Button(action: onOpen) {
+                            Text("+\(blocks.count - 4) more")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(color)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
-    }
-
-    private func rowIsDone(_ row: Row) -> Bool {
-        if case .block(let b) = row { return b.isCompleted }
-        return false
-    }
-
-    private func blockRow(_ b: ScheduleBlock, color: Color) -> some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(b.activity)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(b.isCompleted ? .secondary : .primary)
-                    .strikethrough(b.isCompleted, color: .secondary)
-                    .lineLimit(1)
-                Text("until \(b.endTime)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-            }
-            Spacer(minLength: 4)
-            Button {
-                withAnimation(.snappy) { vm.toggleScheduleBlock(b) }
-            } label: {
-                Image(systemName: b.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20))
-                    .foregroundColor(b.isCompleted ? color : .secondary.opacity(0.5))
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 12).fill(color.opacity(0.08)))
-    }
-
-    private func emptyRow(_ time: String) -> some View {
-        Button { onAdd(time) } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "plus").font(.system(size: 13, weight: .semibold))
-                Text("Add a block").font(.system(size: 14))
-                Spacer()
-            }
-            .foregroundColor(.secondary)
-            .padding(.horizontal, 12).padding(.vertical, 9)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Color.secondary.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 

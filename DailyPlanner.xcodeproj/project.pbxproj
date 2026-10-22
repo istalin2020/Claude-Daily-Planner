@@ -32,6 +32,15 @@
 		AA320000000000000000001A /* ExpenseTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA310000000000000000001A /* ExpenseTrackerView.swift */; };
 		AA340000000000000000001A /* RateYourDayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA330000000000000000001A /* RateYourDayView.swift */; };
 		AA360000000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA350000000000000000001A /* Assets.xcassets */; };
+		AA7B00000000000000000001 /* dp_tritone.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000001 /* dp_tritone.wav */; };
+		AA7B00000000000000000002 /* dp_chime.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000002 /* dp_chime.wav */; };
+		AA7B00000000000000000003 /* dp_glass.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000003 /* dp_glass.wav */; };
+		AA7B00000000000000000004 /* dp_beacon.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000004 /* dp_beacon.wav */; };
+		AA7B00000000000000000005 /* dp_bulletin.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000005 /* dp_bulletin.wav */; };
+		AA7B00000000000000000006 /* dp_bamboo.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000006 /* dp_bamboo.wav */; };
+		AA7B00000000000000000007 /* dp_chord.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000007 /* dp_chord.wav */; };
+		AA7B00000000000000000008 /* dp_bell.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000008 /* dp_bell.wav */; };
+		AA7B00000000000000000009 /* dp_ripple.wav in Resources */ = {isa = PBXBuildFile; fileRef = AA7A00000000000000000009 /* dp_ripple.wav */; };
 		AA78000000000000000000DA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA79000000000000000000DA /* PrivacyInfo.xcprivacy */; };
 		AA400000000000000000001A /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F0000000000000000001A /* NotificationManager.swift */; };
 		AA440000000000000000001A /* CalorieEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA430000000000000000001A /* CalorieEstimator.swift */; };
@@ -102,6 +111,15 @@
 		AA310000000000000000001A /* ExpenseTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseTrackerView.swift; sourceTree = "<group>"; };
 		AA330000000000000000001A /* RateYourDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateYourDayView.swift; sourceTree = "<group>"; };
 		AA350000000000000000001A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA7A00000000000000000001 /* dp_tritone.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_tritone.wav; sourceTree = "<group>"; };
+		AA7A00000000000000000002 /* dp_chime.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_chime.wav; sourceTree = "<group>"; };
+		AA7A00000000000000000003 /* dp_glass.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_glass.wav; sourceTree = "<group>"; };
+		AA7A00000000000000000004 /* dp_beacon.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_beacon.wav; sourceTree = "<group>"; };
+		AA7A00000000000000000005 /* dp_bulletin.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_bulletin.wav; sourceTree = "<group>"; };
+		AA7A00000000000000000006 /* dp_bamboo.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_bamboo.wav; sourceTree = "<group>"; };
+		AA7A00000000000000000007 /* dp_chord.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_chord.wav; sourceTree = "<group>"; };
+		AA7A00000000000000000008 /* dp_bell.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_bell.wav; sourceTree = "<group>"; };
+		AA7A00000000000000000009 /* dp_ripple.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Sounds/dp_ripple.wav; sourceTree = "<group>"; };
 		AA79000000000000000000DA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA370000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA3F0000000000000000001A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
@@ -169,6 +187,15 @@
 				AA450000000000000000001A /* Services */,
 				AA3A0000000000000000001A /* Views */,
 				AA350000000000000000001A /* Assets.xcassets */,
+				AA7A00000000000000000001 /* dp_tritone.wav */,
+				AA7A00000000000000000002 /* dp_chime.wav */,
+				AA7A00000000000000000003 /* dp_glass.wav */,
+				AA7A00000000000000000004 /* dp_beacon.wav */,
+				AA7A00000000000000000005 /* dp_bulletin.wav */,
+				AA7A00000000000000000006 /* dp_bamboo.wav */,
+				AA7A00000000000000000007 /* dp_chord.wav */,
+				AA7A00000000000000000008 /* dp_bell.wav */,
+				AA7A00000000000000000009 /* dp_ripple.wav */,
 				AA370000000000000000001A /* Info.plist */,
 				AA79000000000000000000DA /* PrivacyInfo.xcprivacy */,
 				AA480000000000000000001A /* DailyPlanner.entitlements */,
@@ -370,6 +397,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA360000000000000000001A /* Assets.xcassets in Resources */,
+				AA7B00000000000000000001 /* dp_tritone.wav in Resources */,
+				AA7B00000000000000000002 /* dp_chime.wav in Resources */,
+				AA7B00000000000000000003 /* dp_glass.wav in Resources */,
+				AA7B00000000000000000004 /* dp_beacon.wav in Resources */,
+				AA7B00000000000000000005 /* dp_bulletin.wav in Resources */,
+				AA7B00000000000000000006 /* dp_bamboo.wav in Resources */,
+				AA7B00000000000000000007 /* dp_chord.wav in Resources */,
+				AA7B00000000000000000008 /* dp_bell.wav in Resources */,
+				AA7B00000000000000000009 /* dp_ripple.wav in Resources */,
 				AA78000000000000000000DA /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

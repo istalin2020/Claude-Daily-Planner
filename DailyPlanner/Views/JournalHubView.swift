@@ -2,7 +2,8 @@ import SwiftUI
 
 // MARK: - Notes & Journal page
 //
-// Three cards, all usable in place:
+// Three cards, all usable in place, in this order:
+//   • Rate Your Day — see below.
 //   • Today's Notes — write straight into the box (saved as you type,
 //     up to 2,000 characters). Edit focuses it; Done puts the keyboard away.
 //   • Writing Prompts — five prompts; New Prompts shuffles them, and tapping
@@ -34,9 +35,9 @@ struct JournalHubView: View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
+                    rateCard
                     notesCard.id("notes")
                     promptsCard
-                    rateCard
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)

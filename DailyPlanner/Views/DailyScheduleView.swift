@@ -155,6 +155,7 @@ struct AddScheduleBlockSheet: View {
     @State private var startTime = "9:00 AM"
     @State private var endTime = "10:00 AM"
     @State private var reminderOffset: ReminderOffset = .none
+    @State private var reminderTone: NotificationTone = .defaultTone
 
     let onSave: (ScheduleBlock) -> Void
 
@@ -205,6 +206,9 @@ struct AddScheduleBlockSheet: View {
                     } label: {
                         Label("Reminder", systemImage: "bell.badge")
                     }
+                    if reminderOffset != .none {
+                        ReminderToneRow(tone: $reminderTone)
+                    }
                 } header: {
                     Text("Reminder")
                 } footer: {
@@ -221,7 +225,8 @@ struct AddScheduleBlockSheet: View {
                     Button("Add") {
                         guard !activity.isEmpty else { return }
                         onSave(ScheduleBlock(startTime: startTime, endTime: endTime,
-                                             activity: activity, reminderOffset: reminderOffset))
+                                             activity: activity, reminderOffset: reminderOffset,
+                                             reminderTone: reminderTone))
                         dismiss()
                     }
                     .disabled(activity.isEmpty)
@@ -238,6 +243,7 @@ struct EditScheduleBlockSheet: View {
     @State private var startTime: String
     @State private var endTime: String
     @State private var reminderOffset: ReminderOffset
+    @State private var reminderTone: NotificationTone
 
     let block: ScheduleBlock
     let onSave: (ScheduleBlock) -> Void
@@ -249,6 +255,7 @@ struct EditScheduleBlockSheet: View {
         _startTime = State(initialValue: block.startTime)
         _endTime = State(initialValue: block.endTime)
         _reminderOffset = State(initialValue: block.reminderOffset)
+        _reminderTone = State(initialValue: block.reminderTone)
     }
 
     private let timeSlots = ["6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", "8:00 AM", "8:30 AM",
@@ -287,6 +294,9 @@ struct EditScheduleBlockSheet: View {
                     } label: {
                         Label("Reminder", systemImage: "bell.badge")
                     }
+                    if reminderOffset != .none {
+                        ReminderToneRow(tone: $reminderTone)
+                    }
                 } header: {
                     Text("Reminder")
                 } footer: {
@@ -307,6 +317,7 @@ struct EditScheduleBlockSheet: View {
                         updated.startTime = startTime
                         updated.endTime = endTime
                         updated.reminderOffset = reminderOffset
+                        updated.reminderTone = reminderTone
                         onSave(updated)
                         dismiss()
                     }
@@ -314,5 +325,66 @@ struct EditScheduleBlockSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Reminder tone
+
+/// "Tone  Chime ›" in a reminder section; opens the list of ten tones.
+struct ReminderToneRow: View {
+    @Binding var tone: NotificationTone
+
+    var body: some View {
+        NavigationLink {
+            ReminderToneList(tone: $tone)
+        } label: {
+            HStack {
+                Label("Tone", systemImage: "music.note")
+                Spacer()
+                Text(tone.rawValue).foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+/// The ten reminder tones. Tapping one picks it and plays it.
+struct ReminderToneList: View {
+    @Binding var tone: NotificationTone
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(NotificationTone.allCases) { t in
+                    Button {
+                        tone = t
+                        NotificationManager.shared.playPreview(tone: t)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: t == tone ? "speaker.wave.2.fill" : "music.note")
+                                .foregroundColor(.accentColor)
+                                .frame(width: 24)
+                            Text(t.rawValue)
+                                .foregroundColor(.primary)
+                            if t == .defaultTone {
+                                Text("standard")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if t == tone {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                }
+            } footer: {
+                Text("Tap a tone to hear it. Default plays the standard iOS notification sound.")
+            }
+        }
+        .navigationTitle("Reminder Tone")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

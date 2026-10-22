@@ -670,6 +670,11 @@ class PlannerViewModel: ObservableObject {
     }
 
     // MARK: - Daily Schedule
+    /// A reminder's sound: its own choice, or the app-wide tone for Default.
+    private func tone(_ chosen: NotificationTone) -> NotificationTone {
+        chosen == .defaultTone ? settings.notificationTone : chosen
+    }
+
     func addScheduleBlock(_ block: ScheduleBlock) {
         var e = currentEntry
         e.dailySchedule.append(block)
@@ -677,7 +682,7 @@ class PlannerViewModel: ObservableObject {
         // Schedule notification if reminder is set
         if block.reminderOffset != .none {
             NotificationManager.shared.scheduleBlockReminder(
-                block: block, date: selectedDate, tone: settings.notificationTone)
+                block: block, date: selectedDate, tone: tone(block.reminderTone))
         }
     }
 
@@ -720,7 +725,7 @@ class PlannerViewModel: ObservableObject {
             e.dailySchedule[i] = block
             if block.reminderOffset != .none {
                 NotificationManager.shared.scheduleBlockReminder(
-                    block: block, date: selectedDate, tone: settings.notificationTone)
+                    block: block, date: selectedDate, tone: tone(block.reminderTone))
             }
         }
         currentEntry = e
@@ -735,7 +740,7 @@ class PlannerViewModel: ObservableObject {
         // Schedule notification if reminder is set
         if appointment.reminderOffset != .none {
             NotificationManager.shared.scheduleAppointmentReminder(
-                appointment: appointment, date: selectedDate, tone: settings.notificationTone)
+                appointment: appointment, date: selectedDate, tone: tone(appointment.reminderTone))
         }
     }
 
@@ -778,7 +783,7 @@ class PlannerViewModel: ObservableObject {
             e.appointments[i] = appointment
             if appointment.reminderOffset != .none {
                 NotificationManager.shared.scheduleAppointmentReminder(
-                    appointment: appointment, date: selectedDate, tone: settings.notificationTone)
+                    appointment: appointment, date: selectedDate, tone: tone(appointment.reminderTone))
             }
         }
         e.appointments.sort { $0.time < $1.time }

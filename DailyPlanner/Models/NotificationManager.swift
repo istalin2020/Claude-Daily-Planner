@@ -66,50 +66,21 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     // MARK: - Tone preview (immediate in-app playback)
-    /// Plays the chosen tone immediately using AudioToolbox so the user hears
-    /// a truly distinct sound for every option in the picker.
-    ///
-    /// Strategy:
-    ///  1. Try AudioServicesCreateSystemSoundID from the iOS system sound
-    ///     directories — AudioToolbox has read access to these paths even
-    ///     inside the sandbox, so the exact system sound file is used.
-    ///  2. If that fails (file absent / iOS version difference), fall back to
-    ///     a hand-picked SystemSoundID that is audibly distinct per tone.
+    /// Plays the tone the way its reminder will sound: the app's own sound
+    /// file, or the standard iOS alert for Default.
     func playPreview(tone: NotificationTone) {
-        if let fileName = tone.soundFileName {
-            // iOS stores its alert/notification sounds in these directories.
-            let dirs = [
-                "/System/Library/Audio/UISounds/",
-                "/System/Library/Audio/UISounds/Modern/",
-                "/System/Library/Audio/UISounds/New/"
-            ]
-            for dir in dirs {
-                let url = URL(fileURLWithPath: dir + fileName) as CFURL
-                var sid: SystemSoundID = 0
-                if AudioServicesCreateSystemSoundID(url, &sid) == kAudioServicesNoError {
-                    AudioServicesPlaySystemSound(sid)
+        if let file = tone.soundFileName,
+           let url = Bundle.main.url(forResource: (file as NSString).deletingPathExtension,
+                                     withExtension: (file as NSString).pathExtension) {
+            var sid: SystemSoundID = 0
+            if AudioServicesCreateSystemSoundID(url as CFURL, &sid) == kAudioServicesNoError {
+                AudioServicesPlaySystemSoundWithCompletion(sid) {
                     AudioServicesDisposeSystemSoundID(sid)
-                    return
                 }
+                return
             }
         }
-        // Fallback: distinct, well-known iOS system alert-sound IDs.
-        AudioServicesPlaySystemSound(Self.fallbackSoundID(for: tone))
-    }
-
-    /// Maps each tone to a distinct iOS system sound ID used when the
-    /// system-path approach cannot locate the named file.
-    private static func fallbackSoundID(for tone: NotificationTone) -> SystemSoundID {
-        switch tone {
-        case .defaultTone: return 1007  // new-mail / tri-tone
-        case .triTone:     return 1007  // tri-tone (identical to default by design)
-        case .chime:       return 1013  // chime / lock
-        case .glass:       return 1009  // crystal ping
-        case .beacon:      return 1022  // calendar alert
-        case .bulletin:    return 1016  // tweet / bulletin
-        case .bamboo:      return 1057  // subtle tap
-        case .chord:       return 1008  // mail-sent chord
-        }
+        AudioServicesPlaySystemSound(1007)   // the standard iOS notification sound
     }
 
     // MARK: - Daily Reminders

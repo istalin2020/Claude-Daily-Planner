@@ -365,6 +365,8 @@ struct Appointment: Identifiable, Codable {
     var notes: String = ""
     var isCompleted: Bool = false
     var reminderOffset: ReminderOffset = .none
+    /// The sound its reminder plays. Default follows the app-wide tone.
+    var reminderTone: NotificationTone = .defaultTone
 
     init(id: UUID = UUID(),
          time: Date = Date(),
@@ -372,7 +374,8 @@ struct Appointment: Identifiable, Codable {
          location: String = "",
          notes: String = "",
          isCompleted: Bool = false,
-         reminderOffset: ReminderOffset = .none) {
+         reminderOffset: ReminderOffset = .none,
+         reminderTone: NotificationTone = .defaultTone) {
         self.id = id
         self.time = time
         self.title = title
@@ -380,6 +383,7 @@ struct Appointment: Identifiable, Codable {
         self.notes = notes
         self.isCompleted = isCompleted
         self.reminderOffset = reminderOffset
+        self.reminderTone = reminderTone
     }
 
     init(from decoder: Decoder) throws {
@@ -391,6 +395,7 @@ struct Appointment: Identifiable, Codable {
         notes          = try c.decodeIfPresent(String.self,         forKey: .notes)          ?? ""
         isCompleted    = try c.decodeIfPresent(Bool.self,           forKey: .isCompleted)    ?? false
         reminderOffset = try c.decodeIfPresent(ReminderOffset.self, forKey: .reminderOffset) ?? .none
+        reminderTone   = try c.decodeIfPresent(NotificationTone.self, forKey: .reminderTone) ?? .defaultTone
     }
 }
 
@@ -844,20 +849,26 @@ enum NotificationTone: String, Codable, CaseIterable, Identifiable {
     case bulletin    = "Bulletin"
     case bamboo      = "Bamboo"
     case chord       = "Chord"
+    case bell        = "Bell"
+    case ripple      = "Ripple"
 
     var id: String { rawValue }
 
-    /// UNNotificationSound filename or nil for .default
+    /// The tone's sound in the app bundle (DailyPlanner/Sounds), or nil for
+    /// the standard iOS notification sound. Notifications can only play
+    /// sounds shipped with the app, so every tone has its own file.
     var soundFileName: String? {
         switch self {
         case .defaultTone: return nil
-        case .triTone:     return "tri-tone.caf"
-        case .chime:       return "chime.caf"
-        case .glass:       return "glass.caf"
-        case .beacon:      return "beacon.caf"
-        case .bulletin:    return "bulletin.caf"
-        case .bamboo:      return "bamboo.caf"
-        case .chord:       return "chord.caf"
+        case .triTone:     return "dp_tritone.wav"
+        case .chime:       return "dp_chime.wav"
+        case .glass:       return "dp_glass.wav"
+        case .beacon:      return "dp_beacon.wav"
+        case .bulletin:    return "dp_bulletin.wav"
+        case .bamboo:      return "dp_bamboo.wav"
+        case .chord:       return "dp_chord.wav"
+        case .bell:        return "dp_bell.wav"
+        case .ripple:      return "dp_ripple.wav"
         }
     }
 }
@@ -870,19 +881,23 @@ struct ScheduleBlock: Identifiable, Codable {
     var activity: String
     var isCompleted: Bool = false
     var reminderOffset: ReminderOffset = .none
+    /// The sound its reminder plays. Default follows the app-wide tone.
+    var reminderTone: NotificationTone = .defaultTone
 
     init(id: UUID = UUID(),
          startTime: String = "9:00 AM",
          endTime: String = "10:00 AM",
          activity: String,
          isCompleted: Bool = false,
-         reminderOffset: ReminderOffset = .none) {
+         reminderOffset: ReminderOffset = .none,
+         reminderTone: NotificationTone = .defaultTone) {
         self.id = id
         self.startTime = startTime
         self.endTime = endTime
         self.activity = activity
         self.isCompleted = isCompleted
         self.reminderOffset = reminderOffset
+        self.reminderTone = reminderTone
     }
 
     init(from decoder: Decoder) throws {
@@ -893,6 +908,7 @@ struct ScheduleBlock: Identifiable, Codable {
         activity       = try c.decode(String.self,                   forKey: .activity)
         isCompleted    = try c.decodeIfPresent(Bool.self,           forKey: .isCompleted)    ?? false
         reminderOffset = try c.decodeIfPresent(ReminderOffset.self, forKey: .reminderOffset) ?? .none
+        reminderTone   = try c.decodeIfPresent(NotificationTone.self, forKey: .reminderTone) ?? .defaultTone
     }
 }
 
