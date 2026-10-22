@@ -6,6 +6,12 @@ struct DailyPlannerApp: App {
     @StateObject private var proManager = ProManager.shared
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        // Lets Siri learn the phrases that name a list or category
+        // ("Add a task to Personal To-Do in Daily Planner").
+        DailyPlannerShortcuts.updateAppShortcutParameters()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

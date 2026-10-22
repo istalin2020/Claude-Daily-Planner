@@ -89,7 +89,11 @@ class PlannerViewModel: ObservableObject {
         cloudDocsURL?.appendingPathComponent("planner_settings.json") ?? settingsURL
     }
 
+    /// The planner in use, so Siri commands act on it at once.
+    static weak var live: PlannerViewModel?
+
     init() {
+        Self.live = self
         loadSettings()
         loadData()
         setupiCloud()
@@ -1784,27 +1788,43 @@ class PlannerViewModel: ObservableObject {
     /// and applies them to today's entry. Called every time the app foregrounds.
     func processPendingShortcutActions() {
         let suite = UserDefaults(suiteName: "group.com.istalin.DailyPlanner")
+        var actions = ShortcutQueue.drain()
 
-        // ── Add Task ─────────────────────────────────────────────────────────
-        let pendingTaskKey = "shortcut_pending_task"
-        if let data = suite?.data(forKey: pendingTaskKey),
+        // Left by the older single-slot version.
+        if let data = suite?.data(forKey: "shortcut_pending_task"),
            let payload = try? JSONDecoder().decode([String: String].self, from: data),
            let title = payload["title"], !title.isEmpty {
-            let section = payload["section"] ?? "Top Priorities"
-            switch section {
-            case "To-Do Lists":    addToDoListItem(title)
-            case "Personal To-Do": addPersonalTodo(title)
-            default:               addTopPriority(title)
-            }
-            suite?.removeObject(forKey: pendingTaskKey)
+            actions.insert(ShortcutAction(kind: .task, title: title,
+                                          section: payload["section"] ?? "Top Priorities"), at: 0)
+            suite?.removeObject(forKey: "shortcut_pending_task")
         }
+        if suite?.bool(forKey: "shortcut_log_water") == true {
+            actions.insert(ShortcutAction(kind: .water), at: 0)
+            suite?.removeObject(forKey: "shortcut_log_water")
+        }
+        guard !actions.isEmpty else { return }
 
-        // ── Log Water ─────────────────────────────────────────────────────────
-        let waterKey = "shortcut_log_water"
-        if suite?.bool(forKey: waterKey) == true {
-            incrementWater()
-            suite?.removeObject(forKey: waterKey)
+        // Voice commands are about today, whatever day is on screen.
+        let shown = selectedDate
+        let today = Calendar.current.startOfDay(for: Date())
+        if !Calendar.current.isDate(shown, inSameDayAs: today) { selectedDate = today }
+        for a in actions {
+            switch a.kind {
+            case .task:
+                switch a.section {
+                case "To-Do Lists":    addToDoListItem(a.title)
+                case "Personal To-Do": addPersonalTodo(a.title)
+                default:               addTopPriority(a.title)
+                }
+            case .water:
+                incrementWater()
+            case .expense:
+                addExpense(Expense(amount: a.amount,
+                                   category: ExpenseCategory(rawValue: a.category) ?? .other,
+                                   description: a.title))
+            }
         }
+        if !Calendar.current.isDate(shown, inSameDayAs: today) { selectedDate = shown }
     }
 
     // MARK: - Rollover
@@ -2230,14 +2250,6 @@ class PlannerViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Today's snapshot for the "Check Today's Habits" Siri shortcut,
-        // written once shortly after edits stop.
-        $entries
-            .dropFirst()
-            .debounce(for: .seconds(1), scheduler: RunLoop.main)
-            .sink { [weak self] _ in self?.updateWidgetData() }
-            .store(in: &cancellables)
-
         // Push shared task lists to CloudKit 3 seconds after any task change.
         // The debounce avoids flooding CloudKit on rapid edits.
         $entries
@@ -2583,45 +2595,6 @@ class PlannerViewModel: ObservableObject {
             .filter { !allDeletedApptIDs.contains($0.id) }
 
         return result
-    }
-
-    // MARK: - Shared snapshot (read by the Siri shortcut in AppShortcuts.swift)
-
-    struct WidgetSharedData: Codable {
-        var dateKey: String
-        var tasksDone: Int
-        var tasksTotal: Int
-        var topPriorities: [String]
-        var spending: Double
-        var currencySymbol: String
-        var steps: Int
-        var waterGlasses: Int
-        var waterGoal: Int
-    }
-
-    // MARK: - Shortcut data
-
-    func updateWidgetData() {
-        let suiteName = "group.com.istalin.DailyPlanner"
-        guard let defaults = UserDefaults(suiteName: suiteName) else { return }
-        let today = Calendar.current.startOfDay(for: Date())
-        let key = dateKey(for: today)
-        let entry = entries[key] ?? DailyEntry(date: today)
-        let priorities = entry.topPriorities.filter { !$0.isCompleted }.prefix(3).map { $0.title }
-        let shared = WidgetSharedData(
-            dateKey: key,
-            tasksDone: entry.completedTasksCount,
-            tasksTotal: entry.allTasksCount,
-            topPriorities: Array(priorities),
-            spending: entry.totalExpenses,
-            currencySymbol: settings.currency.symbol,
-            steps: entry.fitness.displaySteps,
-            waterGlasses: entry.waterGlasses,
-            waterGoal: entry.waterGoal
-        )
-        if let data = try? JSONEncoder().encode(shared) {
-            defaults.set(data, forKey: "widget_data")
-        }
     }
 
     // MARK: - Summary helpers
