@@ -84,6 +84,13 @@ struct ContentView: View {
                 HomeBottomBar(active: HomeTab.current(section: vm.selectedSection, hub: vm.activeHub)) { tab in
                     select(tab)
                 }
+                // Pages stop at the bar: a fill in the page colour behind it
+                // (fading in just above) so nothing scrolls into view
+                // around or under it.
+                .background {
+                    PageBottomFill(soft: isHome || usesSoftBlue)
+                        .ignoresSafeArea(edges: .bottom)
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in

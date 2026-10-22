@@ -201,6 +201,45 @@ struct HomeBackground: View {
     }
 }
 
+/// The colour at the bottom of a page, laid behind the bottom bar with a
+/// short fade above it, so scrolled content ends at the bar.
+struct PageBottomFill: View {
+    /// Front-page style background (soft blue, or the PRO theme colour);
+    /// otherwise the standard grouped background.
+    let soft: Bool
+    @EnvironmentObject private var vm: PlannerViewModel
+    @EnvironmentObject private var pro: ProManager
+    @Environment(\.colorScheme) private var scheme
+
+    private var fill: Color {
+        guard soft else { return Color(.systemGroupedBackground) }
+        if pro.isPro {
+            // Matches the bottom of HomeBackground's themed wash.
+            let base = Color.adaptive(light: UIColor(white: 0.985, alpha: 1),
+                                      dark: UIColor(red: 0.06, green: 0.07, blue: 0.10, alpha: 1))
+            return base
+        }
+        return Color.adaptive(light: UIColor(red: 0.97, green: 0.98, blue: 1.0, alpha: 1),
+                              dark: UIColor(red: 0.07, green: 0.08, blue: 0.11, alpha: 1))
+    }
+
+    /// The faint theme tint over the base for PRO, as on the page.
+    private var tint: Color {
+        soft && pro.isPro ? vm.settings.themeColor.primary.opacity(scheme == .dark ? 0.05 : 0.03) : .clear
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [fill.opacity(0), fill], startPoint: .top, endPoint: .bottom)
+                .overlay(LinearGradient(colors: [tint.opacity(0), tint], startPoint: .top, endPoint: .bottom))
+                .frame(height: 18)
+            fill.overlay(tint)
+        }
+        .padding(.top, -18)
+        .allowsHitTesting(false)
+    }
+}
+
 // MARK: - Header
 
 struct HomeHeader: View {
