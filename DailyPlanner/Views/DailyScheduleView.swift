@@ -7,6 +7,28 @@ struct DailyScheduleView: View {
 
     var entry: DailyEntry { vm.currentEntry }
 
+    private static let timeParser: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private static func minutes(_ time: String) -> Int {
+        guard let d = timeParser.date(from: time) else { return 0 }
+        let c = Calendar.current.dateComponents([.hour, .minute], from: d)
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+
+    /// Earliest first, by start time (then end time), done or not — the day
+    /// reads top to bottom like a timetable.
+    private var sortedBlocks: [ScheduleBlock] {
+        entry.dailySchedule.sorted {
+            let a = Self.minutes($0.startTime), b = Self.minutes($1.startTime)
+            return a != b ? a < b : Self.minutes($0.endTime) < Self.minutes($1.endTime)
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -22,7 +44,7 @@ struct DailyScheduleView: View {
                                      message: "Add time blocks to plan your day")
                 } else {
                     VStack(spacing: 1) {
-                        ForEach(Array(entry.dailySchedule.enumerated()), id: \.element.id) { idx, block in
+                        ForEach(Array(sortedBlocks.enumerated()), id: \.element.id) { idx, block in
                             ScheduleBlockRow(block: block, index: idx,
                                 onToggle: { vm.toggleScheduleBlock(block) },
                                 onEdit:   { editingBlock = block },

@@ -22,7 +22,8 @@ struct AppointmentsView: View {
                                      message: "Add appointments, meetings, and events")
                 } else {
                     VStack(spacing: 8) {
-                        ForEach(entry.appointments) { appt in
+                        // Earliest first by time of day, like a timetable.
+                        ForEach(entry.appointments.sorted { minuteOfDay($0.time) < minuteOfDay($1.time) }) { appt in
                             AppointmentCard(appointment: appt,
                                 onToggle: { vm.toggleAppointment(appt) },
                                 onEdit:   { editingAppt = appt },
@@ -138,6 +139,13 @@ struct AppointmentCard: View {
 }
 
 // MARK: - Add Appointment Sheet
+/// Minutes since midnight, so appointments sort by the clock whatever day
+/// their time value was created on.
+private func minuteOfDay(_ date: Date) -> Int {
+    let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+    return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+}
+
 struct AddAppointmentSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var title = ""
