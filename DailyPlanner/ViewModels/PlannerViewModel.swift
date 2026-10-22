@@ -160,6 +160,23 @@ class PlannerViewModel: ObservableObject {
         selectedDate = Calendar.current.startOfDay(for: Date())
     }
 
+    /// The day the planner last treated as today.
+    private var knownToday = Calendar.current.startOfDay(for: Date())
+
+    /// Moves the planner to the new day once the calendar has turned over:
+    /// at midnight while the app is open, or the next time it comes back to
+    /// the foreground. Without this the date strip stayed on yesterday until
+    /// Today was tapped.
+    func followNewDay() {
+        let today = Calendar.current.startOfDay(for: Date())
+        guard today != knownToday else { return }
+        knownToday = today
+        selectToday()
+        checkRolloverIfNeeded()
+        checkMonthlyCarryForward()
+        syncHealthKitForToday()
+    }
+
     func select(date: Date) {
         selectedDate = Calendar.current.startOfDay(for: date)
     }
@@ -2191,6 +2208,13 @@ class PlannerViewModel: ObservableObject {
     var didAutoScanSubscriptions = false
 
     private func setupAutoSave() {
+        // Midnight, or a clock / time-zone change, while the app is open.
+        NotificationCenter.default.publisher(for: .NSCalendarDayChanged)
+            .merge(with: NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification))
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.followNewDay() }
+            .store(in: &cancellables)
+
         // Write entries to disk immediately on every change.
         // .dropFirst() skips the initial publisher emission at subscription
         // time (which would just re-save the data we just loaded).

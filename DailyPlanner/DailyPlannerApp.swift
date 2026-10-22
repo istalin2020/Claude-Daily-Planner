@@ -66,6 +66,8 @@ struct DailyPlannerApp: App {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                // A new day since the app was last open: show it.
+                viewModel.followNewDay()
                 viewModel.checkRolloverIfNeeded()
                 // Reminders name a pending Top Priority, so top them up on
                 // every foreground (they're scheduled a week at a time).
