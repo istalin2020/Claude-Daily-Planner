@@ -606,19 +606,12 @@ struct TaskHubCard: View {
 struct ThemedSectionBackdrop: View {
     let section: AppSection
 
+    /// One background for every page — the front page's soft blue wash —
+    /// so moving between categories doesn't change the page colour. Each
+    /// page's own colour stays on its cards and icons.
     var body: some View {
-        if let group = HomeTileGroup.group(for: section) {
-            ZStack(alignment: .topTrailing) {
-                LinearGradient(colors: group.gradient.map { $0.opacity(0.10) },
-                               startPoint: .top, endPoint: .bottom)
-                Image(systemName: group.icon)
-                    .font(.system(size: 150, weight: .bold))
-                    .foregroundColor(group.gradient[0].opacity(0.06))
-                    .rotationEffect(.degrees(-12))
-                    .offset(x: 30, y: -20)
-            }
+        HomeBackground()
             .ignoresSafeArea()
             .allowsHitTesting(false)
-        }
     }
 }
