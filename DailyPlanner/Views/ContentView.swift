@@ -257,6 +257,8 @@ struct ContentView: View {
                     HealthHubPage()
                 } else if hub == .schedule {
                     ScheduleHubView()
+                } else if hub == .journal {
+                    JournalHubView()
                 } else {
                     GroupHubView(group: hub)
                 }

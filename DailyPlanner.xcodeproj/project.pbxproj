@@ -25,6 +25,7 @@
 		AA78000000000000000000CA /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79000000000000000000CA /* OnboardingView.swift */; };
 		AA78000000000000000000EA /* HealthHubPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79000000000000000000EA /* HealthHubPage.swift */; };
 		AA78000000000000000000FA /* ScheduleHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79000000000000000000FA /* ScheduleHubView.swift */; };
+		AA78000000000000000000FB /* JournalHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79000000000000000000FB /* JournalHubView.swift */; };
 		AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA290000000000000000001A /* DailyScheduleView.swift */; };
 		AA2C0000000000000000001A /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B0000000000000000001A /* AppointmentsView.swift */; };
 		AA2E0000000000000000001A /* NotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2D0000000000000000001A /* NotesView.swift */; };
@@ -94,6 +95,7 @@
 		AA79000000000000000000CA /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		AA79000000000000000000EA /* HealthHubPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthHubPage.swift; sourceTree = "<group>"; };
 		AA79000000000000000000FA /* ScheduleHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleHubView.swift; sourceTree = "<group>"; };
+		AA79000000000000000000FB /* JournalHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalHubView.swift; sourceTree = "<group>"; };
 		AA290000000000000000001A /* DailyScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScheduleView.swift; sourceTree = "<group>"; };
 		AA2B0000000000000000001A /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
 		AA2D0000000000000000001A /* NotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesView.swift; sourceTree = "<group>"; };
@@ -246,6 +248,7 @@
 				AA79000000000000000000CA /* OnboardingView.swift */,
 				AA79000000000000000000EA /* HealthHubPage.swift */,
 				AA79000000000000000000FA /* ScheduleHubView.swift */,
+				AA79000000000000000000FB /* JournalHubView.swift */,
 				AA290000000000000000001A /* DailyScheduleView.swift */,
 				AA2B0000000000000000001A /* AppointmentsView.swift */,
 				AA2D0000000000000000001A /* NotesView.swift */,
@@ -419,6 +422,7 @@
 				AA78000000000000000000CA /* OnboardingView.swift in Sources */,
 				AA78000000000000000000EA /* HealthHubPage.swift in Sources */,
 				AA78000000000000000000FA /* ScheduleHubView.swift in Sources */,
+				AA78000000000000000000FB /* JournalHubView.swift in Sources */,
 				AA2A0000000000000000001A /* DailyScheduleView.swift in Sources */,
 				AA2C0000000000000000001A /* AppointmentsView.swift in Sources */,
 				AA2E0000000000000000001A /* NotesView.swift in Sources */,
