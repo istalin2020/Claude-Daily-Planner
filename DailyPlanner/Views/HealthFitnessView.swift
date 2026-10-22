@@ -29,10 +29,10 @@ struct HealthFitnessView: View {
                 // Progress Rings (2×2 grid)
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Today's Progress")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 19, weight: .bold))
                         .padding(.horizontal, 16)
 
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                         HealthRingCard(
                             title: "Workout",
                             icon: "figure.run",
@@ -68,7 +68,7 @@ struct HealthFitnessView: View {
                     }
                     .padding(.horizontal, 16)
                 }
-                .padding(.top, 16)
+                .padding(.top, 14)
 
                 // Daily Targets — set via a popup instead of inline steppers
                 Button {
@@ -76,18 +76,18 @@ struct HealthFitnessView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "target")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                         Text("Set Daily Target")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 13)
                     .background(AppSection.healthFitness.color.opacity(0.12))
                     .foregroundColor(AppSection.healthFitness.color)
                     .cornerRadius(14)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 20)
+                .padding(.top, 14)
 
                 // From Apple Health — Workouts
                 if !fitness.hkWorkouts.isEmpty {
@@ -95,7 +95,7 @@ struct HealthFitnessView: View {
                         HStack {
                             Image(systemName: "heart.fill").foregroundColor(.red).font(.caption)
                             Text("From Apple Health")
-                                .font(.system(size: 15, weight: .bold))
+                                .font(.system(size: 19, weight: .bold))
                         }
                         .padding(.horizontal, 16)
 
@@ -113,12 +113,12 @@ struct HealthFitnessView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
                         Text("My Activities")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 19, weight: .bold))
                         Spacer()
                         if !vm.isFuture {
                             Button(action: { showAddActivity = true }) {
                                 Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 22))
+                                    .font(.system(size: 26))
                                     .foregroundColor(AppSection.healthFitness.color)
                             }
                         }
@@ -279,17 +279,18 @@ struct AppleHealthSyncBanner: View {
             ZStack {
                 Circle()
                     .fill(Color.red.opacity(0.12))
-                    .frame(width: 38, height: 38)
+                    .frame(width: 44, height: 44)
                 Image(systemName: "heart.fill")
                     .foregroundColor(.red)
-                    .font(.system(size: 16))
+                    .font(.system(size: 19))
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Apple Health")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                 Text(syncLabel)
-                    .font(.caption2)
+                    .font(.system(size: 13))
                     .foregroundColor(.secondary)
+                    .lineLimit(2).minimumScaleFactor(0.85)
             }
             Spacer()
             if isSyncing {
@@ -299,8 +300,8 @@ struct AppleHealthSyncBanner: View {
             } else {
                 Button(action: onSync) {
                     Text(syncedAt == nil || !HealthKitManager.shared.isLinkedByUser ? "Connect" : "Sync")
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.horizontal, 14).padding(.vertical, 7)
+                        .font(.system(size: 15, weight: .semibold))
+                        .padding(.horizontal, 16).padding(.vertical, 8)
                         .background(Color.red.opacity(0.12))
                         .foregroundColor(.red)
                         .cornerRadius(20)
@@ -308,9 +309,9 @@ struct AppleHealthSyncBanner: View {
             }
         }
         .padding(14)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground)))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.red.opacity(0.12), lineWidth: 1))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }
 }
 
@@ -337,57 +338,55 @@ struct HealthRingCard: View {
         return color
     }
 
-    private var displayValue: String {
-        if value >= 1000 && unit == "steps" {
-            return String(format: "%.1fk", Double(value) / 1000)
-        }
-        return "\(value)"
-    }
+    private var displayValue: String { value.formatted() }
 
+    /// A smaller ring beside large, easy-to-read figures, so the four cards
+    /// take half the height they used to.
     var body: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                // Track ring
-                Circle()
-                    .stroke(color.opacity(0.15), style: StrokeStyle(lineWidth: 10, lineCap: .round))
-
-                // Progress ring
-                Circle()
-                    .trim(from: 0, to: animatedProgress)
-                    .stroke(ringColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .animation(.easeOut(duration: 0.8), value: animatedProgress)
-
-                // Center content
-                VStack(spacing: 2) {
-                    Image(systemName: icon)
-                        .font(.system(size: 13))
-                        .foregroundColor(ringColor)
-                    Text(displayValue)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.primary)
-                    Text("\(Int(progress * 100))%")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                }
-            }
-            .frame(width: 90, height: 90)
-
-            VStack(spacing: 2) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(color)
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
-                Text("\(value) / \(target) \(unit)")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .minimumScaleFactor(0.7)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
+
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(displayValue)
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundColor(.primary)
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                    Text("of \(target.formatted()) \(unit)")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }
+                Spacer(minLength: 0)
+                ZStack {
+                    Circle()
+                        .stroke(color.opacity(0.15), style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                    Circle()
+                        .trim(from: 0, to: animatedProgress)
+                        .stroke(ringColor, style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeOut(duration: 0.8), value: animatedProgress)
+                    Text("\(Int(progress * 100))%")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(ringColor)
+                        .minimumScaleFactor(0.7)
+                }
+                .frame(width: 56, height: 56)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground)))
+        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(color.opacity(0.15), lineWidth: 1))
+        .shadow(color: color.opacity(0.06), radius: 8, y: 3)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 animatedProgress = progress
@@ -417,14 +416,14 @@ struct TargetStepperRow: View {
                     .fill(color.opacity(0.12))
                     .frame(width: 32, height: 32)
                 Image(systemName: icon)
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
                     .foregroundColor(color)
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 15, weight: .medium))
                 Text("\(value) \(unit)")
-                    .font(.caption2)
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
             Spacer()
@@ -455,24 +454,24 @@ struct HKWorkoutRow: View {
                     .fill(AppSection.healthFitness.color.opacity(0.12))
                     .frame(width: 38, height: 38)
                 Image(systemName: workout.icon)
-                    .font(.system(size: 15))
+                    .font(.system(size: 17))
                     .foregroundColor(AppSection.healthFitness.color)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(workout.activityType)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                 HStack(spacing: 8) {
                     Label("\(workout.durationMinutes) min", systemImage: "timer")
-                        .font(.caption2).foregroundColor(.secondary)
+                        .font(.system(size: 12)).foregroundColor(.secondary)
                     if workout.calories > 0 {
                         Label("\(workout.calories) kcal", systemImage: "flame")
-                            .font(.caption2).foregroundColor(.orange)
+                            .font(.system(size: 12)).foregroundColor(.orange)
                     }
                 }
             }
             Spacer()
             Text(timeString)
-                .font(.caption2)
+                .font(.system(size: 12))
                 .foregroundColor(.secondary)
         }
         .padding(12)
@@ -497,14 +496,14 @@ struct ActivityRowCard: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(activity.name)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .strikethrough(activity.isCompleted)
                 HStack(spacing: 10) {
                     Label("\(activity.duration) min", systemImage: "timer")
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.system(size: 13)).foregroundColor(.secondary)
                     if activity.calories > 0 {
                         Label("\(activity.calories) cal", systemImage: "flame")
-                            .font(.caption).foregroundColor(.orange)
+                            .font(.system(size: 13)).foregroundColor(.orange)
                     }
                 }
             }
