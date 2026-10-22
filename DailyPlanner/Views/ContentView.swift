@@ -24,6 +24,13 @@ struct ContentView: View {
     private var isHome: Bool { vm.selectedSection == .overview && vm.activeHub == nil }
     /// So does the Health Tracker page, with its own back button and date card.
     private var isHealthHub: Bool { vm.selectedSection == .overview && vm.activeHub == .health }
+    /// The main category pages share the front page's soft light-blue
+    /// background: Health Tracker, Finance Tracker, My Schedule, Notes & Journal.
+    private var usesSoftBlue: Bool {
+        if vm.selectedSection == .expenseTracker { return true }
+        guard vm.selectedSection == .overview, let hub = vm.activeHub else { return false }
+        return hub == .health || hub == .schedule || hub == .journal
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,14 +53,23 @@ struct ContentView: View {
             // Main Content
             ZStack {
                 // Themed wash behind each section (office / health / finance…)
-                ThemedSectionBackdrop(section: vm.selectedSection)
+                if !usesSoftBlue {
+                    ThemedSectionBackdrop(section: vm.selectedSection)
+                }
 
                 currentSectionView
                     .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
             .animation(.easeInOut(duration: 0.25), value: vm.selectedSection)
         }
-        .background { GlassAppBackground() }
+        .background {
+            // Reaches under the translucent back bar and date strip too.
+            if usesSoftBlue {
+                HomeBackground().ignoresSafeArea()
+            } else {
+                GlassAppBackground()
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !keyboardShown {
                 HomeBottomBar(active: HomeTab.current(section: vm.selectedSection, hub: vm.activeHub)) { tab in
