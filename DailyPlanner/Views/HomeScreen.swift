@@ -112,7 +112,8 @@ struct HomeFrontPage: View {
                     }
                     .frame(height: row2)
 
-                    JournalTile { open(.journal) }
+                    JournalTile(action: { open(.journal) },
+                                rateDay: { openSection(.rateYourDay) })
                         .frame(height: row3)
                 }
                 .padding(.horizontal, 16)
@@ -979,6 +980,8 @@ extension ScheduleTile {
 private struct JournalTile: View {
     @EnvironmentObject var vm: PlannerViewModel
     let action: () -> Void
+    /// The rating row opens Rate Your Day, so the day can be rated at once.
+    let rateDay: () -> Void
 
     var body: some View {
         let e = vm.currentEntry
@@ -989,6 +992,7 @@ private struct JournalTile: View {
                  subtitle: e.notes.isEmpty ? "Capture thoughts, ideas and memories" : "Note written today",
                  action: action) {
             // The day's reflection in one row: mood, message, stars, score.
+            Button(action: rateDay) {
             HStack(spacing: 8) {
                 Text(score > 0 ? e.rating.overallEmoji : "✨")
                     .font(.system(size: 20))
@@ -1012,6 +1016,8 @@ private struct JournalTile: View {
             }
             .padding(.horizontal, 10).padding(.vertical, 8)
             .tileInset()
+            }
+            .buttonStyle(TilePressStyle())
         } art: {
             TileArt(symbol: "doc.plaintext.fill", color: theme.accentDeep, size: 62, rotation: 10)
                 .padding(.trailing, 40)

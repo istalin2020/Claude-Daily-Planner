@@ -117,14 +117,24 @@ struct ContentView: View {
         case .todo:
             showQuickTodo = true
         case .health:
-            // Health opens workouts and activity directly; water, food, sleep
-            // and medications stay one tap away on the Health tile.
+            openHub(.health)       // the Health Tracker page with all six trackers
+        case .finance:
+            // Straight into the Finance Tracker — no options sheet.
             withAnimation(.easeInOut(duration: 0.25)) {
                 vm.activeHub = nil
-                vm.selectedSection = .healthFitness
+                vm.selectedSection = .expenseTracker
             }
+        case .journal:
+            openHub(.journal)      // Notes and Rate Your Day
         default:
             quickTab = tab
+        }
+    }
+
+    private func openHub(_ group: HomeTileGroup) {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            vm.selectedSection = .overview
+            vm.activeHub = group
         }
     }
 
