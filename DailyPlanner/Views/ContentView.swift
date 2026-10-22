@@ -24,18 +24,27 @@ struct ContentView: View {
     private var isHome: Bool { vm.selectedSection == .overview && vm.activeHub == nil }
     /// So does the Health Tracker page, with its own back button and date card.
     private var isHealthHub: Bool { vm.selectedSection == .overview && vm.activeHub == .health }
-    /// The main category pages share the front page's soft light-blue
-    /// background: Health Tracker, Finance Tracker, My Schedule, Notes & Journal.
+    /// The main category pages look like the front page: its soft
+    /// background (the theme colour for PRO), its header, and the date strip
+    /// on a card. To-Do List, Health Tracker, Finance Tracker, My Schedule,
+    /// Notes & Journal.
     private var usesSoftBlue: Bool {
         if vm.selectedSection == .expenseTracker { return true }
         guard vm.selectedSection == .overview, let hub = vm.activeHub else { return false }
-        return hub == .health || hub == .schedule || hub == .journal
+        return hub == .tasks || hub == .health || hub == .schedule || hub == .journal
     }
 
     var body: some View {
         VStack(spacing: 0) {
             // App Header
-            if !isHome && !isHealthHub {
+            if usesSoftBlue && !isHealthHub {
+                HomeHeader(onPro: { showUpgrade = true },
+                           onSearch: { showSearch = true },
+                           onSettings: { showSettings = true })
+                    .frame(height: 58)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 6)
+            } else if !isHome && !isHealthHub {
                 AppHeaderView(showSettings: $showSettings, showSearch: $showSearch)
             }
 
@@ -44,10 +53,10 @@ struct ContentView: View {
             // horizontal category band is gone entirely.
             if vm.selectedSection == .overview, let hub = vm.activeHub, hub != .health {
                 hubTopBar(hub)
-                DateScrollerView(compact: true)
+                DateScrollerView(compact: true, onCard: usesSoftBlue)
             } else if vm.selectedSection != .overview {
                 sectionTopBar
-                DateScrollerView(compact: true)
+                DateScrollerView(compact: true, onCard: usesSoftBlue)
             }
 
             // Main Content
@@ -216,17 +225,39 @@ struct ContentView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Spacer()
-            // Invisible twin keeps the title optically centered
-            HStack(spacing: 5) {
-                Image(systemName: "chevron.left")
-                Text("Back")
+            // Invisible twin keeps the title optically centered; on the
+            // soft pages a Today button sits there instead (the landing
+            // header has none).
+            ZStack(alignment: .trailing) {
+                HStack(spacing: 5) {
+                    Image(systemName: "chevron.left")
+                    Text("Back")
+                }
+                .font(.system(size: 17, weight: .semibold))
+                .opacity(0)
+                if usesSoftBlue { todayPill }
             }
-            .font(.system(size: 17, weight: .semibold))
-            .opacity(0)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
+        .padding(.vertical, usesSoftBlue ? 6 : 10)
+        .background {
+            if !usesSoftBlue { Rectangle().fill(.ultraThinMaterial) }
+        }
+    }
+
+    private var todayPill: some View {
+        Button {
+            withAnimation(.spring(response: 0.3)) { vm.selectToday() }
+        } label: {
+            Text("Today")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(Color(red: 31 / 255, green: 120 / 255, blue: 1))
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Capsule().fill(Color.adaptive(
+                    light: UIColor(red: 0.90, green: 0.94, blue: 1.0, alpha: 1),
+                    dark: UIColor(red: 0.16, green: 0.22, blue: 0.34, alpha: 1))))
+        }
+        .buttonStyle(TilePressStyle())
     }
 
     /// Back bar shown at the top of a group hub, above the date picker.
@@ -249,17 +280,24 @@ struct ContentView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Spacer()
-            // Invisible twin keeps the title optically centered
-            HStack(spacing: 5) {
-                Image(systemName: "chevron.left")
-                Text("Back")
+            // Invisible twin keeps the title optically centered; on the
+            // soft pages a Today button sits there instead (the landing
+            // header has none).
+            ZStack(alignment: .trailing) {
+                HStack(spacing: 5) {
+                    Image(systemName: "chevron.left")
+                    Text("Back")
+                }
+                .font(.system(size: 17, weight: .semibold))
+                .opacity(0)
+                if usesSoftBlue { todayPill }
             }
-            .font(.system(size: 17, weight: .semibold))
-            .opacity(0)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
+        .padding(.vertical, usesSoftBlue ? 6 : 10)
+        .background {
+            if !usesSoftBlue { Rectangle().fill(.ultraThinMaterial) }
+        }
     }
 
     @ViewBuilder

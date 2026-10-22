@@ -6,6 +6,8 @@ struct DateScrollerView: View {
     var compact: Bool = false
     /// Hides the month/year navigator row entirely (used inside sections).
     var showMonthRow: Bool = true
+    /// Drawn on a white card instead of the frosted bar (soft-background pages).
+    var onCard: Bool = false
     @State private var monthOffset: Int = 0
     @State private var showMonthPicker = false
 
@@ -112,8 +114,17 @@ struct DateScrollerView: View {
                 }
             }
         }
-        .background(.ultraThinMaterial)
-        .shadow(color: .black.opacity(0.05), radius: 3, y: 2)
+        .background {
+            if onCard {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.adaptive(light: .white, dark: UIColor(white: 0.13, alpha: 1)))
+                    .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
+            } else {
+                Rectangle().fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.05), radius: 3, y: 2)
+            }
+        }
+        .padding(.horizontal, onCard ? 16 : 0)
         .sheet(isPresented: $showMonthPicker) {
             MonthYearPickerView(monthOffset: $monthOffset, maxFuture: maxFutureMonths)
                 .presentationDetents([.height(300)])

@@ -151,9 +151,22 @@ struct HomeFrontPage: View {
     }
 }
 
-/// Soft blue wash with a large pale circle, as on the design.
+/// Soft wash with a large pale circle, as on the design. Light blue for
+/// everyone; a PRO user's chosen theme colour tints it instead.
 struct HomeBackground: View {
+    @EnvironmentObject private var vm: PlannerViewModel
+    @EnvironmentObject private var pro: ProManager
+    @Environment(\.colorScheme) private var scheme
+
     var body: some View {
+        if pro.isPro {
+            themed(vm.settings.themeColor.primary)
+        } else {
+            softBlue
+        }
+    }
+
+    private var softBlue: some View {
         ZStack(alignment: .topTrailing) {
             LinearGradient(colors: [
                 Color.adaptive(light: UIColor(red: 0.92, green: 0.95, blue: 1.0, alpha: 1),
@@ -165,6 +178,22 @@ struct HomeBackground: View {
             Circle()
                 .fill(Color.adaptive(light: UIColor(red: 0.80, green: 0.88, blue: 1.0, alpha: 0.55),
                                      dark: UIColor(red: 0.20, green: 0.30, blue: 0.55, alpha: 0.25)))
+                .frame(width: 300, height: 300)
+                .blur(radius: 30)
+                .offset(x: 110, y: -150)
+        }
+    }
+
+    /// The same wash in the theme colour.
+    private func themed(_ accent: Color) -> some View {
+        let dark = scheme == .dark
+        return ZStack(alignment: .topTrailing) {
+            Color.adaptive(light: UIColor(white: 0.985, alpha: 1),
+                           dark: UIColor(red: 0.06, green: 0.07, blue: 0.10, alpha: 1))
+            LinearGradient(colors: [accent.opacity(dark ? 0.16 : 0.13), accent.opacity(dark ? 0.05 : 0.03)],
+                           startPoint: .top, endPoint: .bottom)
+            Circle()
+                .fill(accent.opacity(dark ? 0.18 : 0.20))
                 .frame(width: 300, height: 300)
                 .blur(radius: 30)
                 .offset(x: 110, y: -150)
