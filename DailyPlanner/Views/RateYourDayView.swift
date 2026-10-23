@@ -4,17 +4,17 @@ struct RateYourDayView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var rating: DayRating = DayRating()
     @State private var notesText = ""
+    @State private var showPopper = false
+    // Set to true after onAppear so we don't fire the popper when restoring
+    // an existing 5-star rating from saved data.
+    @State private var isLoaded = false
 
     var entry: DailyEntry { vm.currentEntry }
 
     var body: some View {
-        ScrollView {
+        ZStack {
+          ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .rateYourDay,
-                              subtitle: "Reflect on your day",
-                              completedCount: hasRating ? 1 : 0,
-                              totalCount: 1)
-
                 // Header card
                 VStack(spacing: 8) {
                     Text(overallEmoji)
@@ -98,7 +98,7 @@ struct RateYourDayView: View {
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(10)
                         .disabled(vm.isFuture)
-                        .onChange(of: notesText) { _ in
+                        .onChange(of: notesText) { _, _ in
                             rating.notes = notesText
                             save()
                         }
@@ -113,9 +113,24 @@ struct RateYourDayView: View {
                 Spacer(minLength: 40)
             }
         }
-        .onAppear {
-            rating = entry.rating
-            notesText = entry.rating.notes
+            .onAppear {
+                rating    = entry.rating
+                notesText = entry.rating.notes
+                // Allow a single run-loop tick for the state to settle before
+                // we begin watching for user-initiated 5-star changes.
+                DispatchQueue.main.async { isLoaded = true }
+            }
+
+            if showPopper {
+                PartyPopperOverlay(isVisible: $showPopper)
+                    .ignoresSafeArea()
+            }
+        }
+        // Fire whenever any individual category reaches 5 stars.
+        // Using the max so that tapping 5 on a second category doesn't
+        // re-trigger (maxRating stays 5, no change event).
+        .onChange(of: maxRating) { _, newMax in
+            if newMax == 5 && isLoaded { showPopper = true }
         }
     }
 
@@ -127,16 +142,29 @@ struct RateYourDayView: View {
         rating.productivity > 0 || rating.mood > 0 || rating.health > 0
     }
 
-    private var overallScore: Int {
-        guard hasRating else { return 0 }
+    // Highest single rating across all three categories.
+    // Watched by onChange so the popper fires as soon as the user taps any ★★★★★.
+    private var maxRating: Int {
+        max(rating.productivity, max(rating.mood, rating.health))
+    }
+
+    private var overallScore: Int { rating.overallScore }
+    private var overallEmoji: String { rating.overallEmoji }
+    private var overallMessage: String { rating.overallMessage }
+}
+
+// The day's reflection, shared by this page and the Notes & Journal tile.
+extension DayRating {
+    /// The average of the categories rated, 0 when none are.
+    var overallScore: Int {
         var total = 0, count = 0
-        if rating.productivity > 0 { total += rating.productivity; count += 1 }
-        if rating.mood > 0 { total += rating.mood; count += 1 }
-        if rating.health > 0 { total += rating.health; count += 1 }
+        if productivity > 0 { total += productivity; count += 1 }
+        if mood > 0 { total += mood; count += 1 }
+        if health > 0 { total += health; count += 1 }
         return count > 0 ? Int(round(Double(total) / Double(count))) : 0
     }
 
-    private var overallEmoji: String {
+    var overallEmoji: String {
         switch overallScore {
         case 0: return "📊"
         case 1: return "😔"
@@ -147,7 +175,7 @@ struct RateYourDayView: View {
         }
     }
 
-    private var overallMessage: String {
+    var overallMessage: String {
         switch overallScore {
         case 0: return "Rate your day below"
         case 1: return "Tough day — tomorrow is a new start"
@@ -236,11 +264,11 @@ struct DaySummaryCard: View {
                               color: .cyan)
                 SummaryMetric(icon: "figure.run",
                               label: "Workout Mins",
-                              value: "\(entry.fitness.totalMinutes)",
+                              value: "\(entry.fitness.displayWorkoutMinutes)",
                               color: .orange)
                 SummaryMetric(icon: "dollarsign.circle",
                               label: "Spent Today",
-                              value: String(format: "$%.0f", entry.totalExpenses),
+                              value: String(format: "%@%.0f", vm.settings.currency.symbol, entry.totalExpenses),
                               color: .red)
             }
         }
