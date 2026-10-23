@@ -106,8 +106,14 @@ struct HealthHubPage: View {
         .sheet(isPresented: $showUpgrade) {
             ProUpgradeView().environmentObject(pro)
         }
-        .onAppear(perform: loadHourlySteps)
-        .onChange(of: vm.selectedDate) { _, _ in loadHourlySteps() }
+        .onAppear {
+            loadHourlySteps()
+            vm.syncSleepFromHealth(for: vm.selectedDate)
+        }
+        .onChange(of: vm.selectedDate) { _, date in
+            loadHourlySteps()
+            vm.syncSleepFromHealth(for: date)
+        }
     }
 
     /// Two tiles side by side, filling the row.

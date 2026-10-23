@@ -1511,6 +1511,10 @@ class PlannerViewModel: ObservableObject {
                 }
             }
 
+            // Last night's sleep too, so the Health page shows it without
+            // the Sleep Tracker having to be opened first.
+            self.syncSleepFromHealth(for: today)
+
             // Immediate fetch so today's data is current right now.
             HealthKitManager.shared.fetchAllHealthData(for: today) { [weak self] data in
                 guard let self else { return }
@@ -1523,6 +1527,25 @@ class PlannerViewModel: ObservableObject {
                     workouts: data.workouts
                 )
             }
+        }
+    }
+
+    /// Brings in a day's sleep from Apple Health when that day has none
+    /// recorded, so a time the user typed in is never replaced. Only once
+    /// Health is connected, so no permission sheet appears.
+    func syncSleepFromHealth(for date: Date) {
+        let hk = HealthKitManager.shared
+        guard hk.isAvailable, hk.isLinkedByUser else { return }
+        let day = Calendar.current.startOfDay(for: date)
+        let key = dateKey(for: day)
+        guard entries[key]?.sleep.bedtime == nil else { return }
+        hk.fetchSleepData(for: day) { [weak self] bedtime, wakeTime, _ in
+            guard let self, bedtime != nil || wakeTime != nil else { return }
+            var e = self.entries[key] ?? DailyEntry(date: day)
+            guard e.sleep.bedtime == nil else { return }
+            e.sleep.bedtime = bedtime
+            e.sleep.wakeTime = wakeTime ?? e.sleep.wakeTime
+            self.entries[key] = e
         }
     }
 
