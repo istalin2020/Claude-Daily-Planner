@@ -180,6 +180,8 @@ struct CategoryHeader: View {
     let color: Color
     /// Filled emblem among the leaves.
     let emblem: String
+    /// The page Back returns to.
+    var backLabel: String = "Daily Planner"
     let onBack: () -> Void
     let onToday: () -> Void
 
@@ -197,8 +199,9 @@ struct CategoryHeader: View {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 18, weight: .semibold))
-                            Text("Daily Planner")
+                            Text(backLabel)
                                 .font(.system(size: 17, weight: .semibold))
+                                .lineLimit(1)
                         }
                         .foregroundColor(HealthStyle.blue)
                     }

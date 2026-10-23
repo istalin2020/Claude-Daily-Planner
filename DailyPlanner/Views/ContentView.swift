@@ -28,6 +28,31 @@ struct ContentView: View {
 
     struct CategoryPage {
         let title: String, subtitle: String, icon: String, emblem: String, color: Color
+        /// Where Back goes: a group page, or the front page when nil.
+        var parent: HomeTileGroup? = nil
+        var backLabel: String { parent?.rawValue ?? "Daily Planner" }
+    }
+
+    /// One line under the title of each page inside a group.
+    private static func subtitle(for section: AppSection) -> String {
+        switch section {
+        case .topPriorities:  return "Your most important tasks today"
+        case .toDoLists:      return "Everything on your list"
+        case .callsEmails:    return "People to call and write to"
+        case .personalTodo:   return "Things for you and home"
+        case .healthFitness:  return "Steps, workouts and activity"
+        case .waterTracker:   return "Stay hydrated through the day"
+        case .foodTracker:    return "Eat healthy, stay strong"
+        case .sleepTracker:   return "Rest for a brighter you"
+        case .medications:    return "Never miss a dose"
+        case .habits:         return "Build better habits"
+        case .dailySchedule:  return "Plan your day in time blocks"
+        case .appointments:   return "Meetings, visits and events"
+        case .subscriptions:  return "Every renewal in one place"
+        case .notes:          return "Capture thoughts and ideas"
+        case .rateYourDay:    return "Reflect on how today went"
+        default:              return ""
+        }
     }
 
     /// To-Do List, Finance Tracker, My Schedule and Notes & Journal use the
@@ -37,6 +62,14 @@ struct ContentView: View {
             return CategoryPage(title: "Finance Tracker", subtitle: "Know where your money goes",
                                 icon: "dollarsign.circle", emblem: "dollarsign.circle.fill",
                                 color: HomeTileTheme.finance.accentDeep)
+        }
+        // A page inside a group: same layout, Back returns to the group.
+        if vm.selectedSection != .overview,
+           let group = HomeTileGroup.group(for: vm.selectedSection), group.sections.count > 1 {
+            let section = vm.selectedSection
+            return CategoryPage(title: section.rawValue, subtitle: Self.subtitle(for: section),
+                                icon: section.icon, emblem: section.icon,
+                                color: section.color, parent: group)
         }
         guard vm.selectedSection == .overview, let hub = vm.activeHub else { return nil }
         switch hub {
@@ -64,12 +97,26 @@ struct ContentView: View {
         }
     }
 
+    /// Back from a category page: to its group page, or to the front page.
+    private func goBack(to parent: HomeTileGroup?) {
+        guard let parent = parent else { return goHome() }
+        withAnimation(.easeInOut(duration: 0.25)) {
+            vm.activeHub = parent
+            vm.selectedSection = .overview
+        }
+    }
+
     /// The main category pages look like the front page: its soft
     /// background (the theme colour for PRO), its header, and the date strip
     /// on a card. To-Do List, Health Tracker, Finance Tracker, My Schedule,
     /// Notes & Journal.
     private var usesSoftBlue: Bool {
         if vm.selectedSection == .expenseTracker { return true }
+        // Pages inside a group match their group page.
+        if vm.selectedSection != .overview,
+           let group = HomeTileGroup.group(for: vm.selectedSection), group.sections.count > 1 {
+            return true
+        }
         guard vm.selectedSection == .overview, let hub = vm.activeHub else { return false }
         return hub == .tasks || hub == .health || hub == .schedule || hub == .journal
     }
@@ -82,7 +129,8 @@ struct ContentView: View {
                 VStack(spacing: 8) {
                     CategoryHeader(title: page.title, subtitle: page.subtitle,
                                    titleIcon: page.icon, color: page.color, emblem: page.emblem,
-                                   onBack: goHome, onToday: {
+                                   backLabel: page.backLabel,
+                                   onBack: { goBack(to: page.parent) }, onToday: {
                         withAnimation(.spring(response: 0.3)) { vm.selectToday() }
                         headerRecenter += 1
                     })

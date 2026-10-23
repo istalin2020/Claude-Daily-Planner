@@ -61,7 +61,6 @@ struct SubscriptionsView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .safeAreaInset(edge: .bottom) { addBar }
         .task {
             // The App Store list is built from a full read of Gmail. Start it
