@@ -39,160 +39,145 @@ struct ProUpgradeView: View {
         ("list.bullet.indent",       "Task Notes & Subtasks",  "Break tasks into actionable steps"),
     ]
 
+    @Environment(\.themeAccent) private var themeAccent
+
+    /// Brand purple for the paywall's own accents.
+    private let purple = Color(red: 0.30, green: 0.10, blue: 0.60)
+
     var body: some View {
-        NavigationView {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    heroHeader
-                    featuresList
-                    planSection
-                    purchaseCTA
-                    footerLinks
-                }
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(Color(.systemGray3))
-                    }
-                }
-            }
-            .overlay(
-                Group {
-                    if isPurchasing || isRestoring {
-                        ZStack {
-                            Color.black.opacity(0.3).ignoresSafeArea()
-                            VStack(spacing: 12) {
-                                ProgressView()
-                                    .scaleEffect(1.4)
-                                    .tint(.white)
-                                Text(isPurchasing ? "Processing…" : "Restoring…")
-                                    .foregroundColor(.white)
-                                    .font(.subheadline)
-                            }
-                            .padding(28)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(20)
-                        }
-                    }
-                }
-            )
-            .alert("Welcome to PRO!", isPresented: $showSuccessAlert) {
-                Button("Let's Go!") {
-                    dismiss()
-                }
-            } message: {
-                if let info = purchasedInfo {
-                    let renewalText: String = {
-                        if let expiry = info.expirationDate {
-                            return "Renews on: \(ProManager.formattedDate(expiry))"
-                        }
-                        return ""
-                    }()
-                    Text("Your \(info.planName) subscription is now active.\n\nPlan: \(info.planName)\nPrice: \(info.price)\nStarted: \(ProManager.formattedDate(info.purchaseDate))\n\(renewalText)\n\nAll \(Self.features.count) premium features are now unlocked. Enjoy!")
-                } else {
-                    Text("Your PRO subscription is now active. All premium features are unlocked!")
-                }
-            }
-        }
-    }
-
-    // MARK: - Hero Header
-    private var heroHeader: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.10, green: 0.05, blue: 0.30),
-                         Color(red: 0.30, green: 0.10, blue: 0.60)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea(edges: .top)
-
+        ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [Color(red: 1.0, green: 0.85, blue: 0.2),
-                                         Color(red: 1.0, green: 0.55, blue: 0.0)],
-                                center: .center, startRadius: 0, endRadius: 45
-                            )
-                        )
-                        .frame(width: 90, height: 90)
-                        .shadow(color: Color(red: 1.0, green: 0.65, blue: 0.0).opacity(0.5), radius: 20)
-
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 42))
-                        .foregroundColor(.white)
-                }
-
-                Text("Daily Planner PRO")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-
-                Text("Unlock all \(Self.features.count) premium features and\ntake full control of your day.")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.80))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
+                heroHeader
+                featuresGrid
             }
-            .padding(.vertical, 36)
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 12)
+        }
+        // Price and Start PRO stay on screen; only the features scroll.
+        .safeAreaInset(edge: .bottom, spacing: 0) { purchasePanel }
+        .background(SoftBackground(theme: pro.isPro ? themeAccent : nil).ignoresSafeArea())
+        .overlay(
+            Group {
+                if isPurchasing || isRestoring {
+                    ZStack {
+                        Color.black.opacity(0.3).ignoresSafeArea()
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .scaleEffect(1.4)
+                                .tint(.white)
+                            Text(isPurchasing ? "Processing…" : "Restoring…")
+                                .foregroundColor(.white)
+                                .font(.subheadline)
+                        }
+                        .padding(28)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(20)
+                    }
+                }
+            }
+        )
+        .alert("Welcome to PRO!", isPresented: $showSuccessAlert) {
+            Button("Let's Go!") {
+                dismiss()
+            }
+        } message: {
+            if let info = purchasedInfo {
+                let renewalText: String = {
+                    if let expiry = info.expirationDate {
+                        return "Renews on: \(ProManager.formattedDate(expiry))"
+                    }
+                    return ""
+                }()
+                Text("Your \(info.planName) subscription is now active.\n\nPlan: \(info.planName)\nPrice: \(info.price)\nStarted: \(ProManager.formattedDate(info.purchaseDate))\n\(renewalText)\n\nAll \(Self.features.count) premium features are now unlocked. Enjoy!")
+            } else {
+                Text("Your PRO subscription is now active. All premium features are unlocked!")
+            }
         }
     }
 
-    // MARK: - Features List
-    private var featuresList: some View {
-        VStack(alignment: .leading, spacing: 0) {
+    // MARK: - Hero (slim)
+    private var heroHeader: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(RadialGradient(colors: [Color(red: 1.0, green: 0.85, blue: 0.2),
+                                                  Color(red: 1.0, green: 0.55, blue: 0.0)],
+                                         center: .center, startRadius: 0, endRadius: 26))
+                    .frame(width: 48, height: 48)
+                    .shadow(color: Color(red: 1.0, green: 0.65, blue: 0.0).opacity(0.45), radius: 8)
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.white)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Daily Planner PRO")
+                    .font(.system(size: 21, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                Text("Unlock all \(Self.features.count) premium features")
+                    .font(.system(size: 13))
+                    .foregroundColor(.white.opacity(0.82))
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
+            Spacer(minLength: 4)
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(Color.white.opacity(0.2)))
+            }
+            .accessibilityLabel("Close")
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(LinearGradient(colors: [Color(red: 0.10, green: 0.05, blue: 0.30),
+                                              Color(red: 0.30, green: 0.10, blue: 0.60)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
+        .shadow(color: purple.opacity(0.25), radius: 10, y: 4)
+    }
+
+    // MARK: - Features (two columns)
+    private var featuresGrid: some View {
+        VStack(alignment: .leading, spacing: 8) {
             Text("EVERYTHING INCLUDED")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-                .padding(.bottom, 10)
-
-            VStack(spacing: 0) {
+                .padding(.leading, 4)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
                 ForEach(Array(proFeatures.enumerated()), id: \.offset) { idx, feature in
-                    HStack(spacing: 14) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 9)
-                                .fill(featureColor(idx).opacity(0.15))
-                                .frame(width: 36, height: 36)
-                            Image(systemName: feature.icon)
-                                .foregroundColor(featureColor(idx))
-                                .font(.system(size: 15))
-                        }
-
-                        VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: feature.icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(featureColor(idx))
+                            .frame(width: 30, height: 30)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(featureColor(idx).opacity(0.14)))
+                        VStack(alignment: .leading, spacing: 1) {
                             Text(feature.name)
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .lineLimit(2).minimumScaleFactor(0.85)
+                                .fixedSize(horizontal: false, vertical: true)
                             Text(feature.desc)
-                                .font(.caption)
+                                .font(.system(size: 10.5))
                                 .foregroundColor(.secondary)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-
-                        Spacer()
-
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(Color(red: 0.1, green: 0.75, blue: 0.4))
-                            .font(.system(size: 18))
+                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-
-                    if idx < proFeatures.count - 1 {
-                        Divider().padding(.leading, 70)
-                    }
+                    .padding(9)
+                    .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
+                    .background(RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.adaptive(light: UIColor(white: 1, alpha: 0.9),
+                                             dark: UIColor(white: 1, alpha: 0.07))))
+                    .overlay(RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(featureColor(idx).opacity(0.12), lineWidth: 1))
                 }
             }
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(16)
-            .padding(.horizontal, 16)
         }
     }
 
@@ -218,38 +203,29 @@ struct ProUpgradeView: View {
         return colors[index % colors.count]
     }
 
-    // MARK: - Plan Cards
-    private var planSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("CHOOSE YOUR PLAN")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-                .padding(.bottom, 2)
-
-            HStack(spacing: 12) {
-                planCard(
-                    type: .yearly,
-                    topBadge: "BEST VALUE",
-                    title: "Yearly",
-                    price: pro.yearlyPriceString,
-                    perMonth: yearlyPerMonth,
-                    savings: "Save \(pro.yearlySavings)",
-                    highlight: true
-                )
-                planCard(
-                    type: .monthly,
-                    topBadge: nil,
-                    title: "Monthly",
-                    price: pro.monthlyPriceString,
-                    perMonth: "per month",
-                    savings: nil,
-                    highlight: false
-                )
+    // MARK: - Pinned purchase panel
+    private var purchasePanel: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                planCard(type: .yearly, badge: "BEST VALUE", title: "Yearly",
+                         price: pro.yearlyPriceString,
+                         detail: pro.yearlySavings.isEmpty ? yearlyPerMonth
+                                 : "\(yearlyPerMonth) · Save \(pro.yearlySavings)")
+                planCard(type: .monthly, badge: nil, title: "Monthly",
+                         price: pro.monthlyPriceString, detail: "per month")
             }
-            .padding(.horizontal, 16)
+            purchaseCTA
+            footerLinks
         }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.08), radius: 10, y: -3)
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 
     private var yearlyPerMonth: String {
@@ -260,74 +236,48 @@ struct ProUpgradeView: View {
         return "₹83/mo"
     }
 
-    private func planCard(type: PlanType, topBadge: String?, title: String,
-                          price: String, perMonth: String, savings: String?,
-                          highlight: Bool) -> some View {
+    private func planCard(type: PlanType, badge: String?, title: String,
+                          price: String, detail: String) -> some View {
         let isSelected = selectedPlan == type
         return Button(action: { selectedPlan = type }) {
-            VStack(spacing: 10) {
-                if let badge = topBadge {
-                    Text(badge)
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(
-                            LinearGradient(colors: [Color(red: 1.0, green: 0.65, blue: 0.0),
-                                                    Color(red: 1.0, green: 0.40, blue: 0.0)],
-                                           startPoint: .leading, endPoint: .trailing)
-                        )
-                        .cornerRadius(8)
-                } else {
-                    Spacer().frame(height: 18)
+            VStack(spacing: 3) {
+                HStack(spacing: 5) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .bold))
+                    if let badge = badge {
+                        Text(badge)
+                            .font(.system(size: 8.5, weight: .heavy))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Capsule().fill(LinearGradient(
+                                colors: [Color(red: 1.0, green: 0.65, blue: 0.0), Color(red: 1.0, green: 0.40, blue: 0.0)],
+                                startPoint: .leading, endPoint: .trailing)))
+                    }
                 }
-
-                Text(title)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(isSelected ? Color(red: 0.30, green: 0.10, blue: 0.60) : .primary)
-
+                .foregroundColor(isSelected ? purple : .primary)
                 Text(price)
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundColor(isSelected ? Color(red: 0.30, green: 0.10, blue: 0.60) : .primary)
-
-                Text(perMonth)
-                    .font(.caption)
+                    .font(.system(size: 21, weight: .heavy, design: .rounded))
+                    .foregroundColor(isSelected ? purple : .primary)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                Text(detail)
+                    .font(.system(size: 10.5, weight: .medium))
                     .foregroundColor(.secondary)
-
-                if let savings = savings {
-                    Text(savings)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Color(red: 0.1, green: 0.75, blue: 0.4))
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(Color(red: 0.1, green: 0.75, blue: 0.4).opacity(0.12))
-                        .cornerRadius(8)
-                } else {
-                    Spacer().frame(height: 22)
-                }
+                    .lineLimit(1).minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected
-                          ? Color(red: 0.30, green: 0.10, blue: 0.60).opacity(0.07)
-                          : Color(.secondarySystemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(
-                        isSelected
-                            ? Color(red: 0.30, green: 0.10, blue: 0.60)
-                            : Color(.separator),
-                        lineWidth: isSelected ? 2 : 1
-                    )
-            )
+            .padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: 14)
+                .fill(isSelected ? purple.opacity(0.08)
+                      : Color.adaptive(light: UIColor(white: 1, alpha: 0.85), dark: UIColor(white: 1, alpha: 0.07))))
+            .overlay(RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(isSelected ? purple : Color(.separator), lineWidth: isSelected ? 2 : 1))
         }
         .buttonStyle(PlainButtonStyle())
     }
 
     // MARK: - Purchase CTA
     private var purchaseCTA: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 6) {
             Button(action: performPurchase) {
                 HStack(spacing: 10) {
                     if isPurchasing {
@@ -344,7 +294,7 @@ struct ProUpgradeView: View {
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
+                .padding(.vertical, 15)
                 .background(
                     LinearGradient(
                         colors: [Color(red: 1.0, green: 0.65, blue: 0.0),
@@ -356,8 +306,6 @@ struct ProUpgradeView: View {
                 .shadow(color: Color(red: 1.0, green: 0.5, blue: 0.0).opacity(0.35), radius: 12, y: 6)
             }
             .disabled(isPurchasing || pro.isLoading)
-            .padding(.horizontal, 16)
-            .padding(.top, 20)
 
             if pro.isLoading {
                 Text("Connecting to App Store…")
@@ -383,21 +331,24 @@ struct ProUpgradeView: View {
 
     // MARK: - Footer
     private var footerLinks: some View {
-        VStack(spacing: 6) {
-            Button(action: performRestore) {
-                Text("Restore Purchases")
-                    .font(.system(size: 13))
-                    .foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
-            }
-            .padding(.top, 8)
-
-            Text("Subscriptions auto-renew unless cancelled at least 24 hours before the renewal date. Manage in App Store Settings.")
-                .font(.system(size: 10))
-                .foregroundColor(Color(.systemGray3))
+        VStack(spacing: 4) {
+            Text("Auto-renews unless cancelled at least 24 hours before renewal. Manage in App Store Settings.")
+                .font(.system(size: 9.5))
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
+                .lineLimit(2).minimumScaleFactor(0.85)
+                .padding(.horizontal, 10)
 
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
+                Button(action: performRestore) {
+                    Text("Restore Purchases")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
+                }
+                Text("·")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(.systemGray3))
+
                 Link("Privacy Policy", destination: URL(string: "https://istalin2020.github.io/Claude-Daily-Planner/privacy-policy.html")!)
                     .font(.system(size: 11))
                     .foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
@@ -410,8 +361,7 @@ struct ProUpgradeView: View {
                     .font(.system(size: 11))
                     .foregroundColor(Color(red: 0.30, green: 0.10, blue: 0.60))
             }
-            .padding(.top, 4)
-            .padding(.bottom, 30)
+            .padding(.bottom, 2)
         }
     }
 

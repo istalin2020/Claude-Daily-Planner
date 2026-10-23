@@ -156,14 +156,20 @@ struct HomeFrontPage: View {
 struct HomeBackground: View {
     @EnvironmentObject private var vm: PlannerViewModel
     @EnvironmentObject private var pro: ProManager
+
+    var body: some View {
+        SoftBackground(theme: pro.isPro ? vm.settings.themeColor.primary : nil)
+    }
+}
+
+/// The soft page background itself: light blue, or the given theme colour.
+/// Needs nothing from the environment, so sheets can use it too.
+struct SoftBackground: View {
+    let theme: Color?
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        if pro.isPro {
-            themed(vm.settings.themeColor.primary)
-        } else {
-            softBlue
-        }
+        if let accent = theme { themed(accent) } else { softBlue }
     }
 
     private var softBlue: some View {
@@ -184,7 +190,6 @@ struct HomeBackground: View {
         }
     }
 
-    /// The same wash in the theme colour.
     private func themed(_ accent: Color) -> some View {
         let dark = scheme == .dark
         return ZStack(alignment: .topTrailing) {
