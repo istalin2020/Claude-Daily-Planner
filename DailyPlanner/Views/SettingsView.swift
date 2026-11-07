@@ -622,7 +622,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.1").foregroundColor(.secondary).font(.caption)
+                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.0").foregroundColor(.secondary).font(.caption)
                     }
                     Button {
                         dismiss()
