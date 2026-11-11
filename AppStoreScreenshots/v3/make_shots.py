@@ -5,7 +5,7 @@ Usage: python make_shots.py <images_dir> <out_dir>
 import sys, os
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-IMG_DIR, OUT_DIR = sys.argv[1], sys.argv[2]
+IMG_DIR, OUT_DIR = (sys.argv[1], sys.argv[2]) if len(sys.argv) > 2 else ("", "")
 FONT = "/usr/share/fonts/opentype/inter/"
 def font(name, size): return ImageFont.truetype(FONT + name, int(size))
 
@@ -167,11 +167,12 @@ def compose(slide, W, H):
     return base.convert("RGB")          # App Store: no alpha channel
 
 
-os.makedirs(OUT_DIR, exist_ok=True)
-for label, (W, H) in SIZES.items():
-    for i, slide in enumerate(SLIDES, 1):
-        out = compose(slide, W, H)
-        assert out.size == (W, H) and out.mode == "RGB"
-        path = os.path.join(OUT_DIR, f"{label}_{i:02d}.png")
-        out.save(path, "PNG", optimize=True)
-        print(path, out.size, out.mode)
+if __name__ == "__main__":
+  os.makedirs(OUT_DIR, exist_ok=True)
+  for label, (W, H) in SIZES.items():
+      for i, slide in enumerate(SLIDES, 1):
+          out = compose(slide, W, H)
+          assert out.size == (W, H) and out.mode == "RGB"
+          path = os.path.join(OUT_DIR, f"{label}_{i:02d}.png")
+          out.save(path, "PNG", optimize=True)
+          print(path, out.size, out.mode)
