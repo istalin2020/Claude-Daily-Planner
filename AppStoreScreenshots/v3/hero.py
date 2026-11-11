@@ -24,8 +24,8 @@ def lerp(a, b, t):
     return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
 
 
-def background(W, H):
-    stops = [(0.0, (226, 236, 255)), (0.22, (170, 198, 252)), (0.45, (74, 124, 236)),
+def background(W, H, stops=None, sparkles=None):
+    stops = stops or [(0.0, (226, 236, 255)), (0.22, (170, 198, 252)), (0.45, (74, 124, 236)),
              (0.75, (34, 76, 196)), (1.0, (16, 38, 120))]
     col = Image.new("RGB", (1, H))
     for y in range(H):
@@ -42,7 +42,7 @@ def background(W, H):
     glow = glow.filter(ImageFilter.GaussianBlur(W * 0.12))
     bg = Image.alpha_composite(bg, glow)
     d = ImageDraw.Draw(bg)
-    for (x, y, r, a) in [(0.83, 0.115, 0.022, 230), (0.91, 0.085, 0.012, 200), (0.94, 0.17, 0.010, 170),
+    for (x, y, r, a) in sparkles if sparkles is not None else [(0.83, 0.115, 0.022, 230), (0.91, 0.085, 0.012, 200), (0.94, 0.17, 0.010, 170),
                          (0.30, 0.255, 0.012, 150), (0.07, 0.42, 0.008, 120), (0.88, 0.30, 0.008, 140)]:
         sparkle(d, x * W, y * H, r * W, a)
     return bg
@@ -194,8 +194,9 @@ def compose(W, H):
     return img.convert("RGB")
 
 
-os.makedirs(OUT_DIR, exist_ok=True)
-for label, (W, H) in SIZES.items():
+if __name__ == "__main__":
+  os.makedirs(OUT_DIR, exist_ok=True)
+  for label, (W, H) in SIZES.items():
     out = compose(W, H)
     assert out.size == (W, H) and out.mode == "RGB"
     path = os.path.join(OUT_DIR, f"{label}_00.png")
