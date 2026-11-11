@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screenshot 4 - Calls & Emails</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 390px; height: 844px;
+  background: linear-gradient(160deg, #14B8A6 0%, #0F766E 50%, #134E4A 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 24px 20px; overflow: hidden;
+}
+.badge { background: rgba(255,255,255,0.22); color: white; padding: 5px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+.headline { color: white; font-size: 40px; font-weight: 800; text-align: center; line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+.subtitle { color: rgba(255,255,255,0.85); font-size: 15px; text-align: center; font-weight: 400; margin-bottom: 24px; line-height: 1.4; }
+.phone { width: 238px; height: 498px; background: #F2F2F7; border-radius: 36px; border: 3px solid rgba(255,255,255,0.28); overflow: hidden; box-shadow: 0 28px 80px rgba(0,0,0,0.45); flex-shrink: 0; }
+.ah { background: linear-gradient(155deg, #7C3AED, #4C1D95); padding: 10px 11px 0; color: white; }
+.ah-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.ah-title { font-size: 13px; font-weight: 700; }
+.ah-greet { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+.today-pill { background: rgba(255,255,255,0.22); color: white; font-size: 7px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.month-label { text-align: center; font-size: 8px; font-weight: 600; margin: 5px 0 4px; }
+.dates { display: flex; justify-content: space-between; padding: 0 2px; }
+.d { text-align: center; width: 28px; }
+.d-day { font-size: 6.5px; opacity: 0.75; }
+.d-num { font-size: 10px; font-weight: 600; }
+.d.active .d-inner { background: white; border-radius: 7px; padding: 2px 0; }
+.d.active .d-day { color: #6D28D9; opacity: 1; }
+.d.active .d-num { color: #6D28D9; }
+.tabs { display: flex; gap: 3px; padding: 7px 0 6px; }
+.tab { font-size: 7px; padding: 3px 7px; border-radius: 10px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.tab.on { background: rgba(255,255,255,0.9); color: #5B21B6; font-weight: 700; }
+.ab { background: #F2F2F7; padding: 8px 8px; flex: 1; }
+.sec-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sec-title { font-size: 11px; font-weight: 700; color: #1C1C1E; }
+.add-btn { width: 20px; height: 20px; background: #14B8A6; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 300; }
+.citem { background: white; border-radius: 10px; padding: 7px 9px; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.cinfo { flex: 1; }
+.cname { font-size: 8.5px; font-weight: 600; color: #1C1C1E; }
+.ctype { font-size: 7px; color: #8E8E93; margin-top: 1px; }
+.status { font-size: 7px; font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+.status.done { background: #DCFCE7; color: #16A34A; }
+.status.pending { background: #FEF3C7; color: #D97706; }
+.stat-row { display: flex; gap: 6px; margin-top: 8px; }
+.stat-box { flex: 1; background: white; border-radius: 10px; padding: 7px; text-align: center; }
+.stat-n { font-size: 16px; font-weight: 800; color: #1C1C1E; }
+.stat-l { font-size: 7px; color: #8E8E93; }
+.feats { display: flex; gap: 14px; margin-top: 20px; }
+.feat { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="badge">Calls &amp; Emails</div>
+  <div class="headline">Never Miss a<br>Connection</div>
+  <div class="subtitle">Track every call &amp; email so<br>no follow-up slips through the cracks</div>
+
+  <div class="phone">
+    <div class="ah">
+      <div class="ah-row1">
+        <div><div class="ah-title">Daily Planner</div><div class="ah-greet">Good Morning ✨</div></div>
+        <div class="today-pill">Today</div>
+      </div>
+      <div class="month-label">February 2026</div>
+      <div class="dates">
+        <div class="d"><div class="d-day">Mon</div><div class="d-num">23</div></div>
+        <div class="d"><div class="d-day">Tue</div><div class="d-num">24</div></div>
+        <div class="d"><div class="d-day">Wed</div><div class="d-num">25</div></div>
+        <div class="d"><div class="d-day">Thu</div><div class="d-num">26</div></div>
+        <div class="d"><div class="d-day">Fri</div><div class="d-num">27</div></div>
+        <div class="d active"><div class="d-inner"><div class="d-day">Sat</div><div class="d-num">28</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab">Overview</div>
+        <div class="tab">Priorities</div>
+        <div class="tab">To-Do</div>
+        <div class="tab on">Calls &amp; Emails</div>
+      </div>
+    </div>
+    <div class="ab">
+      <div class="sec-header">
+        <div class="sec-title">📞 Calls &amp; Emails</div>
+        <div class="add-btn">+</div>
+      </div>
+      <div class="citem">
+        <div class="avatar" style="background:#DBEAFE;">📞</div>
+        <div class="cinfo"><div class="cname">Sarah Johnson</div><div class="ctype">📞 Call — 10:00 AM</div></div>
+        <div class="status done">Done</div>
+      </div>
+      <div class="citem">
+        <div class="avatar" style="background:#FEF3C7;">✉️</div>
+        <div class="cinfo"><div class="cname">Client Proposal</div><div class="ctype">✉️ Email — Follow up</div></div>
+        <div class="status pending">Pending</div>
+      </div>
+      <div class="citem">
+        <div class="avatar" style="background:#DCFCE7;">📞</div>
+        <div class="cinfo"><div class="cname">Dr. Martinez</div><div class="ctype">📞 Call — Appointment</div></div>
+        <div class="status done">Done</div>
+      </div>
+      <div class="citem">
+        <div class="avatar" style="background:#FCE7F3;">✉️</div>
+        <div class="cinfo"><div class="cname">Invoice #1042</div><div class="ctype">✉️ Email — Finance</div></div>
+        <div class="status pending">Pending</div>
+      </div>
+      <div class="citem">
+        <div class="avatar" style="background:#EDE9FE;">📞</div>
+        <div class="cinfo"><div class="cname">Mark (Partner)</div><div class="ctype">📞 Call — Strategy talk</div></div>
+        <div class="status done">Done</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-n">5</div><div class="stat-l">Total Today</div></div>
+        <div class="stat-box"><div class="stat-n" style="color:#22C55E;">3</div><div class="stat-l">Completed</div></div>
+        <div class="stat-box"><div class="stat-n" style="color:#F59E0B;">2</div><div class="stat-l">Pending</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feats">
+    <div class="feat">✓ Call Tracking</div>
+    <div class="feat">✓ Email Log</div>
+    <div class="feat">✓ Follow-ups</div>
+  </div>
+</body>
+</html>

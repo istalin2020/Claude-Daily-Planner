@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Daily Planner — App Store Screenshots</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1C1C1E;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  padding: 40px 30px;
+}
+h1 { color: white; font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+p { color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 30px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 20px;
+}
+.item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.num { color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.frame {
+  width: 195px; height: 422px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+iframe { width: 390px; height: 844px; border: none; transform-origin: top left; transform: scale(0.5); }
+.label { color: white; font-size: 12px; font-weight: 600; text-align: center; }
+.instructions {
+  background: rgba(255,255,255,0.08); border-radius: 14px;
+  padding: 20px 24px; margin-bottom: 30px; color: rgba(255,255,255,0.8);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.instructions h2 { color: white; font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+.instructions ol { padding-left: 20px; }
+.instructions li { font-size: 13px; line-height: 1.8; }
+.instructions code { background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1>📱 Daily Planner — App Store Screenshots</h1>
+  <p>10 screenshots ready to export · 390 × 844 px each · Open individual files to capture at full resolution</p>
+
+  <div class="instructions">
+    <h2>📤 How to Export for App Store Connect</h2>
+    <ol>
+      <li>Open each <code>screenshot_XX_name.html</code> file in <strong>Safari</strong> on your Mac</li>
+      <li>Go to <strong>File → Export as PDF</strong> — or use <code>⌘ + Shift + 4</code> to take a screenshot of the browser window</li>
+      <li>For best quality: Set browser zoom to <strong>200%</strong> before screenshotting (gives ~780×1688 px)</li>
+      <li>Upload each image to <strong>App Store Connect → App Store → Screenshots</strong></li>
+      <li>App Store required sizes: <strong>6.9"</strong> (1320×2868) · <strong>6.7"</strong> (1290×2796) · <strong>6.5"</strong> (1242×2688)</li>
+    </ol>
+  </div>
+
+  <div class="grid">
+    <div class="item">
+      <div class="num">01</div>
+      <div class="frame"><iframe src="screenshot_01_overview.html"></iframe></div>
+      <div class="label">Overview</div>
+    </div>
+    <div class="item">
+      <div class="num">02</div>
+      <div class="frame"><iframe src="screenshot_02_priorities.html"></iframe></div>
+      <div class="label">Top Priorities</div>
+    </div>
+    <div class="item">
+      <div class="num">03</div>
+      <div class="frame"><iframe src="screenshot_03_todo.html"></iframe></div>
+      <div class="label">To-Do Lists</div>
+    </div>
+    <div class="item">
+      <div class="num">04</div>
+      <div class="frame"><iframe src="screenshot_04_calls.html"></iframe></div>
+      <div class="label">Calls &amp; Emails</div>
+    </div>
+    <div class="item">
+      <div class="num">05</div>
+      <div class="frame"><iframe src="screenshot_05_personal.html"></iframe></div>
+      <div class="label">Personal To-Do</div>
+    </div>
+    <div class="item">
+      <div class="num">06</div>
+      <div class="frame"><iframe src="screenshot_06_health.html"></iframe></div>
+      <div class="label">Health &amp; Fitness</div>
+    </div>
+    <div class="item">
+      <div class="num">07</div>
+      <div class="frame"><iframe src="screenshot_07_water.html"></iframe></div>
+      <div class="label">Water Tracker</div>
+    </div>
+    <div class="item">
+      <div class="num">08</div>
+      <div class="frame"><iframe src="screenshot_08_food.html"></iframe></div>
+      <div class="label">Food Tracker</div>
+    </div>
+    <div class="item">
+      <div class="num">09</div>
+      <div class="frame"><iframe src="screenshot_09_notes.html"></iframe></div>
+      <div class="label">Notes</div>
+    </div>
+    <div class="item">
+      <div class="num">10</div>
+      <div class="frame"><iframe src="screenshot_10_rateday.html"></iframe></div>
+      <div class="label">Rate Your Day</div>
+    </div>
+  </div>
+</body>
+</html>

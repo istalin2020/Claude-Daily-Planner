@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screenshot 6 - Health & Fitness</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 390px; height: 844px;
+  background: linear-gradient(160deg, #22C55E 0%, #16A34A 50%, #14532D 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 24px 20px; overflow: hidden;
+}
+.badge { background: rgba(255,255,255,0.22); color: white; padding: 5px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+.headline { color: white; font-size: 38px; font-weight: 800; text-align: center; line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+.subtitle { color: rgba(255,255,255,0.85); font-size: 15px; text-align: center; font-weight: 400; margin-bottom: 24px; line-height: 1.4; }
+.phone { width: 238px; height: 498px; background: #F2F2F7; border-radius: 36px; border: 3px solid rgba(255,255,255,0.28); overflow: hidden; box-shadow: 0 28px 80px rgba(0,0,0,0.45); flex-shrink: 0; }
+.ah { background: linear-gradient(155deg, #7C3AED, #4C1D95); padding: 10px 11px 0; color: white; }
+.ah-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.ah-title { font-size: 13px; font-weight: 700; }
+.ah-greet { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+.today-pill { background: rgba(255,255,255,0.22); color: white; font-size: 7px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.month-label { text-align: center; font-size: 8px; font-weight: 600; margin: 5px 0 4px; }
+.dates { display: flex; justify-content: space-between; padding: 0 2px; }
+.d { text-align: center; width: 28px; }
+.d-day { font-size: 6.5px; opacity: 0.75; }
+.d-num { font-size: 10px; font-weight: 600; }
+.d.active .d-inner { background: white; border-radius: 7px; padding: 2px 0; }
+.d.active .d-day { color: #6D28D9; opacity: 1; }
+.d.active .d-num { color: #6D28D9; }
+.tabs { display: flex; gap: 3px; padding: 7px 0 6px; }
+.tab { font-size: 7px; padding: 3px 7px; border-radius: 10px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.tab.on { background: rgba(255,255,255,0.9); color: #5B21B6; font-weight: 700; }
+.ab { background: #F2F2F7; padding: 8px 8px; flex: 1; }
+.sec-title { font-size: 11px; font-weight: 700; color: #1C1C1E; margin-bottom: 8px; }
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 7px; }
+.metric { background: white; border-radius: 10px; padding: 8px 8px; }
+.m-ico { font-size: 14px; margin-bottom: 2px; }
+.m-val { font-size: 14px; font-weight: 800; color: #1C1C1E; line-height: 1; }
+.m-unit { font-size: 7px; color: #8E8E93; }
+.m-lbl { font-size: 7px; color: #8E8E93; margin-top: 2px; }
+.m-bar { background: #F3F4F6; border-radius: 3px; height: 4px; margin-top: 4px; overflow: hidden; }
+.m-fill { height: 100%; border-radius: 3px; }
+.workout-card { background: white; border-radius: 10px; padding: 8px 10px; }
+.wc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.wc-title { font-size: 9px; font-weight: 700; color: #1C1C1E; }
+.wc-tag { background: #DCFCE7; color: #16A34A; font-size: 7px; font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+.wrow { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-top: 0.5px solid #F2F2F7; }
+.wico { font-size: 11px; }
+.wname { font-size: 7.5px; font-weight: 600; color: #1C1C1E; flex: 1; }
+.wval { font-size: 7px; color: #22C55E; font-weight: 600; }
+.feats { display: flex; gap: 10px; margin-top: 20px; }
+.feat { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="badge">Health &amp; Fitness</div>
+  <div class="headline">Build Healthy<br>Habits Daily</div>
+  <div class="subtitle">Track workouts, calories, steps<br>&amp; minutes — all in one place</div>
+
+  <div class="phone">
+    <div class="ah">
+      <div class="ah-row1">
+        <div><div class="ah-title">Daily Planner</div><div class="ah-greet">Good Morning ✨</div></div>
+        <div class="today-pill">Today</div>
+      </div>
+      <div class="month-label">February 2026</div>
+      <div class="dates">
+        <div class="d"><div class="d-day">Mon</div><div class="d-num">23</div></div>
+        <div class="d"><div class="d-day">Tue</div><div class="d-num">24</div></div>
+        <div class="d"><div class="d-day">Wed</div><div class="d-num">25</div></div>
+        <div class="d"><div class="d-day">Thu</div><div class="d-num">26</div></div>
+        <div class="d"><div class="d-day">Fri</div><div class="d-num">27</div></div>
+        <div class="d active"><div class="d-inner"><div class="d-day">Sat</div><div class="d-num">28</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab">Overview</div>
+        <div class="tab">Priorities</div>
+        <div class="tab">To-Do</div>
+        <div class="tab on">Health</div>
+      </div>
+    </div>
+    <div class="ab">
+      <div class="sec-title">🏃 Health &amp; Fitness</div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="m-ico">👟</div>
+          <div class="m-val">8,420</div>
+          <div class="m-lbl">Steps Today</div>
+          <div class="m-bar"><div class="m-fill" style="background:#22C55E;width:84%;"></div></div>
+        </div>
+        <div class="metric">
+          <div class="m-ico">🔥</div>
+          <div class="m-val">487 <span class="m-unit">kcal</span></div>
+          <div class="m-lbl">Calories Burned</div>
+          <div class="m-bar"><div class="m-fill" style="background:#F97316;width:65%;"></div></div>
+        </div>
+        <div class="metric">
+          <div class="m-ico">⏱️</div>
+          <div class="m-val">52 <span class="m-unit">min</span></div>
+          <div class="m-lbl">Active Minutes</div>
+          <div class="m-bar"><div class="m-fill" style="background:#8B5CF6;width:75%;"></div></div>
+        </div>
+        <div class="metric">
+          <div class="m-ico">💪</div>
+          <div class="m-val">2</div>
+          <div class="m-lbl">Workouts Done</div>
+          <div class="m-bar"><div class="m-fill" style="background:#EC4899;width:100%;"></div></div>
+        </div>
+      </div>
+      <div class="workout-card">
+        <div class="wc-header"><div class="wc-title">Today's Workouts</div><div class="wc-tag">2 Done ✓</div></div>
+        <div class="wrow"><div class="wico">🏃</div><div class="wname">Morning Run</div><div class="wval">30 min</div></div>
+        <div class="wrow"><div class="wico">🏋️</div><div class="wname">Weight Training</div><div class="wval">45 min</div></div>
+        <div class="wrow"><div class="wico">🧘</div><div class="wname">Evening Yoga</div><div class="wval">Planned</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feats">
+    <div class="feat">✓ Steps</div>
+    <div class="feat">✓ Calories</div>
+    <div class="feat">✓ Workouts</div>
+    <div class="feat">✓ Minutes</div>
+  </div>
+</body>
+</html>

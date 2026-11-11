@@ -3,17 +3,35 @@ import SwiftUI
 struct DailyScheduleView: View {
     @EnvironmentObject var vm: PlannerViewModel
     @State private var showAddSheet = false
+    @State private var editingBlock: ScheduleBlock? = nil
 
     var entry: DailyEntry { vm.currentEntry }
+
+    private static let timeParser: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private static func minutes(_ time: String) -> Int {
+        guard let d = timeParser.date(from: time) else { return 0 }
+        let c = Calendar.current.dateComponents([.hour, .minute], from: d)
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+
+    /// Earliest first, by start time (then end time), done or not — the day
+    /// reads top to bottom like a timetable.
+    private var sortedBlocks: [ScheduleBlock] {
+        entry.dailySchedule.sorted {
+            let a = Self.minutes($0.startTime), b = Self.minutes($1.startTime)
+            return a != b ? a < b : Self.minutes($0.endTime) < Self.minutes($1.endTime)
+        }
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                SectionHeader(section: .dailySchedule,
-                              subtitle: "Plan and track your day hour by hour",
-                              completedCount: entry.dailySchedule.filter(\.isCompleted).count,
-                              totalCount: entry.dailySchedule.count)
-
                 if !vm.isFuture {
                     AddButton(label: "Add Schedule Block", color: AppSection.dailySchedule.color) {
                         showAddSheet = true
@@ -26,10 +44,12 @@ struct DailyScheduleView: View {
                                      message: "Add time blocks to plan your day")
                 } else {
                     VStack(spacing: 1) {
-                        ForEach(Array(entry.dailySchedule.enumerated()), id: \.element.id) { idx, block in
-                            ScheduleBlockRow(block: block, index: idx) {
-                                vm.toggleScheduleBlock(block)
-                            }
+                        ForEach(Array(sortedBlocks.enumerated()), id: \.element.id) { idx, block in
+                            ScheduleBlockRow(block: block, index: idx,
+                                onToggle: { vm.toggleScheduleBlock(block) },
+                                onEdit:   { editingBlock = block },
+                                onDelete: { vm.deleteScheduleBlock(block) }
+                            )
                         }
                     }
                     .padding(.horizontal, 16)
@@ -53,6 +73,11 @@ struct DailyScheduleView: View {
                 vm.addScheduleBlock(block)
             }
         }
+        .sheet(item: $editingBlock) { block in
+            EditScheduleBlockSheet(block: block) { updated in
+                vm.updateScheduleBlock(updated)
+            }
+        }
     }
 }
 
@@ -61,6 +86,8 @@ struct ScheduleBlockRow: View {
     let block: ScheduleBlock
     let index: Int
     let onToggle: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
 
     private let blockColors: [Color] = [
         Color(red: 0.4, green: 0.3, blue: 0.85),
@@ -111,6 +138,21 @@ struct ScheduleBlockRow: View {
                 }
                 Spacer()
 
+                // Edit button
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+
+                // Delete button
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.red.opacity(0.7))
+                }
+
+                // Toggle button
                 Button(action: onToggle) {
                     Image(systemName: block.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 22))
@@ -135,8 +177,108 @@ struct AddScheduleBlockSheet: View {
     @State private var startTime = "9:00 AM"
     @State private var endTime = "10:00 AM"
     @State private var reminderOffset: ReminderOffset = .none
+    @State private var reminderTone: NotificationTone = .defaultTone
 
     let onSave: (ScheduleBlock) -> Void
+
+    /// Opens on `startTime` (one of the half-hour slots), ending an hour later.
+    init(startTime: String = "9:00 AM", onSave: @escaping (ScheduleBlock) -> Void) {
+        self.onSave = onSave
+        let start = Self.slots.contains(startTime) ? startTime : "9:00 AM"
+        _startTime = State(initialValue: start)
+        let i = Self.slots.firstIndex(of: start) ?? 0
+        _endTime = State(initialValue: Self.slots[min(i + 2, Self.slots.count - 1)])
+    }
+
+    private var timeSlots: [String] { Self.slots }
+
+    static let slots = ["6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", "8:00 AM", "8:30 AM",
+                              "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
+                              "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM",
+                              "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM",
+                              "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM",
+                              "9:00 PM", "9:30 PM", "10:00 PM"]
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Activity") {
+                    TextField("What will you be doing?", text: $activity)
+                        .autocapitalization(.sentences)
+                }
+                Section("Start Time") {
+                    Picker("Start", selection: $startTime) {
+                        ForEach(timeSlots, id: \.self) { t in Text(t).tag(t) }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 100)
+                }
+                Section("End Time") {
+                    Picker("End", selection: $endTime) {
+                        ForEach(timeSlots, id: \.self) { t in Text(t).tag(t) }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 100)
+                }
+                Section {
+                    Picker(selection: $reminderOffset) {
+                        ForEach(ReminderOffset.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
+                    } label: {
+                        Label("Reminder", systemImage: "bell.badge")
+                    }
+                    if reminderOffset != .none {
+                        ReminderToneRow(tone: $reminderTone)
+                    }
+                } header: {
+                    Text("Reminder")
+                } footer: {
+                    if reminderOffset != .none {
+                        Text("You will receive a notification \(reminderOffset.rawValue.lowercased()) the scheduled start time.")
+                    }
+                }
+            }
+            .navigationTitle("Add Schedule Block")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        guard !activity.isEmpty else { return }
+                        onSave(ScheduleBlock(startTime: startTime, endTime: endTime,
+                                             activity: activity, reminderOffset: reminderOffset,
+                                             reminderTone: reminderTone))
+                        dismiss()
+                    }
+                    .disabled(activity.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Edit Schedule Block Sheet
+struct EditScheduleBlockSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var activity: String
+    @State private var startTime: String
+    @State private var endTime: String
+    @State private var reminderOffset: ReminderOffset
+    @State private var reminderTone: NotificationTone
+
+    let block: ScheduleBlock
+    let onSave: (ScheduleBlock) -> Void
+
+    init(block: ScheduleBlock, onSave: @escaping (ScheduleBlock) -> Void) {
+        self.block = block
+        self.onSave = onSave
+        _activity = State(initialValue: block.activity)
+        _startTime = State(initialValue: block.startTime)
+        _endTime = State(initialValue: block.endTime)
+        _reminderOffset = State(initialValue: block.reminderOffset)
+        _reminderTone = State(initialValue: block.reminderTone)
+    }
 
     private let timeSlots = ["6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", "8:00 AM", "8:30 AM",
                               "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
@@ -174,6 +316,9 @@ struct AddScheduleBlockSheet: View {
                     } label: {
                         Label("Reminder", systemImage: "bell.badge")
                     }
+                    if reminderOffset != .none {
+                        ReminderToneRow(tone: $reminderTone)
+                    }
                 } header: {
                     Text("Reminder")
                 } footer: {
@@ -182,20 +327,86 @@ struct AddScheduleBlockSheet: View {
                     }
                 }
             }
-            .navigationTitle("Add Schedule Block")
+            .navigationTitle("Edit Schedule Block")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button("Save") {
                         guard !activity.isEmpty else { return }
-                        onSave(ScheduleBlock(startTime: startTime, endTime: endTime,
-                                             activity: activity, reminderOffset: reminderOffset))
+                        var updated = block
+                        updated.activity = activity
+                        updated.startTime = startTime
+                        updated.endTime = endTime
+                        updated.reminderOffset = reminderOffset
+                        updated.reminderTone = reminderTone
+                        onSave(updated)
                         dismiss()
                     }
                     .disabled(activity.isEmpty)
                 }
             }
         }
+    }
+}
+
+// MARK: - Reminder tone
+
+/// "Tone  Chime ›" in a reminder section; opens the list of ten tones.
+struct ReminderToneRow: View {
+    @Binding var tone: NotificationTone
+
+    var body: some View {
+        NavigationLink {
+            ReminderToneList(tone: $tone)
+        } label: {
+            HStack {
+                Label("Tone", systemImage: "music.note")
+                Spacer()
+                Text(tone.rawValue).foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+/// The ten reminder tones. Tapping one picks it and plays it.
+struct ReminderToneList: View {
+    @Binding var tone: NotificationTone
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(NotificationTone.allCases) { t in
+                    Button {
+                        tone = t
+                        NotificationManager.shared.playPreview(tone: t)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: t == tone ? "speaker.wave.2.fill" : "music.note")
+                                .foregroundColor(.accentColor)
+                                .frame(width: 24)
+                            Text(t.rawValue)
+                                .foregroundColor(.primary)
+                            if t == .defaultTone {
+                                Text("standard")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if t == tone {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                }
+            } footer: {
+                Text("Tap a tone to hear it. Default plays the standard iOS notification sound.")
+            }
+        }
+        .navigationTitle("Reminder Tone")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
