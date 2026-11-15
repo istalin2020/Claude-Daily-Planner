@@ -593,9 +593,30 @@ struct TaskHubCard: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .glassCard()
+            .background { TintedTaskCardBackground(color: section.color) }
         }
         .buttonStyle(TilePressStyle())
+    }
+}
+
+/// A card washed with a light tint of its list's icon colour, so each list
+/// on the To-Do page is easy to tell apart at a glance.
+private struct TintedTaskCardBackground: View {
+    let color: Color
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+        let dark = scheme == .dark
+        shape
+            .fill(Color(.secondarySystemGroupedBackground))
+            .overlay {
+                shape.fill(LinearGradient(colors: [color.opacity(dark ? 0.24 : 0.14),
+                                                   color.opacity(dark ? 0.12 : 0.06)],
+                                          startPoint: .topLeading, endPoint: .bottomTrailing))
+            }
+            .overlay { shape.strokeBorder(color.opacity(dark ? 0.35 : 0.22), lineWidth: 0.8) }
+            .shadow(color: color.opacity(dark ? 0 : 0.10), radius: 10, x: 0, y: 4)
     }
 }
 
