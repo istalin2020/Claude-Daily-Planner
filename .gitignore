@@ -1,0 +1,13 @@
+# Real analysis-service credentials. THIS REPO IS PUBLIC — never commit these.
+# Copy CloudFoodSecrets.example.swift to CloudFoodSecrets.swift and fill it in;
+# being untracked, it also survives every `git pull`.
+DailyPlanner/Services/CloudFoodSecrets.swift
+
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+build/
+DerivedData/

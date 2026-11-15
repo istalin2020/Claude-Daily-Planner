@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screenshot 3 - To-Do Lists</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 390px; height: 844px;
+  background: linear-gradient(160deg, #3B82F6 0%, #1D4ED8 50%, #1E3A8A 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 24px 20px; overflow: hidden;
+}
+.badge { background: rgba(255,255,255,0.22); color: white; padding: 5px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+.headline { color: white; font-size: 40px; font-weight: 800; text-align: center; line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+.subtitle { color: rgba(255,255,255,0.85); font-size: 15px; text-align: center; font-weight: 400; margin-bottom: 24px; line-height: 1.4; }
+.phone { width: 238px; height: 498px; background: #F2F2F7; border-radius: 36px; border: 3px solid rgba(255,255,255,0.28); overflow: hidden; box-shadow: 0 28px 80px rgba(0,0,0,0.45); flex-shrink: 0; }
+.ah { background: linear-gradient(155deg, #7C3AED, #4C1D95); padding: 10px 11px 0; color: white; }
+.ah-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.ah-title { font-size: 13px; font-weight: 700; }
+.ah-greet { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+.today-pill { background: rgba(255,255,255,0.22); color: white; font-size: 7px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.month-label { text-align: center; font-size: 8px; font-weight: 600; margin: 5px 0 4px; }
+.dates { display: flex; justify-content: space-between; padding: 0 2px; }
+.d { text-align: center; width: 28px; }
+.d-day { font-size: 6.5px; opacity: 0.75; }
+.d-num { font-size: 10px; font-weight: 600; }
+.d.active .d-inner { background: white; border-radius: 7px; padding: 2px 0; }
+.d.active .d-day { color: #6D28D9; opacity: 1; }
+.d.active .d-num { color: #6D28D9; }
+.tabs { display: flex; gap: 3px; padding: 7px 0 6px; }
+.tab { font-size: 7px; padding: 3px 7px; border-radius: 10px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.tab.on { background: rgba(255,255,255,0.9); color: #5B21B6; font-weight: 700; }
+.ab { background: #F2F2F7; padding: 8px 8px; flex: 1; overflow: hidden; }
+.cat { background: white; border-radius: 10px; padding: 7px 9px; margin-bottom: 5px; }
+.cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.cat-name { font-size: 9px; font-weight: 700; color: #1C1C1E; }
+.cat-count { font-size: 7px; color: white; background: #3B82F6; padding: 2px 6px; border-radius: 8px; font-weight: 600; }
+.titem { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-top: 0.5px solid #F2F2F7; }
+.cb { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid #D1D5DB; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.cb.done { background: #3B82F6; border-color: #3B82F6; color: white; font-size: 8px; }
+.tname { font-size: 8px; color: #1C1C1E; flex: 1; }
+.tname.done { color: #8E8E93; text-decoration: line-through; }
+.feats { display: flex; gap: 14px; margin-top: 20px; }
+.feat { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="badge">To-Do Lists</div>
+  <div class="headline">Check Off<br>Every Task</div>
+  <div class="subtitle">Organize work &amp; personal tasks<br>with categorized to-do lists</div>
+
+  <div class="phone">
+    <div class="ah">
+      <div class="ah-row1">
+        <div><div class="ah-title">Daily Planner</div><div class="ah-greet">Good Morning ✨</div></div>
+        <div class="today-pill">Today</div>
+      </div>
+      <div class="month-label">February 2026</div>
+      <div class="dates">
+        <div class="d"><div class="d-day">Mon</div><div class="d-num">23</div></div>
+        <div class="d"><div class="d-day">Tue</div><div class="d-num">24</div></div>
+        <div class="d"><div class="d-day">Wed</div><div class="d-num">25</div></div>
+        <div class="d"><div class="d-day">Thu</div><div class="d-num">26</div></div>
+        <div class="d"><div class="d-day">Fri</div><div class="d-num">27</div></div>
+        <div class="d active"><div class="d-inner"><div class="d-day">Sat</div><div class="d-num">28</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab">Overview</div>
+        <div class="tab">Priorities</div>
+        <div class="tab on">To-Do Lists</div>
+        <div class="tab">Health</div>
+      </div>
+    </div>
+    <div class="ab">
+      <div class="cat">
+        <div class="cat-header"><div class="cat-name">📋 Work Tasks</div><div class="cat-count">4/6</div></div>
+        <div class="titem"><div class="cb done">✓</div><div class="tname done">Send project update</div></div>
+        <div class="titem"><div class="cb done">✓</div><div class="tname done">Review code changes</div></div>
+        <div class="titem"><div class="cb done">✓</div><div class="tname done">Update documentation</div></div>
+        <div class="titem"><div class="cb done">✓</div><div class="tname done">Team sync meeting</div></div>
+        <div class="titem"><div class="cb"></div><div class="tname">Prepare presentation</div></div>
+        <div class="titem"><div class="cb"></div><div class="tname">Submit weekly report</div></div>
+      </div>
+      <div class="cat">
+        <div class="cat-header"><div class="cat-name">🏠 Errands</div><div class="cat-count">2/4</div></div>
+        <div class="titem"><div class="cb done">✓</div><div class="tname done">Grocery shopping</div></div>
+        <div class="titem"><div class="cb done">✓</div><div class="tname done">Pay electricity bill</div></div>
+        <div class="titem"><div class="cb"></div><div class="tname">Pick up dry cleaning</div></div>
+        <div class="titem"><div class="cb"></div><div class="tname">Book dentist appt</div></div>
+      </div>
+      <div class="cat">
+        <div class="cat-header"><div class="cat-name">📚 Learning</div><div class="cat-count">1/2</div></div>
+        <div class="titem"><div class="cb done">✓</div><div class="tname done">SwiftUI tutorial</div></div>
+        <div class="titem"><div class="cb"></div><div class="tname">Read design book</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feats">
+    <div class="feat">✓ Categories</div>
+    <div class="feat">✓ Progress Tracking</div>
+    <div class="feat">✓ Roll Over</div>
+  </div>
+</body>
+</html>

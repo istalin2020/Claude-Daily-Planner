@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screenshot 8 - Food Tracker</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 390px; height: 844px;
+  background: linear-gradient(160deg, #F97316 0%, #EA580C 50%, #7C2D12 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 24px 20px; overflow: hidden;
+}
+.badge { background: rgba(255,255,255,0.22); color: white; padding: 5px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+.headline { color: white; font-size: 40px; font-weight: 800; text-align: center; line-height: 1.1; letter-spacing: -1px; margin-bottom: 10px; }
+.subtitle { color: rgba(255,255,255,0.85); font-size: 15px; text-align: center; font-weight: 400; margin-bottom: 24px; line-height: 1.4; }
+.phone { width: 238px; height: 498px; background: #F2F2F7; border-radius: 36px; border: 3px solid rgba(255,255,255,0.28); overflow: hidden; box-shadow: 0 28px 80px rgba(0,0,0,0.45); flex-shrink: 0; }
+.ah { background: linear-gradient(155deg, #7C3AED, #4C1D95); padding: 10px 11px 0; color: white; }
+.ah-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.ah-title { font-size: 13px; font-weight: 700; }
+.ah-greet { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+.today-pill { background: rgba(255,255,255,0.22); color: white; font-size: 7px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.month-label { text-align: center; font-size: 8px; font-weight: 600; margin: 5px 0 4px; }
+.dates { display: flex; justify-content: space-between; padding: 0 2px; }
+.d { text-align: center; width: 28px; }
+.d-day { font-size: 6.5px; opacity: 0.75; }
+.d-num { font-size: 10px; font-weight: 600; }
+.d.active .d-inner { background: white; border-radius: 7px; padding: 2px 0; }
+.d.active .d-day { color: #6D28D9; opacity: 1; }
+.d.active .d-num { color: #6D28D9; }
+.tabs { display: flex; gap: 3px; padding: 7px 0 6px; }
+.tab { font-size: 7px; padding: 3px 7px; border-radius: 10px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.tab.on { background: rgba(255,255,255,0.9); color: #5B21B6; font-weight: 700; }
+.ab { background: #F2F2F7; padding: 8px 8px; flex: 1; }
+.sec-title { font-size: 11px; font-weight: 700; color: #1C1C1E; margin-bottom: 7px; }
+.cal-summary { background: white; border-radius: 12px; padding: 8px 10px; margin-bottom: 7px; display: flex; align-items: center; gap: 10px; }
+.cal-ring { width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#F97316 0% 68%, #FED7AA 68% 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cal-inner { width: 36px; height: 36px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.cal-pct { font-size: 8px; font-weight: 800; color: #F97316; }
+.cal-info { flex: 1; }
+.cal-num { font-size: 18px; font-weight: 800; color: #1C1C1E; line-height: 1; }
+.cal-lbl { font-size: 7px; color: #8E8E93; }
+.cal-remain { font-size: 7px; color: #F97316; font-weight: 600; margin-top: 2px; }
+.meals { }
+.meal { background: white; border-radius: 10px; padding: 7px 9px; margin-bottom: 5px; }
+.meal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.meal-name { font-size: 8px; font-weight: 700; color: #1C1C1E; }
+.meal-cal { font-size: 7.5px; font-weight: 700; color: #F97316; }
+.food-item { display: flex; justify-content: space-between; padding: 2px 0; border-top: 0.5px solid #F2F2F7; }
+.food-name { font-size: 7px; color: #1C1C1E; }
+.food-cal { font-size: 7px; color: #8E8E93; }
+.spend-row { background: white; border-radius: 10px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center; }
+.spend-lbl { font-size: 8px; color: #8E8E93; }
+.spend-val { font-size: 13px; font-weight: 800; color: #22C55E; }
+.feats { display: flex; gap: 12px; margin-top: 20px; }
+.feat { display: flex; align-items: center; gap: 5px; color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="badge">Food Tracker</div>
+  <div class="headline">Track Your<br>Daily Nutrition</div>
+  <div class="subtitle">Log meals, monitor calories &amp;<br>track your daily food spending</div>
+
+  <div class="phone">
+    <div class="ah">
+      <div class="ah-row1">
+        <div><div class="ah-title">Daily Planner</div><div class="ah-greet">Good Morning ✨</div></div>
+        <div class="today-pill">Today</div>
+      </div>
+      <div class="month-label">February 2026</div>
+      <div class="dates">
+        <div class="d"><div class="d-day">Mon</div><div class="d-num">23</div></div>
+        <div class="d"><div class="d-day">Tue</div><div class="d-num">24</div></div>
+        <div class="d"><div class="d-day">Wed</div><div class="d-num">25</div></div>
+        <div class="d"><div class="d-day">Thu</div><div class="d-num">26</div></div>
+        <div class="d"><div class="d-day">Fri</div><div class="d-num">27</div></div>
+        <div class="d active"><div class="d-inner"><div class="d-day">Sat</div><div class="d-num">28</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab">Overview</div>
+        <div class="tab">Health</div>
+        <div class="tab">Water</div>
+        <div class="tab on">Food</div>
+      </div>
+    </div>
+    <div class="ab">
+      <div class="sec-title">🍎 Food Tracker</div>
+      <div class="cal-summary">
+        <div class="cal-ring"><div class="cal-inner"><div class="cal-pct">68%</div></div></div>
+        <div class="cal-info">
+          <div class="cal-num">1,360 <span style="font-size:9px;color:#8E8E93;font-weight:400;">kcal</span></div>
+          <div class="cal-lbl">Calories consumed today</div>
+          <div class="cal-remain">640 kcal remaining</div>
+        </div>
+      </div>
+      <div class="meals">
+        <div class="meal">
+          <div class="meal-header"><div class="meal-name">🌅 Breakfast</div><div class="meal-cal">380 kcal</div></div>
+          <div class="food-item"><div class="food-name">Oatmeal with berries</div><div class="food-cal">250 kcal</div></div>
+          <div class="food-item"><div class="food-name">Black coffee</div><div class="food-cal">5 kcal</div></div>
+          <div class="food-item"><div class="food-name">Greek yogurt</div><div class="food-cal">125 kcal</div></div>
+        </div>
+        <div class="meal">
+          <div class="meal-header"><div class="meal-name">☀️ Lunch</div><div class="meal-cal">520 kcal</div></div>
+          <div class="food-item"><div class="food-name">Chicken salad wrap</div><div class="food-cal">420 kcal</div></div>
+          <div class="food-item"><div class="food-name">Apple</div><div class="food-cal">80 kcal</div></div>
+          <div class="food-item"><div class="food-name">Water</div><div class="food-cal">0 kcal</div></div>
+        </div>
+        <div class="meal">
+          <div class="meal-header"><div class="meal-name">🌆 Snack</div><div class="meal-cal">160 kcal</div></div>
+          <div class="food-item"><div class="food-name">Mixed nuts (small)</div><div class="food-cal">160 kcal</div></div>
+        </div>
+      </div>
+      <div class="spend-row">
+        <div class="spend-lbl">💵 Food Spending Today</div>
+        <div class="spend-val">$18.50</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feats">
+    <div class="feat">✓ Meal Logs</div>
+    <div class="feat">✓ Calorie Counter</div>
+    <div class="feat">✓ Spending</div>
+  </div>
+</body>
+</html>
